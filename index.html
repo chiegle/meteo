@@ -7,7 +7,7 @@
   <meta name="description" content="Dashboard météo haute précision pour les randonneurs grenoblois : AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France pour Belledonne, Chartreuse, Vercors et Oisans.">
   <meta name="theme-color" content="#0d1520">
   <link rel="manifest" href="manifest.json?v=8.34">
-  <link rel="stylesheet" href="style.css?v=8.60">
+  <link rel="stylesheet" href="style.css?v=8.61">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
@@ -95,6 +95,7 @@
     <section class="summit-hero card" id="summitHeroSection">
       <div class="hero-top accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
         <div class="hero-title-group">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
           <div class="hero-massif-tag" id="heroMassifTag">Isère / Alpes</div>
           <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
@@ -200,6 +201,7 @@
       <!-- En-tête / Barre supérieure Météociel 100% cliquable -->
       <div class="accordion-header" id="meteocielAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Météociel" aria-expanded="true">
         <div class="section-title-wrap" style="display: flex; align-items: center;">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow" id="meteocielArrow">▼</span>
           <h2 class="section-title" style="margin: 0;">Météociel</h2>
         </div>
@@ -295,6 +297,7 @@
     <section class="module-section card yrno-section-card" id="ecmwfSection">
       <div class="section-header accordion-header" id="yrnoAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier YR.NO" aria-expanded="true">
         <div class="section-title-wrap">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
           <h3 class="section-title" style="margin: 0;">YR.NO</h3>
         </div>
@@ -352,6 +355,7 @@
     <section class="module-section card" id="aromeSection">
       <div class="section-header accordion-header" id="aromeAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Météo France" aria-expanded="true">
         <div class="section-title-wrap">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
           <h3 class="section-title" id="aromeLocationTitle" style="margin: 0;">Météo France</h3>
         </div>
@@ -375,6 +379,7 @@
     <section class="module-section card" id="rommaSection">
       <div class="section-header accordion-header" id="rommaAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier ROMMA" aria-expanded="true">
         <div class="section-title-wrap">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
           <h3 class="section-title" style="margin: 0;">ROMMA</h3>
         </div>
@@ -405,6 +410,7 @@
     <section class="module-section card" id="meteoblueSection">
       <div class="section-header accordion-header" id="meteoblueAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Météoblue" aria-expanded="true">
         <div class="section-title-wrap">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
           <h3 class="section-title" style="margin: 0;">Météoblue</h3>
         </div>
@@ -462,6 +468,7 @@
     <section class="module-section card" id="safetySection">
       <div class="section-header accordion-header" id="safetyAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier le BERA" aria-expanded="true">
         <div class="section-title-wrap">
+          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
           <span class="model-badge safety-badge">BERA</span>
           <h3 class="section-title" style="margin: 0;">Météo-France BERA</h3>
@@ -522,6 +529,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=8.60"></script>
+  <script src="app.js?v=8.61"></script>
 </body>
 </html>

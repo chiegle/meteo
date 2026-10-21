@@ -566,16 +566,16 @@
 
   function isSameLocation(locA, locB) {
     if (!locA || !locB) return false;
-    const normA = (locA.name || "").toLowerCase().trim();
-    const normB = (locB.name || "").toLowerCase().trim();
-    if (normA && normB && normA === normB) return true;
-    if (typeof locA.lat === "number" && typeof locB.lat === "number" &&
-        typeof locA.lon === "number" && typeof locB.lon === "number") {
+    const hasCoordsA = typeof locA.lat === "number" && typeof locA.lon === "number";
+    const hasCoordsB = typeof locB.lat === "number" && typeof locB.lon === "number";
+    if (hasCoordsA && hasCoordsB) {
       const distLat = Math.abs(locA.lat - locB.lat);
       const distLon = Math.abs(locA.lon - locB.lon);
-      return distLat < 0.015 && distLon < 0.015;
+      return distLat < 0.025 && distLon < 0.025;
     }
-    return false;
+    const normA = (locA.name || "").toLowerCase().trim();
+    const normB = (locB.name || "").toLowerCase().trim();
+    return !!(normA && normB && normA === normB);
   }
 
   function isCurrentFavorite() {
@@ -2168,7 +2168,7 @@
 
         header.addEventListener("keydown", (e) => {
           if (e.key === "Enter" || e.key === " ") {
-            if (e.target.closest("a, button, input, select, .unit-toggle-btn, .ext-link-btn")) return;
+            if (e.target.closest("a, button, input, select, .unit-toggle-btn, .ext-link-btn, .block-drag-handle")) return;
             e.preventDefault();
             toggle();
           }
@@ -2176,7 +2176,172 @@
       });
     }
 
+    // Réorganisation verticale des blocs via le bouton burger (Souris, Tactile & Clavier + Persistance localStorage)
+    function setupBlockReordering() {
+      const mainContainer = document.querySelector("main.main-content");
+      if (!mainContainer) return;
+      const BLOCKS_ORDER_KEY = "meteo_blocks_order_v1";
+
+      function getBlocks() {
+        return Array.from(mainContainer.querySelectorAll(":scope > section.card"));
+      }
+
+      function saveBlocksOrder() {
+        try {
+          const order = getBlocks().map(sec => sec.id).filter(Boolean);
+          localStorage.setItem(BLOCKS_ORDER_KEY, JSON.stringify(order));
+        } catch (e) {
+          console.warn("Erreur sauvegarde ordre des blocs:", e);
+        }
+      }
+
+      function restoreBlocksOrder() {
+        try {
+          const raw = localStorage.getItem(BLOCKS_ORDER_KEY);
+          if (!raw) return;
+          const savedIds = JSON.parse(raw);
+          if (!Array.isArray(savedIds) || savedIds.length === 0) return;
+
+          savedIds.forEach(id => {
+            const el = document.getElementById(id);
+            if (el && el.parentElement === mainContainer) {
+              mainContainer.appendChild(el);
+            }
+          });
+        } catch (e) {
+          console.warn("Erreur restauration ordre des blocs:", e);
+        }
+      }
+
+      restoreBlocksOrder();
+
+      let draggedSection = null;
+      let currentClientY = 0;
+      let autoScrollRaf = null;
+
+      function evaluateSwap(clientY) {
+        if (!draggedSection) return;
+        const blocks = getBlocks();
+        const idx = blocks.indexOf(draggedSection);
+        if (idx === -1) return;
+
+        if (idx > 0) {
+          const prev = blocks[idx - 1];
+          const prevRect = prev.getBoundingClientRect();
+          const prevMid = prevRect.top + prevRect.height / 2;
+          if (clientY < prevMid) {
+            mainContainer.insertBefore(draggedSection, prev);
+            return;
+          }
+        }
+
+        if (idx < blocks.length - 1) {
+          const next = blocks[idx + 1];
+          const nextRect = next.getBoundingClientRect();
+          const nextMid = nextRect.top + nextRect.height / 2;
+          if (clientY > nextMid) {
+            mainContainer.insertBefore(draggedSection, next.nextSibling);
+          }
+        }
+      }
+
+      function autoScrollLoop() {
+        if (!draggedSection) return;
+        const edgeZone = 75;
+        const maxSpeed = 14;
+        const vh = window.innerHeight;
+
+        if (currentClientY < edgeZone) {
+          const ratio = Math.max(0.15, (edgeZone - currentClientY) / edgeZone);
+          window.scrollBy(0, -Math.round(maxSpeed * ratio));
+          evaluateSwap(currentClientY);
+        } else if (currentClientY > vh - edgeZone) {
+          const ratio = Math.max(0.15, (currentClientY - (vh - edgeZone)) / edgeZone);
+          window.scrollBy(0, Math.round(maxSpeed * ratio));
+          evaluateSwap(currentClientY);
+        }
+
+        autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+      }
+
+      function onPointerMove(e) {
+        if (!draggedSection) return;
+        currentClientY = e.clientY;
+        evaluateSwap(currentClientY);
+      }
+
+      function endDrag() {
+        if (!draggedSection) return;
+        if (autoScrollRaf) {
+          cancelAnimationFrame(autoScrollRaf);
+          autoScrollRaf = null;
+        }
+        draggedSection.classList.remove("block-dragging");
+        document.body.classList.remove("is-reordering-blocks");
+        draggedSection = null;
+
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", endDrag);
+        window.removeEventListener("pointercancel", endDrag);
+
+        saveBlocksOrder();
+        if (radarMap) {
+          setTimeout(() => radarMap.invalidateSize(), 100);
+        }
+      }
+
+      mainContainer.querySelectorAll(".block-drag-handle").forEach(handle => {
+        handle.addEventListener("click", (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        });
+
+        handle.addEventListener("pointerdown", (e) => {
+          if (e.button !== undefined && e.button !== 0) return;
+          const section = handle.closest("section.card");
+          if (!section) return;
+
+          e.preventDefault();
+          e.stopPropagation();
+
+          draggedSection = section;
+          currentClientY = e.clientY;
+          draggedSection.classList.add("block-dragging");
+          document.body.classList.add("is-reordering-blocks");
+
+          window.addEventListener("pointermove", onPointerMove, { passive: true });
+          window.addEventListener("pointerup", endDrag);
+          window.addEventListener("pointercancel", endDrag);
+
+          autoScrollRaf = requestAnimationFrame(autoScrollLoop);
+        });
+
+        handle.addEventListener("keydown", (e) => {
+          if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+          const section = handle.closest("section.card");
+          if (!section) return;
+          e.preventDefault();
+          e.stopPropagation();
+
+          const blocks = getBlocks();
+          const idx = blocks.indexOf(section);
+          if (e.key === "ArrowUp" && idx > 0) {
+            mainContainer.insertBefore(section, blocks[idx - 1]);
+            saveBlocksOrder();
+            handle.focus();
+            section.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          } else if (e.key === "ArrowDown" && idx < blocks.length - 1) {
+            mainContainer.insertBefore(section, blocks[idx + 1].nextSibling);
+            saveBlocksOrder();
+            handle.focus();
+            section.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          }
+        });
+      });
+    }
+
     setupAccordions();
+    setupBlockReordering();
     setTimeout(initRadarMap, 100);
 
     // Tuile Indice UV : aucune action au clic
@@ -4561,7 +4726,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.48").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.61").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

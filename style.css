@@ -807,6 +807,62 @@ button {
   color: var(--accent-cyan);
 }
 
+/* Bouton Burger / Poignée de déplacement vertical des blocs */
+.block-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  background: rgba(148, 163, 184, 0.1);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: grab;
+  user-select: none;
+  touch-action: none;
+  margin-right: 6px;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.block-drag-handle:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.45);
+  color: var(--accent-cyan);
+}
+
+.block-drag-handle:active,
+.block-dragging .block-drag-handle {
+  cursor: grabbing;
+  background: var(--accent-cyan);
+  border-color: var(--accent-cyan);
+  color: #0b1320;
+  transform: scale(1.06);
+}
+
+.card.block-dragging {
+  border-color: var(--accent-cyan) !important;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.6), 0 0 0 2px rgba(56, 189, 248, 0.35) !important;
+  opacity: 0.94;
+  z-index: 60;
+  position: relative;
+}
+
+body.is-reordering-blocks,
+body.is-reordering-blocks * {
+  user-select: none !important;
+  cursor: grabbing !important;
+}
+
+body.is-reordering-blocks iframe,
+body.is-reordering-blocks .radar-map-view {
+  pointer-events: none !important;
+}
+
 .accordion-header .accordion-arrow {
   display: inline-flex;
   align-items: center;

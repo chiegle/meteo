@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meteo-grenoble-v8.60';
+const CACHE_NAME = 'meteo-grenoble-v8.61';
 const ASSETS = [
   './',
   './index.html',
@@ -32,17 +32,15 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (!e.request.url.startsWith('http')) return;
-  
-  // Requêtes API Météo (Open-Meteo, MET Norway / Yr.no, Nominatim) : Réseau en direct TOUJOURS frais (pas de cache périmé)
-  if (e.request.url.includes('open-meteo.com') || e.request.url.includes('met.no') || e.request.url.includes('bigdatacloud.net') || e.request.url.includes('openstreetmap.org')) {
-    e.respondWith(
-      fetch(e.request, { cache: 'no-store' }).catch(() => caches.match(e.request))
-    );
+  if (e.request.method !== 'GET' || !e.request.url.startsWith('http')) return;
+  const reqUrl = new URL(e.request.url);
+
+  // Requêtes externes (API Météo, Géocodage, Tuiles Radar) : Réseau en direct
+  if (reqUrl.origin !== self.location.origin) {
     return;
   }
 
-  // Network-First pour les assets locaux
+  // Network-First pour les assets locaux de l'application (App Shell)
   e.respondWith(
     fetch(e.request)
       .then((res) => {
