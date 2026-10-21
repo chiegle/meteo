@@ -4726,7 +4726,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.61").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.62").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
