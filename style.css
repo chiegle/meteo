@@ -5,14 +5,14 @@
 :root {
   --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   
-  /* Palette Thème Sombre (Défaut - Refuge / Nocturne) */
-  --bg-primary: #0a0f18;
-  --bg-secondary: #111a28;
-  --bg-card: rgba(19, 32, 49, 0.75);
-  --bg-card-hover: rgba(28, 45, 68, 0.85);
-  --bg-glass: rgba(16, 26, 40, 0.65);
-  --border-color: rgba(255, 255, 255, 0.08);
-  --border-highlight: rgba(56, 189, 248, 0.35);
+  /* Palette Thème Sombre OLED Absolu (#000000) */
+  --bg-primary: #000000;
+  --bg-secondary: #0a0a0a;
+  --bg-card: #0d0d0d;
+  --bg-card-hover: #151515;
+  --bg-glass: rgba(0, 0, 0, 0.85);
+  --border-color: rgba(255, 255, 255, 0.1);
+  --border-highlight: rgba(56, 189, 248, 0.45);
 
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
@@ -2005,17 +2005,17 @@ body.is-reordering-blocks .radar-map-view {
   min-width: 0;
 }
 
-/* 1. Éphéméride & Lune (Conforme Image 3) */
+/* 1. Éphéméride & Lune (Format compact optimisé) */
 .ephemeris-card {
   background: #ebf7f6;
   border: 1px solid #9fc3c8;
   border-radius: 4px;
-  padding: 16px 20px;
+  padding: 8px 12px;
   color: #001f5c;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  gap: 12px;
+  gap: 4px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
@@ -2024,27 +2024,28 @@ body.is-reordering-blocks .radar-map-view {
 }
 
 .ephem-date {
-  font-size: 1.15rem;
-  font-weight: 500;
+  font-size: 0.92rem;
+  font-weight: 600;
   color: #001f5c;
+  line-height: 1.1;
 }
 
 .ephem-saint {
-  font-size: 1.05rem;
+  font-size: 0.82rem;
   font-weight: 700;
   font-style: italic;
   color: #001f5c;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .ephem-times-grid {
   display: grid;
-  grid-template-columns: 24px auto auto auto auto auto;
+  grid-template-columns: 20px auto auto auto auto auto;
   align-items: center;
   justify-content: center;
-  column-gap: 8px;
-  row-gap: 6px;
-  padding: 6px 0;
+  column-gap: 6px;
+  row-gap: 2px;
+  padding: 2px 0;
   margin: 0 auto;
   width: fit-content;
   max-width: 100%;
@@ -2054,26 +2055,26 @@ body.is-reordering-blocks .radar-map-view {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.25rem;
-  width: 24px;
+  font-size: 1.05rem;
+  width: 20px;
 }
 
 .ephem-grid-label {
   font-weight: 500;
   text-align: right;
   white-space: nowrap;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   color: #001f5c;
   padding-right: 2px;
 }
 
 .ephem-grid-label-evening {
-  padding-left: 28px;
+  padding-left: 16px;
 }
 
 .ephem-grid-time {
   font-weight: 800;
-  font-size: 1.05rem;
+  font-size: 0.85rem;
   white-space: nowrap;
   text-align: left;
   color: #001f5c;
@@ -2081,7 +2082,7 @@ body.is-reordering-blocks .radar-map-view {
 
 .ephem-grid-delta {
   font-weight: 600;
-  font-size: 0.92rem;
+  font-size: 0.75rem;
   color: #001f5c;
   white-space: nowrap;
   padding-left: 2px;
@@ -2090,7 +2091,7 @@ body.is-reordering-blocks .radar-map-view {
 .ephem-grid-divider {
   grid-column: 1 / -1;
   border-bottom: 1px dashed rgba(159, 195, 200, 0.7);
-  margin: 2px 0;
+  margin: 1px 0;
   width: 100%;
 }
 
@@ -2099,43 +2100,44 @@ body.is-reordering-blocks .radar-map-view {
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 8px;
-  padding-top: 4px;
+  gap: 6px;
+  padding-top: 2px;
+  font-size: 0.78rem;
 }
 
 .ephem-moon-prefix {
-  font-size: 0.95rem;
+  font-size: 0.78rem;
   font-weight: 500;
   color: #001f5c;
 }
 
 .ephem-moon-icon {
-  font-size: 1.3rem;
+  font-size: 1.05rem;
   line-height: 1;
 }
 
 .ephem-moon-label {
-  font-size: 1.05rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: #001f5c;
 }
 
-/* 2. Diagramme Précipitations (Conforme Image 2) */
+/* 2. Diagramme Précipitations (Format compact optimisé) */
 .precip-diagram-card {
   background: #e3f5f4;
   border: 1px solid #9fc3c8;
   border-radius: 4px;
-  padding: 12px 14px;
+  padding: 8px 10px;
   display: flex;
   flex-direction: column;
 }
 
 .precip-diagram-header {
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .precip-diagram-title {
-  font-size: 1rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: #001b5e;
   text-align: center;
@@ -2144,7 +2146,7 @@ body.is-reordering-blocks .radar-map-view {
 
 .precip-canvas-wrapper {
   width: 100%;
-  height: 160px;
+  height: 110px;
   position: relative;
 }
 
@@ -2434,36 +2436,76 @@ body.is-reordering-blocks .radar-map-view {
   border-right: 2px solid #5fa6b8 !important; /* Ligne de séparation nette Vent / Pluie */
 }
 
-/* Classes de vent (partagées entre la flèche de direction et la vitesse) */
-.td-vent-calm,
+/* Classes de vent évolutives (partagées entre la flèche de direction et la vitesse) */
+.td-vent-calm {
+  background-color: #ecfdf5 !important;
+  color: #064e3b !important;
+  font-weight: bold;
+}
+
 .td-vent-light {
-  background-color: #bbf0f7 !important;
-  color: #003e4d !important;
+  background-color: #cffafe !important;
+  color: #164e63 !important;
   font-weight: bold;
 }
 
 .td-vent-mod {
-  background-color: #6fe4f5 !important;
-  color: #00303d !important;
+  background-color: #a5f3fc !important;
+  color: #083344 !important;
+  font-weight: bold;
+}
+
+.td-vent-breeze {
+  background-color: #38bdf8 !important;
+  color: #082f49 !important;
   font-weight: bold;
 }
 
 .td-vent-strong {
-  background-color: #17b6d1 !important;
+  background-color: #0284c7 !important;
   color: #ffffff !important;
+  font-weight: bold;
+}
+
+.td-vent-neargale {
+  background-color: #f59e0b !important;
+  color: #451a03 !important;
   font-weight: bold;
 }
 
 .td-vent-gale {
-  background-color: #ffaa3b !important;
-  color: #421e00 !important;
+  background-color: #ea580c !important;
+  color: #ffffff !important;
   font-weight: bold;
 }
 
 .td-vent-storm {
-  background-color: #bf40bf !important;
+  background-color: #dc2626 !important;
   color: #ffffff !important;
   font-weight: bold;
+}
+
+.td-vent-violent {
+  background-color: #9333ea !important;
+  color: #ffffff !important;
+  font-weight: bold;
+}
+
+/* Distinction visuelle des jours dans la timeline Météo France */
+.hourly-card.day-separator {
+  border-left: 2.5px solid var(--accent-cyan) !important;
+  margin-left: 8px !important;
+}
+
+.hourly-card.day-alt {
+  background: rgba(255, 255, 255, 0.02) !important;
+}
+
+/* Surbrillance lors de la navigation clavier dans les résultats de recherche */
+.search-dropdown-item.selected,
+.search-dropdown-item.keyboard-active {
+  background-color: rgba(56, 189, 248, 0.18) !important;
+  border-left: 3px solid var(--accent-cyan) !important;
 }
 
 /* Pluie sur 3h (Vrai bleu eau/pluie, bien distinct du cyan vent) */

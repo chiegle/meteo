@@ -434,6 +434,7 @@
   let currentMeteocielModel = "gfs"; // Modèle GFS NOAA (conforme capture d'écran Météociel)
   let gfsDataCache = null;
   let yrnoDataCache = null;
+  let lastSuccessfulFetchTime = Date.now();
 
   // Barre de Recherche Globale & Favoris
   const globalSearchInput = document.getElementById("globalSearchInput");
@@ -982,17 +983,60 @@
     globalSearchInput.value = currentLocation.name;
 
     // Agrandissement dynamique de la barre de recherche au clic / focus
+    // et suppression automatique du texte pour taper directement sans devoir effacer
     const inputBox = globalSearchInput.closest(".global-search-input-box");
-    if (inputBox) {
-      globalSearchInput.addEventListener("focus", () => {
-        inputBox.classList.add("search-expanded");
-      });
-      globalSearchInput.addEventListener("blur", () => {
-        setTimeout(() => {
-          inputBox.classList.remove("search-expanded");
-        }, 250);
-      });
-    }
+    globalSearchInput.addEventListener("focus", () => {
+      if (inputBox) inputBox.classList.add("search-expanded");
+      globalSearchInput.value = "";
+      if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
+    });
+
+    globalSearchInput.addEventListener("blur", () => {
+      setTimeout(() => {
+        if (inputBox) inputBox.classList.remove("search-expanded");
+        if (!globalSearchInput.value.trim() && currentLocation && currentLocation.name) {
+          globalSearchInput.value = currentLocation.name;
+        }
+      }, 250);
+    });
+
+    // Navigation au clavier dans les résultats de recherche (flèches + Entrée)
+    let keyboardSelectedIndex = -1;
+
+    globalSearchInput.addEventListener("keydown", (e) => {
+      if (!globalSearchDropdown || globalSearchDropdown.style.display === "none") return;
+      const items = Array.from(globalSearchDropdown.querySelectorAll(".search-dropdown-item"));
+      if (items.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        keyboardSelectedIndex = (keyboardSelectedIndex + 1) % items.length;
+        items.forEach((it, idx) => {
+          it.classList.toggle("selected", idx === keyboardSelectedIndex);
+          it.classList.toggle("keyboard-active", idx === keyboardSelectedIndex);
+        });
+        items[keyboardSelectedIndex]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        keyboardSelectedIndex = (keyboardSelectedIndex - 1 + items.length) % items.length;
+        items.forEach((it, idx) => {
+          it.classList.toggle("selected", idx === keyboardSelectedIndex);
+          it.classList.toggle("keyboard-active", idx === keyboardSelectedIndex);
+        });
+        items[keyboardSelectedIndex]?.scrollIntoView({ block: "nearest" });
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        if (keyboardSelectedIndex >= 0 && items[keyboardSelectedIndex]) {
+          items[keyboardSelectedIndex].click();
+        } else if (items.length > 0) {
+          items[0].click();
+        }
+      } else if (e.key === "Escape") {
+        globalSearchDropdown.style.display = "none";
+        globalSearchInput.value = currentLocation.name;
+        globalSearchInput.blur();
+      }
+    });
 
     globalSearchInput.addEventListener("input", (e) => {
       const query = e.target.value.trim();
@@ -1676,7 +1720,7 @@
 
     deduped.slice(0, 8).forEach(item => {
       const div = document.createElement("div");
-      div.className = "global-search-dropdown-item";
+      div.className = "global-search-dropdown-item search-dropdown-item";
 
       let icon = "📍";
       let typeLabel = "Lieu";
@@ -1702,14 +1746,14 @@
         ? `${cleanDisplayName} (${item.postcode})`
         : cleanDisplayName;
 
-      const altStr = item.elevation != null ? `${Math.round(item.elevation)} m` : typeLabel;
+      const altMeta = item.elevation != null ? `${Math.round(item.elevation)} m` : typeLabel;
+      const subtitle = [altMeta, item.admin1 || "France"].filter(Boolean).join(" • ");
 
       div.innerHTML = `
         <div class="search-item-info">
           <div class="search-item-name">${icon} ${displayName}</div>
-          <div class="search-item-meta">${item.admin1 || "France"}</div>
+          <div class="search-item-meta">${subtitle}</div>
         </div>
-        <span class="search-item-badge">${altStr}</span>
       `;
 
       div.addEventListener("click", async () => {
@@ -2076,9 +2120,10 @@
       }
       yrnoDataCache = yrProcessed;
 
-      // Mise à jour de l'horodatage en direct
+      // Mise à jour de l'horodatage en direct et horodatage de succès
       const now = new Date();
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      lastSuccessfulFetchTime = Date.now();
       if (heroLiveBadge) {
         heroLiveBadge.textContent = `● En direct • Actualisé à ${timeStr}`;
       }
@@ -2552,6 +2597,32 @@
       clearTimeout(resizeTimer);
       resizeTimer = setTimeout(refreshAllComponents, 120);
     }, { passive: true });
+
+    // Rafraîchissement automatique intelligent au retour sur l'application
+    // Déclenché uniquement quand la page redevient visible et si les données ont plus de 10 min
+    // (Zéro consommation de batterie en arrière-plan)
+    function checkAutoRefresh() {
+      const elapsedMinutes = (Date.now() - lastSuccessfulFetchTime) / (60 * 1000);
+      if (elapsedMinutes >= 10 && currentLocation) {
+        fetchWeatherData(currentLocation);
+      }
+    }
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") {
+        checkAutoRefresh();
+      }
+    });
+
+    window.addEventListener("pageshow", (e) => {
+      if (e.persisted || document.visibilityState === "visible") {
+        checkAutoRefresh();
+      }
+    });
+
+    window.addEventListener("focus", () => {
+      checkAutoRefresh();
+    });
   }
 
   // ========================================================
@@ -2822,10 +2893,19 @@
     const aromeH = (aromeDataCache && aromeDataCache.hourly) ? aromeDataCache.hourly : null;
     const aromeTimes = aromeH && Array.isArray(aromeH.time) ? aromeH.time : [];
 
+    let lastCardDateStr = "";
+    let dayFlipCounter = 0;
+
     slots.forEach(slot => {
       const timeStr = slot.timeStr;
       const dateObj = slot.dateObj;
       const hour = slot.hour;
+
+      // Détection de changement de jour pour la distinction visuelle
+      const curCardDateStr = dateObj.toDateString();
+      const isNewDay = lastCardDateStr !== "" && curCardDateStr !== lastCardDateStr;
+      if (isNewDay) dayFlipCounter++;
+      lastCardDateStr = curCardDateStr;
 
       // Chercher si ce créneau existe dans le modèle AROME 1.3km
       const aromeIdx = aromeTimes.indexOf(timeStr);
@@ -2877,12 +2957,20 @@
 
       const isCurrent = slot.periodLabel === "En cours";
       const card = document.createElement("div");
-      card.className = `hourly-card ${isCurrent ? "current-hour" : ""}`;
+      card.className = `hourly-card ${isCurrent ? "current-hour" : ""} ${isNewDay ? "day-separator" : ""} ${dayFlipCounter % 2 === 1 ? "day-alt" : ""}`;
 
       let tempClass = "temp-mild";
       if (temp <= 0) tempClass = "temp-freezing";
       else if (temp < 6) tempClass = "temp-cold";
       else if (temp > 18) tempClass = "temp-warm";
+
+      // Ligne unique intelligente pluie / neige selon les prévisions
+      let precipHtml = `<span class="hourly-val-muted">💧 0 mm</span>`;
+      if (snow > 0) {
+        precipHtml = `<span class="hourly-snow">❄️ ${snow.toFixed(1)} cm</span>`;
+      } else if (precip > 0) {
+        precipHtml = `<span class="hourly-precip">💧 ${precip.toFixed(1)} mm</span>`;
+      }
 
       // Structure rigoureusement fixe et homogène : toutes les cartes ont exactement la même hauteur
       // et chaque indicateur est parfaitement au même niveau horizontal
@@ -2898,10 +2986,7 @@
           <span class="hourly-temp ${tempClass}">${temp.toFixed(1)}°</span>
         </div>
         <div class="hourly-data-row">
-          ${precip > 0 ? `<span class="hourly-precip">💧 ${precip.toFixed(1)} mm</span>` : `<span class="hourly-val-muted">💧 0 mm</span>`}
-        </div>
-        <div class="hourly-data-row">
-          ${snow > 0 ? `<span class="hourly-snow">❄️ ${snow.toFixed(1)} cm</span>` : `<span class="hourly-val-muted">❄️ --</span>`}
+          ${precipHtml}
         </div>
         <div class="hourly-data-row">
           <span class="hourly-wind">💨 ${wind} km/h</span>
@@ -3575,36 +3660,36 @@
         }
       }
 
-      // DISTINCTION VISUELLE ENTRE LES DIFFÉRENTS JOURS (Alternance de fond et séparateurs)
+      // DISTINCTION VISUELLE DOUCE ET ÉLÉGANTE ENTRE LES DIFFÉRENTS JOURS
       dayPositions.forEach((dp, idx) => {
         const nextDp = dayPositions[idx + 1];
         const startX = dp.x - slotW / 2;
         const endX = nextDp ? (nextDp.x - slotW / 2) : (totalW - padRight);
         const bandW = endX - startX;
 
-        // Alternance de fond doux pour un jour sur deux
+        // Alternance de fond très douce et discrète pour un jour sur deux
         if (idx % 2 === 1) {
-          ctx.fillStyle = "rgba(241, 245, 249, 0.75)";
+          ctx.fillStyle = "rgba(241, 245, 249, 0.42)";
           ctx.fillRect(startX, 40, bandW, botPanelY1 - 40);
         }
 
-        // Séparateur vertical net entre les jours
+        // Séparateur vertical fin et discret entre les jours
         if (idx > 0) {
-          ctx.strokeStyle = "#94a3b8";
-          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = "rgba(203, 213, 225, 0.65)";
+          ctx.lineWidth = 1.0;
           ctx.beginPath();
           ctx.moveTo(startX, 40);
           ctx.lineTo(startX, botPanelY1);
           ctx.stroke();
         }
 
-        // Cartouche badge pour le nom du jour en haut
+        // Cartouche sobre pour le nom du jour en haut
         const dayName = dp.date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: bandW < 80 ? undefined : "short" });
         const formattedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
         const badgeW = Math.min(bandW - 10, 84);
 
         if (badgeW >= 38) {
-          ctx.fillStyle = idx % 2 === 0 ? "#e2e8f0" : "#cbd5e1";
+          ctx.fillStyle = idx % 2 === 0 ? "rgba(241, 245, 249, 0.85)" : "rgba(226, 232, 240, 0.85)";
           if (ctx.roundRect) {
             ctx.beginPath();
             ctx.roundRect(startX + 6, 2, badgeW, 16, 4);
@@ -3612,7 +3697,7 @@
           } else {
             ctx.fillRect(startX + 6, 2, badgeW, 16);
           }
-          ctx.fillStyle = "#0f172a";
+          ctx.fillStyle = "#334155";
           ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
@@ -4551,15 +4636,19 @@
     return arrows[index];
   }
 
-  // Code couleur de vent Météociel (partagé entre la flèche et la vitesse)
+  // Code couleur évolutif pour le vent Météociel (partagé entre la flèche et la vitesse)
   function getMeteocielWindClass(speed) {
-    if (speed === null || speed === undefined || speed === "--") return "td-vent-light";
+    if (speed === null || speed === undefined || speed === "--") return "td-vent-calm";
     const val = typeof speed === "number" ? speed : parseFloat(speed);
-    if (isNaN(val) || val < 15) return "td-vent-light";
-    if (val < 30) return "td-vent-mod";
-    if (val < 50) return "td-vent-strong";
-    if (val < 75) return "td-vent-gale";
-    return "td-vent-storm";
+    if (isNaN(val) || val < 8) return "td-vent-calm";
+    if (val < 18) return "td-vent-light";
+    if (val < 28) return "td-vent-mod";
+    if (val < 40) return "td-vent-breeze";
+    if (val < 55) return "td-vent-strong";
+    if (val < 70) return "td-vent-neargale";
+    if (val < 85) return "td-vent-gale";
+    if (val < 100) return "td-vent-storm";
+    return "td-vent-violent";
   }
 
   // Classe de couleur de température Météociel

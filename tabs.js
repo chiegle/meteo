@@ -115,7 +115,7 @@
     }
 
     // ========================================================
-    // RÉORGANISATION PAR APPUI LONG (TOUCH & SOURIS)
+    // RÉORGANISATION PAR APPUI LONG ULTRA-RÉACTIF (180ms) & FLUIDE
     // ========================================================
     let longPressTimer = null;
     let draggedBtn = null;
@@ -136,15 +136,18 @@
           draggedBtn = btn;
 
           clearTimeout(longPressTimer);
+          // Appui long ultra rapide (180ms) pour une réactivité instantanée
           longPressTimer = setTimeout(() => {
-            // Déclenchement de l'appui long
             isDraggingTab = true;
             suppressNextClick = true;
             draggedBtn.classList.add("tab-dragging");
+            try {
+              btn.setPointerCapture(e.pointerId);
+            } catch (_) {}
             if (navigator.vibrate) {
-              try { navigator.vibrate(40); } catch (_) {}
+              try { navigator.vibrate(35); } catch (_) {}
             }
-          }, 320);
+          }, 180);
         });
 
         btn.addEventListener("pointermove", (e) => {
@@ -152,14 +155,14 @@
           const dy = Math.abs(e.clientY - dragStartY);
 
           if (!isDraggingTab) {
-            // Si on a bougé de plus de 8px avant les 320ms, c'est un défilement normal
-            if (dx > 8 || dy > 8) {
+            // Tolérance souple pour le micro-mouvement du doigt
+            if (dx > 14 || dy > 14) {
               clearTimeout(longPressTimer);
             }
             return;
           }
 
-          // En mode drag actif : empêcher le défilement et réorganiser
+          // En mode drag actif : déplacer fluidement les onglets
           e.preventDefault();
           const currentTarget = document.elementFromPoint(e.clientX, e.clientY);
           const siblingBtn = currentTarget ? currentTarget.closest(".tab-nav-btn") : null;
@@ -175,17 +178,19 @@
           }
         });
 
-        const endDrag = () => {
+        const endDrag = (e) => {
           clearTimeout(longPressTimer);
           if (isDraggingTab && draggedBtn) {
+            try {
+              if (e && e.pointerId) draggedBtn.releasePointerCapture(e.pointerId);
+            } catch (_) {}
             draggedBtn.classList.remove("tab-dragging");
             isDraggingTab = false;
             saveTabsOrder();
-            // Maintenir la suppression du clic pendant un court instant
             setTimeout(() => {
               suppressNextClick = false;
               draggedBtn = null;
-            }, 180);
+            }, 120);
           } else {
             draggedBtn = null;
           }

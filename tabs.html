@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Ma météo • Vue Onglets</title>
   <meta name="description" content="Dashboard météo par onglets horizontaux : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
-  <meta name="theme-color" content="#0d1520">
+  <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.34">
-  <link rel="stylesheet" href="style.css?v=8.66">
-  <link rel="stylesheet" href="tabs.css?v=8.66">
+  <link rel="stylesheet" href="style.css?v=8.67">
+  <link rel="stylesheet" href="tabs.css?v=8.67">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
@@ -35,59 +35,9 @@
 
     <!-- Bannière Hero Info & Métriques du Lieu Actuel (TOUT EN HAUT) -->
     <section class="summit-hero card" id="summitHeroSection">
-      <!-- Barre de recherche & Contrôles intégrés dans le 1er bloc -->
-      <div class="hero-search-controls-bar">
-        <div class="global-search-input-box expandable-search">
-          <span class="search-lens-icon">🔍</span>
-          <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher une ville, code postal, sommet..." autocomplete="off">
-          <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
-          <div id="globalSearchSpinner" class="search-spinner" style="display:none;">⏳</div>
-          <button id="geoLocateBtn" class="search-geo-btn" title="Me localiser (GPS actuel)" aria-label="Me localiser">
-            <svg class="geo-target-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="7"></circle>
-              <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
-              <line x1="12" y1="1" x2="12" y2="5"></line>
-              <line x1="12" y1="19" x2="12" y2="23"></line>
-              <line x1="1" y1="12" x2="5" y2="12"></line>
-              <line x1="19" y1="12" x2="23" y2="12"></line>
-            </svg>
-          </button>
-        </div>
-
-        <!-- Bouton bascule vers la vue liste verticale + bouton favoris -->
-        <div class="hero-top-actions">
-          <a href="index.html" class="view-switch-btn" title="Revenir à la vue liste verticale classique">
-            <span>📑 Vue Verticale</span>
-          </a>
-          <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
-            <span class="star-icon">⭐</span>
-          </button>
-        </div>
-
-        <!-- Menu déroulant d'autocomplétion -->
-        <div id="globalSearchDropdown" class="global-search-dropdown" style="display:none;"></div>
-
-        <!-- Panneau déroulant / Popover des Favoris -->
-        <div id="favoritesFlyout" class="favorites-flyout" style="display:none;">
-          <div class="fav-flyout-header">
-            <div class="fav-flyout-title">
-              <span>⭐ Mes Lieux Favoris</span>
-              <span class="fav-flyout-count" id="favFlyoutCount">(0)</span>
-            </div>
-            <button id="closeFavoritesFlyoutBtn" class="fav-flyout-close" title="Fermer" aria-label="Fermer">✕</button>
-          </div>
-          <p class="fav-flyout-hint">Glissez-déposez ou maintenez enfoncé pour changer l'ordre.</p>
-          <div class="fav-flyout-list" id="favFlyoutList"></div>
-        </div>
-      </div>
-
-      <!-- Barre masquée pour compatibilité interne -->
-      <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
-        <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
-      </div>
-
-      <div class="hero-top accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
-        <div class="hero-title-group">
+      <!-- En-tête unique : Lieu & En direct à gauche, Recherche & Actions à droite -->
+      <div class="hero-header-single-row">
+        <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
           <span class="accordion-arrow">▼</span>
           <div class="hero-massif-tag" id="heroMassifTag">Isère / Alpes</div>
           <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
@@ -98,10 +48,55 @@
           </button>
           <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
         </div>
-      </div>
+
+        <!-- Recherche et boutons d'actions placés à droite du badge En direct -->
+        <div class="hero-search-inline-wrap">
+          <div class="global-search-input-box expandable-search">
+            <span class="search-lens-icon">🔍</span>
+            <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher une ville, code postal, sommet..." autocomplete="off">
+            <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
+            <div id="globalSearchSpinner" class="search-spinner" style="display:none;">⏳</div>
+            <button id="geoLocateBtn" class="search-geo-btn" title="Me localiser (GPS actuel)" aria-label="Me localiser">
+              <svg class="geo-target-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="7"></circle>
+                <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+                <line x1="12" y1="1" x2="12" y2="5"></line>
+                <line x1="12" y1="19" x2="12" y2="23"></line>
+                <line x1="1" y1="12" x2="5" y2="12"></line>
+                <line x1="19" y1="12" x2="23" y2="12"></line>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Actions rapides : Vue verticale + Bouton étoile favoris -->
+          <a href="index.html" class="view-switch-btn" title="Revenir à la vue liste verticale classique">
+            <span>📑 Vue Verticale</span>
+          </a>
+          <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
+            <span class="star-icon">⭐</span>
           </button>
-          <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
+
+          <!-- Menu déroulant d'autocomplétion -->
+          <div id="globalSearchDropdown" class="global-search-dropdown" style="display:none;"></div>
+
+          <!-- Panneau déroulant / Popover des Favoris -->
+          <div id="favoritesFlyout" class="favorites-flyout" style="display:none;">
+            <div class="fav-flyout-header">
+              <div class="fav-flyout-title">
+                <span>⭐ Mes Lieux Favoris</span>
+                <span class="fav-flyout-count" id="favFlyoutCount">(0)</span>
+              </div>
+              <button id="closeFavoritesFlyoutBtn" class="fav-flyout-close" title="Fermer" aria-label="Fermer">✕</button>
+            </div>
+            <p class="fav-flyout-hint">Glissez-déposez ou maintenez enfoncé pour changer l'ordre.</p>
+            <div class="fav-flyout-list" id="favFlyoutList"></div>
+          </div>
         </div>
+      </div>
+
+      <!-- Barre masquée pour compatibilité interne -->
+      <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
+        <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
       </div>
 
       <!-- Quick Metrics Grid Enroulable -->
@@ -191,8 +186,8 @@
           <span>Météociel</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-yrno.png" class="tab-icon-img" alt="Yr.no">
-          <span>Yr.no / ECMWF</span>
+          <img src="icon-yrno.png" class="tab-icon-img" alt="YR.no">
+          <span>YR.no</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Maintenez appuyé pour réorganiser">
           <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France">
@@ -303,11 +298,11 @@
         </div>
       </section>
 
-      <!-- ONGLET 2 : YR.NO / ECMWF -->
+      <!-- ONGLET 2 : YR.NO -->
       <section class="module-section card yrno-section-card" id="ecmwfSection">
         <div class="section-header accordion-header" id="yrnoAccordionHeader" role="button" tabindex="0" aria-label="YR.NO" aria-expanded="true">
           <div class="section-title-wrap">
-            <h3 class="section-title" style="margin: 0;">📈 YR.NO / ECMWF</h3>
+            <h3 class="section-title" style="margin: 0;">📈 YR.no</h3>
           </div>
           <div class="section-actions">
             <a id="yrLink" href="https://www.yr.no/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Yr.no">
@@ -511,7 +506,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.66"></script>
-  <script src="tabs.js?v=8.66"></script>
+  <script src="app.js?v=8.67"></script>
+  <script src="tabs.js?v=8.67"></script>
 </body>
 </html>
