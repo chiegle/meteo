@@ -7,7 +7,7 @@
   <meta name="description" content="Dashboard météo haute précision pour les randonneurs grenoblois : AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France pour Belledonne, Chartreuse, Vercors et Oisans.">
   <meta name="theme-color" content="#0d1520">
   <link rel="manifest" href="manifest.json?v=8.34">
-  <link rel="stylesheet" href="style.css?v=8.62">
+  <link rel="stylesheet" href="style.css?v=8.63">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
@@ -55,6 +55,10 @@
             </svg>
           </button>
         </div>
+
+        <a href="tabs.html" class="view-switch-btn" title="Basculer vers la version par onglets horizontaux">
+          <span>🗂️ Vue Onglets</span>
+        </a>
 
         <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
           <span class="star-icon">⭐</span>
@@ -384,7 +388,7 @@
           <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte sur Grenoble et l'Isère" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
             <span>🎯 Recentrer</span>
           </button>
-          <a href="https://www.romma.fr/#10.799999999999999/45.1245/5.7227" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
+          <a href="https://www.romma.fr/#10.8/45.05/5.84" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
             <span>🗺️ ROMMA</span> ↗
           </a>
         </div>
@@ -394,7 +398,7 @@
           <iframe 
             id="rommaMapIframe" 
             class="romma-map-iframe" 
-            src="https://www.romma.fr/map/carte.php#10.799999999999999/45.1245/5.7227" 
+            src="https://www.romma.fr/map/carte.php#10.8/45.05/5.84" 
             allowfullscreen="true" 
             loading="lazy"
             title="Carte interactive officielle du réseau ROMMA">
@@ -424,19 +428,6 @@
 
           <!-- Superposition translucide sur le bas de la carte (fidèle au Screen 2 Météoblue) -->
           <div class="radar-overlay-bottom">
-            <div class="radar-overlay-header">
-              <div class="radar-timerange-pills" id="radarTimerangePills">
-                <button type="button" class="radar-range-btn" data-range="1">1h</button>
-                <button type="button" class="radar-range-btn active" data-range="3">3h</button>
-                <button type="button" class="radar-range-btn" data-range="6">6h</button>
-                <button type="button" class="radar-range-btn" data-range="9">9h</button>
-                <button type="button" class="radar-range-btn" data-range="12">12h</button>
-                <button type="button" class="radar-range-btn" data-range="18">18h</button>
-                <button type="button" class="radar-range-btn" data-range="24">24h</button>
-                <button type="button" class="radar-range-btn" data-range="48">48h</button>
-              </div>
-            </div>
-
             <!-- Scrubber bar translucide sur la carte (heures + < > ▶) -->
             <div class="radar-scrubber-bar">
               <div class="radar-timeline-scroll" id="radarTimelineScroll"></div>
@@ -526,6 +517,6 @@
     </section>
   </main>
 
-  <script src="app.js?v=8.62"></script>
+  <script src="app.js?v=8.63"></script>
 </body>
 </html>

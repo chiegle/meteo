@@ -383,12 +383,21 @@
   };
 
   function decodeWMO(code, isNight = false) {
-    const item = WMO_CODES[code] || { desc: "Variable", icon: isNight ? "☁️" : "⛅" };
     if (isNight) {
       if (code === 0) return { desc: "Ciel clair (nuit)", icon: "🌙" };
-      if (code === 1) return { desc: "Peu nuageux (nuit)", icon: "🌤️" };
-      if (code === 2) return { desc: "Éclaircies (nuit)", icon: "⛅" };
+      if (code === 1) return { desc: "Peu nuageux (nuit)", icon: "🌙☁️" };
+      if (code === 2) return { desc: "Éclaircies (nuit)", icon: "☁️" };
       if (code === 3) return { desc: "Très nuageux", icon: "☁️" };
+      if (code >= 51 && code <= 55) return { desc: "Bruine nocturne", icon: "🌧️" };
+      if (code >= 61 && code <= 65) return { desc: "Pluie", icon: "🌧️" };
+      if (code >= 80 && code <= 82) return { desc: "Averses nocturnes", icon: "🌧️" };
+    }
+    const item = WMO_CODES[code] || { desc: "Variable", icon: isNight ? "☁️" : "⛅" };
+    if (isNight && item.icon) {
+      if (item.icon.includes("☀️")) return { desc: item.desc, icon: "🌙" };
+      if (item.icon.includes("🌤️")) return { desc: item.desc, icon: "🌙☁️" };
+      if (item.icon.includes("⛅")) return { desc: item.desc, icon: "☁️" };
+      if (item.icon.includes("🌦️")) return { desc: item.desc, icon: "🌧️" };
     }
     return item;
   }
@@ -521,7 +530,7 @@
   const meteoblueResetBtn = document.getElementById("meteoblueResetBtn");
   const rommaCenterLocationBtn = document.getElementById("rommaCenterLocationBtn");
   const rommaCurrentViewLabel = document.getElementById("rommaCurrentViewLabel");
-  const DEFAULT_ROMMA_HASH = "10.799999999999999/45.1245/5.7227";
+  const DEFAULT_ROMMA_HASH = "10.8/45.05/5.84";
 
   // ========================================================
   // GESTION DES FAVORIS (LOCALSTORAGE & DRAG & DROP)
@@ -653,6 +662,14 @@
     renderFavoritesFlyoutList();
   }
 
+  let favLongPressTimer = null;
+  let favIsLongPressActive = false;
+  let favLongPressChip = null;
+  let favDragStartIndex = null;
+  let favStartX = 0;
+  let favStartY = 0;
+  let favHasMoved = false;
+
   function renderFavoritesChips() {
     if (!favoritesChipsContainer) return;
     favoritesChipsContainer.innerHTML = "";
@@ -674,35 +691,20 @@
       const isActive = isSameLocation(fav, currentLocation);
       if (isActive) chip.classList.add("active");
 
-      const icon = fav.isLake ? "🌊" : (fav.isHut ? "🏡" : (fav.isSummit ? "🏔️" : "📍"));
-      const altStr = `${Math.round(fav.alt || 0)}m`;
+      // Nom de la ville uniquement selon la demande utilisateur
+      chip.innerHTML = `<span class="fav-chip-name">${fav.name}</span>`;
 
-      chip.innerHTML = `
-        <span class="fav-chip-handle" title="Glisser-déposer pour déplacer" aria-grabbed="false">⋮⋮</span>
-        <span class="fav-chip-content" title="Voir les prévisions de ${fav.name}">
-          <span>${icon}</span>
-          <span class="fav-chip-name">${fav.name}</span>
-          <span style="opacity:0.75; font-size:0.7rem; font-weight:700;">${altStr}</span>
-        </span>
-        <button class="fav-chip-remove" title="Supprimer ${fav.name} des favoris" aria-label="Supprimer">✕</button>
-      `;
-
-      // Clic pour sélectionner la localisation
+      // Clic pour sélectionner la localisation (si pas en cours de réorganisation)
       chip.addEventListener("click", (e) => {
-        if (e.target.closest(".fav-chip-remove") || e.target.closest(".fav-chip-handle")) return;
+        if (favHasMoved || favIsLongPressActive) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
         selectLocation(fav);
       });
 
-      // Bouton suppression
-      const removeBtn = chip.querySelector(".fav-chip-remove");
-      if (removeBtn) {
-        removeBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          removeFavoriteByIndex(index);
-        });
-      }
-
-      // Drag & Drop HTML5 (Souris)
+      // Drag & Drop HTML5 (Souris sur PC)
       chip.addEventListener("dragstart", (e) => {
         draggedFavIndex = index;
         chip.classList.add("dragging");
@@ -738,47 +740,90 @@
         document.querySelectorAll(".fav-chip").forEach(c => c.classList.remove("drag-over", "dragging"));
       });
 
-      // Support Touch (Mobile)
-      const handle = chip.querySelector(".fav-chip-handle");
-      if (handle) {
-        let touchStartIndex = null;
-        handle.addEventListener("touchstart", (e) => {
-          touchStartIndex = index;
-          chip.classList.add("dragging");
-        }, { passive: true });
+      // Support Appui Long (Tactile mobile & Pointeurs)
+      chip.addEventListener("pointerdown", (e) => {
+        if (e.button !== undefined && e.button !== 0) return;
+        favStartX = e.clientX;
+        favStartY = e.clientY;
+        favHasMoved = false;
+        favIsLongPressActive = false;
+        favLongPressChip = chip;
+        favDragStartIndex = index;
 
-        handle.addEventListener("touchmove", (e) => {
-          const touch = e.touches[0];
-          const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
-          const targetChip = targetEl ? targetEl.closest(".fav-chip") : null;
-          document.querySelectorAll(".fav-chip").forEach(c => {
-            if (c === targetChip && c !== chip) {
-              c.classList.add("drag-over");
-            } else {
-              c.classList.remove("drag-over");
-            }
-          });
-        }, { passive: true });
-
-        handle.addEventListener("touchend", (e) => {
-          chip.classList.remove("dragging");
-          const changedTouch = e.changedTouches[0];
-          const targetEl = document.elementFromPoint(changedTouch.clientX, changedTouch.clientY);
-          const targetChip = targetEl ? targetEl.closest(".fav-chip") : null;
-          document.querySelectorAll(".fav-chip").forEach(c => c.classList.remove("drag-over", "dragging"));
-          if (targetChip && targetChip.dataset.index != null) {
-            const targetIndex = Number(targetChip.dataset.index);
-            if (touchStartIndex !== null && touchStartIndex !== targetIndex) {
-              reorderFavorites(touchStartIndex, targetIndex);
-            }
+        favLongPressTimer = setTimeout(() => {
+          favIsLongPressActive = true;
+          chip.classList.add("is-reordering", "dragging");
+          if (navigator.vibrate) {
+            try { navigator.vibrate(50); } catch (_) {}
           }
-          touchStartIndex = null;
-        });
-      }
+        }, 360);
+      });
 
       favoritesChipsContainer.appendChild(chip);
     });
   }
+
+  // Écouteurs globaux pour la réorganisation des favoris par appui long
+  window.addEventListener("pointermove", (e) => {
+    if (!favLongPressChip) return;
+    const dist = Math.hypot(e.clientX - favStartX, e.clientY - favStartY);
+    if (dist > 8) {
+      favHasMoved = true;
+    }
+    if (!favIsLongPressActive) {
+      if (dist > 10) {
+        if (favLongPressTimer) clearTimeout(favLongPressTimer);
+        favLongPressTimer = null;
+      }
+      return;
+    }
+
+    // Appui long actif : repérage du survol pour réorganiser
+    const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+    const targetChip = targetEl ? targetEl.closest(".fav-chip") : null;
+    document.querySelectorAll(".fav-chip").forEach(c => {
+      if (c === targetChip && c !== favLongPressChip) {
+        c.classList.add("drag-over");
+      } else {
+        c.classList.remove("drag-over");
+      }
+    });
+  }, { passive: true });
+
+  window.addEventListener("pointerup", (e) => {
+    if (favLongPressTimer) {
+      clearTimeout(favLongPressTimer);
+      favLongPressTimer = null;
+    }
+    if (favIsLongPressActive && favLongPressChip) {
+      const targetEl = document.elementFromPoint(e.clientX, e.clientY);
+      const targetChip = targetEl ? targetEl.closest(".fav-chip") : null;
+      if (targetChip && targetChip.dataset.index != null) {
+        const targetIndex = Number(targetChip.dataset.index);
+        if (favDragStartIndex !== null && favDragStartIndex !== targetIndex) {
+          reorderFavorites(favDragStartIndex, targetIndex);
+        }
+      }
+    }
+    document.querySelectorAll(".fav-chip").forEach(c => {
+      c.classList.remove("drag-over", "dragging", "is-reordering");
+    });
+    setTimeout(() => {
+      favIsLongPressActive = false;
+      favHasMoved = false;
+      favLongPressChip = null;
+    }, 50);
+  });
+
+  window.addEventListener("pointercancel", () => {
+    if (favLongPressTimer) clearTimeout(favLongPressTimer);
+    document.querySelectorAll(".fav-chip").forEach(c => {
+      c.classList.remove("drag-over", "dragging", "is-reordering");
+    });
+    favIsLongPressActive = false;
+    favHasMoved = false;
+    favLongPressChip = null;
+  });
 
   function renderFavoritesFlyoutList() {
     if (!favFlyoutList) return;
@@ -2565,23 +2610,51 @@
 
     // Indice UV & Protection solaire (Échelle OMS / 11+ & Comparatif immédiat)
     if (currentUv) {
-      const curUv = (hourly.uv_index && hourly.uv_index[idx] != null) ? hourly.uv_index[idx] : 0;
-      const maxUv = (data.daily && data.daily.uv_index_max && data.daily.uv_index_max[0] != null)
-        ? data.daily.uv_index_max[0]
-        : curUv;
+      const nowHour = new Date().getHours();
+      const isNightNow = nowHour < 7 || nowHour >= 20;
+
+      let curUv = (hourly.uv_index && hourly.uv_index[idx] != null) ? hourly.uv_index[idx] : 0;
+      if (isNightNow) {
+        curUv = 0;
+      }
+
+      // Prise en compte de l'heure actuelle pour le calcul du Max UV affiché :
+      // La nuit, aucun rayonnement solaire direct ne subsiste : max = 0.
+      let maxUv = 0;
+      if (isNightNow) {
+        maxUv = 0;
+      } else if (hourly.uv_index && hourly.time) {
+        // En journée : calcul du max restant d'ici la fin de journée
+        for (let hIdx = idx; hIdx < Math.min(idx + 14, hourly.time.length); hIdx++) {
+          const hDate = new Date(hourly.time[hIdx]);
+          if (hDate.getHours() >= 20 || hDate.getDate() !== new Date().getDate()) break;
+          const val = hourly.uv_index[hIdx] || 0;
+          if (val > maxUv) maxUv = val;
+        }
+        if (maxUv === 0 && curUv > 0) maxUv = curUv;
+      } else {
+        maxUv = curUv;
+      }
+
       const clearSkyMax = (data.daily && data.daily.uv_index_clear_sky_max && data.daily.uv_index_clear_sky_max[0] != null)
         ? data.daily.uv_index_clear_sky_max[0]
         : null;
 
       // Niveau et Recommandations OMS
-      const refUv = Math.max(curUv, maxUv);
+      const refUv = isNightNow ? 0 : Math.max(curUv, maxUv);
       let uvLabel = "Faible";
       let uvColor = "#10b981";
       let burnTime = "Sans risque (> 1h)";
       let uvAdvice = "Crème non requise";
-      let uvIcon = "☀️";
+      let uvIcon = isNightNow ? "🌙" : "☀️";
 
-      if (refUv < 3) {
+      if (isNightNow) {
+        uvLabel = "Nuit (0/5)";
+        uvColor = "#10b981";
+        burnTime = "Nuit : aucun rayonnement UV";
+        uvAdvice = "Protection solaire non requise";
+        uvIcon = "🌙";
+      } else if (refUv < 3) {
         uvLabel = "Faible (1/5)";
         uvColor = "#10b981";
         burnTime = "Coup de soleil : > 60 min";
@@ -2617,20 +2690,20 @@
 
       if (currentUvIcon) currentUvIcon.textContent = uvIcon;
 
-      // Affichage sobre : Valeur actuelle (sans /11) et Max
+      // Affichage sobre : Valeur actuelle et Max selon l'heure
       const curDisplay = curUv >= 0.1 ? curUv.toFixed(1) : "0";
       const maxDisplay = maxUv >= 0.1 ? maxUv.toFixed(1) : "0";
 
       currentUv.textContent = curDisplay;
 
       if (uvMaxTag) {
-        uvMaxTag.textContent = `(Max ${maxDisplay})`;
+        uvMaxTag.textContent = isNightNow ? "(Nuit • Max 0)" : `(Max ${maxDisplay})`;
       }
 
       // Mise à jour de l'info-bulle détaillée interactive
-      if (ttUvCurrent) ttUvCurrent.textContent = `${curDisplay} / 11`;
-      if (ttUvMax) ttUvMax.textContent = `${maxDisplay} / 11`;
-      if (ttUvClearSky) ttUvClearSky.textContent = `${clearSkyMax ? clearSkyMax.toFixed(1) : maxDisplay} / 11`;
+      if (ttUvCurrent) ttUvCurrent.textContent = isNightNow ? "0 / 11 (Nuit)" : `${curDisplay} / 11`;
+      if (ttUvMax) ttUvMax.textContent = isNightNow ? "0 / 11 (Nuit)" : `${maxDisplay} / 11`;
+      if (ttUvClearSky) ttUvClearSky.textContent = isNightNow ? "0 / 11 (Nuit)" : `${clearSkyMax ? clearSkyMax.toFixed(1) : maxDisplay} / 11`;
 
       // Position du curseur sur la jauge (0 à 11+)
       if (uvGaugePin) {
@@ -2652,7 +2725,7 @@
   }
 
   // ========================================================
-  // AFFICHAGE TIMELINE HEURE PAR HEURE AROME
+  // AFFICHAGE TIMELINE MÉTÉO FRANCE (PAR DEMI-JOURNÉE SANS HEURES PASSÉES)
   // ========================================================
   function renderAromeTimeline(data) {
     const hourly = data.hourly;
@@ -2660,41 +2733,58 @@
 
     aromeHourlyScroll.innerHTML = "";
     const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, '0');
-    const d = String(now.getDate()).padStart(2, '0');
-    const h = String(now.getHours()).padStart(2, '0');
-    const currentHourStr = `${y}-${m}-${d}T${h}`;
+    const nowTs = now.getTime();
 
-    // Trouver l'index de l'heure courante (ou la plus proche)
-    let currentIdx = hourly.time.findIndex(t => t.startsWith(currentHourStr));
-    if (currentIdx === -1) {
-      const nowTs = now.getTime();
-      let bestDiff = Infinity;
-      currentIdx = 0;
-      for (let i = 0; i < hourly.time.length; i++) {
-        const diff = Math.abs(new Date(hourly.time[i]).getTime() - nowTs);
-        if (diff < bestDiff) {
-          bestDiff = diff;
-          currentIdx = i;
+    // Découpage par demi-journées (Matin 08h, Après-midi 14h, Soirée/Nuit 20h)
+    // et suppression complète des créneaux déjà passés
+    const slots = [];
+    const targetHours = [8, 14, 20];
+
+    for (let i = 0; i < hourly.time.length; i++) {
+      const timeStr = hourly.time[i];
+      const dateObj = new Date(timeStr);
+      const hour = dateObj.getHours();
+
+      const isTarget = targetHours.includes(hour);
+      const isCurrentNight = (now.getHours() < 6 && hour === Math.max(0, now.getHours()));
+
+      if (isTarget || isCurrentNight) {
+        // Enlève strictement les heures déjà passées
+        if (dateObj.getTime() < nowTs - 2 * 3600 * 1000) {
+          continue;
         }
+
+        let periodLabel = "Matin";
+        if (hour >= 6 && hour < 12) periodLabel = "Matin";
+        else if (hour >= 12 && hour < 18) periodLabel = "Après-midi";
+        else periodLabel = "Soirée / Nuit";
+
+        if (dateObj.toDateString() === now.toDateString() && Math.abs(dateObj.getTime() - nowTs) < 3 * 3600 * 1000) {
+          periodLabel = "En cours";
+        }
+
+        slots.push({
+          index: i,
+          timeStr,
+          dateObj,
+          hour,
+          periodLabel
+        });
       }
     }
 
-    // Ne laisser que 3 cartes des heures précédant l'heure actuelle
-    const startIdx = Math.max(0, currentIdx - 3);
-    const maxSteps = Math.min(hourly.time.length, startIdx + 48);
+    if (slots.length === 0) {
+      aromeHourlyScroll.innerHTML = '<div class="loading-state">Aucune prévision à venir disponible.</div>';
+      return;
+    }
 
-    for (let i = startIdx; i < maxSteps; i++) {
+    slots.forEach(slot => {
+      const i = slot.index;
+      const dateObj = slot.dateObj;
+      const hour = slot.hour;
       const rawT = hourly.temperature_2m ? hourly.temperature_2m[i] : null;
-      if (rawT === null || rawT === undefined) {
-        // Fin des données de prévision disponibles (ex: AROME s'arrête à 45h)
-        break;
-      }
+      if (rawT === null || rawT === undefined) return;
       const temp = Number(rawT);
-      const timeStr = hourly.time[i]; // "2026-10-19T14:00"
-      const dateObj = new Date(timeStr);
-      const isCurrent = timeStr.startsWith(currentHourStr);
 
       const hourLabel = dateObj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
       const dayLabel = dateObj.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" });
@@ -2704,10 +2794,10 @@
       const wind = (hourly.wind_speed_10m && hourly.wind_speed_10m[i] != null) ? Math.round(hourly.wind_speed_10m[i]) : 0;
       const gust = (hourly.wind_gusts_10m && hourly.wind_gusts_10m[i] != null) ? Math.round(hourly.wind_gusts_10m[i]) : 0;
 
-      // Décodage intelligent du code météo avec fallback physique et gestion nuit/jour
+      // Décodage intelligent du code météo avec fallback physique et gestion nuit/jour stricte
       let code = (hourly.weather_code && hourly.weather_code[i] != null) ? hourly.weather_code[i] : null;
       if (code === null && weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.weather_code) {
-        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(timeStr) : -1;
+        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(slot.timeStr) : -1;
         if (matchIdx !== -1 && weatherDataCache.hourly.weather_code[matchIdx] != null) {
           code = weatherDataCache.hourly.weather_code[matchIdx];
         }
@@ -2717,22 +2807,23 @@
         else if (precip >= 2.0) code = 63;
         else if (precip >= 0.5) code = 61;
         else if (precip > 0) code = 51;
-        else code = 3; // Couvert par défaut si données brutes non résolues
+        else code = 3;
       }
 
-      const isNight = dateObj.getHours() < 7 || dateObj.getHours() >= 20;
+      const isNight = hour < 7 || hour >= 20;
       const wmo = decodeWMO(code, isNight);
 
       // Isotherme 0°C avec fallback si non fourni par AROME brut
       let iso = (hourly.freezing_level_height && hourly.freezing_level_height[i] != null) ? Math.round(hourly.freezing_level_height[i]) : null;
       if (iso === null && weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.freezing_level_height) {
-        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(timeStr) : -1;
+        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(slot.timeStr) : -1;
         if (matchIdx !== -1 && weatherDataCache.hourly.freezing_level_height[matchIdx] != null) {
           iso = Math.round(weatherDataCache.hourly.freezing_level_height[matchIdx]);
         }
       }
       const isoText = iso !== null ? `${iso}m` : "--";
 
+      const isCurrent = slot.periodLabel === "En cours";
       const card = document.createElement("div");
       card.className = `hourly-card ${isCurrent ? "current-hour" : ""}`;
 
@@ -2742,8 +2833,8 @@
       else if (temp > 18) tempClass = "temp-warm";
 
       card.innerHTML = `
-        <span class="hourly-time">${hourLabel}</span>
-        <span class="hourly-date">${dayLabel}</span>
+        <span class="hourly-time" style="font-weight:800; color:var(--accent-cyan); font-size:0.82rem;">${slot.periodLabel}</span>
+        <span class="hourly-date">${dayLabel} • ${hourLabel}</span>
         <span class="hourly-icon" title="${wmo.desc}">${wmo.icon}</span>
         <span class="hourly-temp ${tempClass}">${temp.toFixed(1)}°</span>
         ${precip > 0 ? `<span class="hourly-precip">💧 ${precip.toFixed(1)}mm</span>` : ''}
@@ -2754,7 +2845,8 @@
       `;
 
       aromeHourlyScroll.appendChild(card);
-    }
+    });
+  }
   }
 
   // ========================================================
@@ -3253,6 +3345,42 @@
       }
 
       // 1. Lignes horizontales et Axes
+      // Détection de l'heure courante pour la surbrillance (façon Météociel)
+      const nowMs = Date.now();
+      let currentHourIdx = -1;
+      let minDiffMs = Infinity;
+      for (let i = 0; i < totalHours; i++) {
+        const diff = Math.abs(new Date(hourly.time[i]).getTime() - nowMs);
+        if (diff < minDiffMs) {
+          minDiffMs = diff;
+          currentHourIdx = i;
+        }
+      }
+
+      // Surbrillance verticale de l'heure actuelle sur le graph Yr.no
+      if (currentHourIdx >= 0 && currentHourIdx < totalHours) {
+        const curX = getX(currentHourIdx);
+        // Bande bleue translucide
+        ctx.fillStyle = "rgba(2, 132, 199, 0.08)";
+        ctx.fillRect(curX - slotW / 2, 40, slotW, botPanelY1 - 40);
+
+        // Ligne verticale pointillée de repère
+        ctx.strokeStyle = "rgba(2, 132, 199, 0.85)";
+        ctx.lineWidth = 1.6;
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(curX, 40);
+        ctx.lineTo(curX, botPanelY1);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Pastille repère sur la ligne des 40px
+        ctx.fillStyle = "#0284c7";
+        ctx.beginPath();
+        ctx.arc(curX, 40, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
       // --- Panneau Supérieur : Grille T° et Pluie ---
       for (let tVal = scaleMinT; tVal <= scaleMaxT; tVal += 4) {
         const y = Math.round(getYTemp(tVal)) + 0.5;
@@ -3350,8 +3478,25 @@
           ctx.stroke();
         }
 
-        // Chiffre de l'heure toutes les 2 heures (au-dessus de la ligne 40px)
-        if (hour % 2 === 0) {
+        // Chiffre de l'heure avec mise en surbrillance de l'heure actuelle
+        if (i === currentHourIdx) {
+          const curLabel = String(hour).padStart(2, "0") + "h";
+          const bW = 28;
+          const bH = 17;
+          ctx.fillStyle = "#0284c7";
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(x - bW / 2, 20, bW, bH, 4);
+            ctx.fill();
+          } else {
+            ctx.fillRect(x - bW / 2, 20, bW, bH);
+          }
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 10px system-ui, -apple-system, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(curLabel, x, 28);
+        } else if (hour % 2 === 0) {
           ctx.fillStyle = "#64748b";
           ctx.font = "11px system-ui, -apple-system, sans-serif";
           ctx.textAlign = "center";
@@ -3819,11 +3964,8 @@
 
       renderRadarTimeline();
 
-      // Afficher le créneau EN DIRECT par défaut au chargement
+      // Afficher le créneau EN DIRECT par défaut au chargement (sans défilement automatique)
       showRadarSlot(activeSlotIndex);
-
-      // DÉFILEMENT AUTOMATIQUE AU CHARGEMENT
-      startRadarPlayback();
 
     } catch (e) {
       console.warn("Erreur chargement données radar Météoblue:", e);
@@ -4360,13 +4502,13 @@
     if (code === 1 || code === 2) return isNight ? "☁️" : "🌤️";
     if (code === 3) return "☁️"; // Couvert gris
     if (code >= 45 && code <= 48) return "🌫️"; // Brouillard
-    if (code >= 51 && code <= 55) return "🌦️"; // Bruine
+    if (code >= 51 && code <= 55) return isNight ? "🌧️" : "🌦️"; // Bruine
     if (code >= 61 && code <= 63) return "🌧️"; // Pluie faible à modérée
     if (code >= 65) return "🌧️"; // Forte pluie
     if (code >= 71 && code <= 77) return "🌨️"; // Neige
     if (code >= 80 && code <= 82) return isNight ? "🌧️" : "🌦️"; // Averse
     if (code >= 95) return "⛈️"; // Orage
-    return "⛅";
+    return isNight ? "☁️" : "⛅";
   }
 
 
@@ -4601,11 +4743,24 @@
 
     if (slots.length === 0) return;
 
-    // Déterminer le créneau actuel (le plus proche de maintenant)
+    // Suppression des heures passées sauf la toute dernière passée
     const nowMs = Date.now();
+    let lastPassedIdx = -1;
+    for (let i = 0; i < slots.length; i++) {
+      if (slots[i].date.getTime() <= nowMs) {
+        lastPassedIdx = i;
+      } else {
+        break;
+      }
+    }
+
+    const filteredSlots = lastPassedIdx >= 0 ? slots.slice(lastPassedIdx) : slots;
+    if (filteredSlots.length === 0) return;
+
+    // Déterminer le créneau actuel (le plus proche de maintenant)
     let currentSlotObj = null;
     let minDiff = Infinity;
-    slots.forEach(slot => {
+    filteredSlots.forEach(slot => {
       const diff = Math.abs(slot.date.getTime() - nowMs);
       if (diff < minDiff && diff < 6 * 3600 * 1000) {
         minDiff = diff;
@@ -4618,7 +4773,7 @@
     let curDayKey = "";
     let curDayObj = null;
 
-    slots.forEach(slot => {
+    filteredSlots.forEach(slot => {
       const dayKey = slot.date.toDateString();
       if (dayKey !== curDayKey) {
         curDayKey = dayKey;
@@ -4726,7 +4881,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.62").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.63").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

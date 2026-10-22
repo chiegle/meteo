@@ -1,0 +1,145 @@
+/* ========================================================
+   STYLES SPÉCIFIQUES POUR LA VUE PAR ONGLETS HORIZONTAUX
+   (tabs.html)
+   ======================================================== */
+
+/* Conteneur fixe / sticky de la barre d'onglets */
+.tabs-nav-bar-wrap {
+  width: 100%;
+  position: sticky;
+  top: 54px;
+  z-index: 48;
+  background: rgba(13, 21, 32, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border-color);
+  padding: 8px 16px;
+  box-sizing: border-box;
+}
+
+[data-theme="light"] .tabs-nav-bar-wrap {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.horizontal-tabs-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  scroll-behavior: smooth;
+  padding: 2px 0;
+  max-width: 100%;
+}
+
+.horizontal-tabs-nav::-webkit-scrollbar {
+  display: none;
+}
+
+/* Boutons d'onglets individuels */
+.tab-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  user-select: none;
+  transition: all var(--transition-fast);
+}
+
+.tab-nav-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-highlight);
+  background: rgba(255, 255, 255, 0.05);
+  transform: translateY(-1px);
+}
+
+.tab-nav-btn.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
+}
+
+.tab-nav-btn .tab-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.tab-nav-btn .tab-badge {
+  font-size: 0.65rem;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: rgba(56, 189, 248, 0.2);
+  color: var(--accent-cyan);
+  font-weight: 800;
+}
+
+/* Bouton de bascule de vue (Liste / Onglets) dans la barre de recherche */
+.view-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-pill);
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: var(--accent-cyan);
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.view-switch-btn:hover {
+  background: rgba(56, 189, 248, 0.24);
+  border-color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+/* Gestion de l'affichage des panneaux d'onglets */
+.tabs-panels-container > .module-section {
+  display: none;
+}
+
+.tabs-panels-container > .module-section.active-tab-panel {
+  display: block !important;
+  animation: tabFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Dans la vue par onglet, les poignées de drag vertical ☰ sont masquées */
+.tabs-view .block-drag-handle {
+  display: none !important;
+}
+
+/* Dans la vue par onglet, le panneau actif est toujours déplié proprement */
+.tabs-view .module-section.active-tab-panel .accordion-body {
+  display: block !important;
+}
+
+.tabs-view .module-section.active-tab-panel .accordion-arrow {
+  display: none !important;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
