@@ -3052,7 +3052,7 @@
       const dayItem = {
         dayIdx,
         fullDateStr,
-        dayNameShort: dayNameShort.toUpperCase().slice(0, 4) + ".",
+        dayNameShort: dayNameShort.replace(/\./g, "").toUpperCase().slice(0, 3) + ".",
         dayNum,
         tMin,
         tMax,
@@ -3119,7 +3119,6 @@
     if (mfDaysForecastData.length > 0) {
       showMfDayDetail(0);
     }
-  }
   }
 
   // ========================================================
@@ -5192,7 +5191,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.70").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.71").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
