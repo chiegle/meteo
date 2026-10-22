@@ -7,8 +7,8 @@
   <meta name="description" content="Dashboard météo par onglets horizontaux : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#0d1520">
   <link rel="manifest" href="manifest.json?v=8.34">
-  <link rel="stylesheet" href="style.css?v=8.65">
-  <link rel="stylesheet" href="tabs.css?v=8.65">
+  <link rel="stylesheet" href="style.css?v=8.66">
+  <link rel="stylesheet" href="tabs.css?v=8.66">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
@@ -30,13 +30,16 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body class="tabs-view">
-  <!-- BARRE DE RECHERCHE & FAVORIS TOUT EN HAUT -->
-  <header class="global-search-bar-wrap">
-    <div class="global-search-container">
-      <div class="global-search-row">
-        <div class="global-search-input-box">
+  <!-- Contenu Principal -->
+  <main class="main-content">
+
+    <!-- Bannière Hero Info & Métriques du Lieu Actuel (TOUT EN HAUT) -->
+    <section class="summit-hero card" id="summitHeroSection">
+      <!-- Barre de recherche & Contrôles intégrés dans le 1er bloc -->
+      <div class="hero-search-controls-bar">
+        <div class="global-search-input-box expandable-search">
           <span class="search-lens-icon">🔍</span>
-          <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher une ville, sommet, commune... (ex: Grenoble, Chamechaude, Belledonne, Chamonix...)" autocomplete="off">
+          <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher une ville, code postal, sommet..." autocomplete="off">
           <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
           <div id="globalSearchSpinner" class="search-spinner" style="display:none;">⏳</div>
           <button id="geoLocateBtn" class="search-geo-btn" title="Me localiser (GPS actuel)" aria-label="Me localiser">
@@ -51,74 +54,38 @@
           </button>
         </div>
 
-        <!-- Bouton bascule vers la vue liste verticale -->
-        <a href="index.html" class="view-switch-btn" title="Revenir à la vue liste verticale classique">
-          <span>📑 Vue Verticale</span>
-        </a>
-
-        <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
-          <span class="star-icon">⭐</span>
-        </button>
-      </div>
-
-      <!-- Menu déroulant d'autocomplétion -->
-      <div id="globalSearchDropdown" class="global-search-dropdown" style="display:none;"></div>
-
-      <!-- Panneau déroulant / Popover des Favoris -->
-      <div id="favoritesFlyout" class="favorites-flyout" style="display:none;">
-        <div class="fav-flyout-header">
-          <div class="fav-flyout-title">
-            <span>⭐ Mes Lieux Favoris</span>
-            <span class="fav-flyout-count" id="favFlyoutCount">(0)</span>
-          </div>
-          <button id="closeFavoritesFlyoutBtn" class="fav-flyout-close" title="Fermer" aria-label="Fermer">✕</button>
+        <!-- Bouton bascule vers la vue liste verticale + bouton favoris -->
+        <div class="hero-top-actions">
+          <a href="index.html" class="view-switch-btn" title="Revenir à la vue liste verticale classique">
+            <span>📑 Vue Verticale</span>
+          </a>
+          <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
+            <span class="star-icon">⭐</span>
+          </button>
         </div>
-        <p class="fav-flyout-hint">Glissez-déposez les pastilles ci-dessous pour changer leur ordre d'affichage.</p>
-        <div class="fav-flyout-list" id="favFlyoutList"></div>
+
+        <!-- Menu déroulant d'autocomplétion -->
+        <div id="globalSearchDropdown" class="global-search-dropdown" style="display:none;"></div>
+
+        <!-- Panneau déroulant / Popover des Favoris -->
+        <div id="favoritesFlyout" class="favorites-flyout" style="display:none;">
+          <div class="fav-flyout-header">
+            <div class="fav-flyout-title">
+              <span>⭐ Mes Lieux Favoris</span>
+              <span class="fav-flyout-count" id="favFlyoutCount">(0)</span>
+            </div>
+            <button id="closeFavoritesFlyoutBtn" class="fav-flyout-close" title="Fermer" aria-label="Fermer">✕</button>
+          </div>
+          <p class="fav-flyout-hint">Glissez-déposez ou maintenez enfoncé pour changer l'ordre.</p>
+          <div class="fav-flyout-list" id="favFlyoutList"></div>
+        </div>
       </div>
-    </div>
 
-    <!-- Barre des Favoris / Accès rapides -->
-    <div class="favorites-bar-row" id="favoritesBarRow" style="display:none;">
-      <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
-    </div>
-  </header>
+      <!-- Barre masquée pour compatibilité interne -->
+      <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
+        <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
+      </div>
 
-  <!-- BARRE D'ONGLETS HORIZONTAUX STICKY -->
-  <div class="tabs-nav-bar-wrap">
-    <nav class="horizontal-tabs-nav" aria-label="Modules météo">
-      <button type="button" class="tab-nav-btn active" data-tab="meteociel" aria-selected="true">
-        <span class="tab-icon">🔵</span>
-        <span>Météociel</span>
-      </button>
-      <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false">
-        <span class="tab-icon">📈</span>
-        <span>Yr.no / ECMWF</span>
-      </button>
-      <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false">
-        <span class="tab-icon">🇫🇷</span>
-        <span>Météo France</span>
-      </button>
-      <button type="button" class="tab-nav-btn" data-tab="romma" aria-selected="false">
-        <span class="tab-icon">🗺️</span>
-        <span>ROMMA</span>
-      </button>
-      <button type="button" class="tab-nav-btn" data-tab="meteoblue" aria-selected="false">
-        <span class="tab-icon">📡</span>
-        <span>Radar Météoblue</span>
-      </button>
-      <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false">
-        <span class="tab-icon">⚠️</span>
-        <span>Sécurité & BERA</span>
-      </button>
-    </nav>
-  </div>
-
-  <!-- Contenu Principal -->
-  <main class="main-content">
-
-    <!-- Bannière Hero Info & Métriques du Lieu Actuel (Toujours visible en résumé) -->
-    <section class="summit-hero card" id="summitHeroSection">
       <div class="hero-top accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
         <div class="hero-title-group">
           <span class="accordion-arrow">▼</span>
@@ -128,6 +95,10 @@
           <button id="heroFavBtn" class="hero-fav-btn" title="Ajouter / Retirer des favoris">
             <span class="hero-fav-star">☆</span>
             <span class="hero-fav-text" id="heroFavLabel">Favori</span>
+          </button>
+          <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
+        </div>
+      </div>
           </button>
           <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
         </div>
@@ -211,6 +182,36 @@
         </div>
       </div>
     </section>
+
+    <!-- BARRE D'ONGLETS HORIZONTAUX STICKY (RÉORGANISABLE PAR APPUI LONG) -->
+    <div class="tabs-nav-bar-wrap">
+      <nav class="horizontal-tabs-nav" id="horizontalTabsNav" aria-label="Modules météo">
+        <button type="button" class="tab-nav-btn active" data-tab="meteociel" aria-selected="true" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-meteociel.png" class="tab-icon-img" alt="Météociel">
+          <span>Météociel</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-yrno.png" class="tab-icon-img" alt="Yr.no">
+          <span>Yr.no / ECMWF</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France">
+          <span>Météo France</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="romma" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-romma.png" class="tab-icon-img" alt="ROMMA">
+          <span>ROMMA</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="meteoblue" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-meteoblue.png" class="tab-icon-img" alt="Météoblue">
+          <span>Météoblue</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-bera.png" class="tab-icon-img" alt="Sécurité & BERA">
+          <span>Sécurité & BERA</span>
+        </button>
+      </nav>
+    </div>
 
     <!-- CONTENEUR DES PANNEAUX D'ONGLETS HORIZONTAUX -->
     <div class="tabs-panels-container">
@@ -510,7 +511,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.65"></script>
-  <script src="tabs.js?v=8.65"></script>
+  <script src="app.js?v=8.66"></script>
+  <script src="tabs.js?v=8.66"></script>
 </body>
 </html>

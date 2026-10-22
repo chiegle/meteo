@@ -363,13 +363,11 @@ button {
 }
 
 /* ========================================================
-   BARRE DES FAVORIS EN DESSOUS (CLIQUEZ & GLISSEZ-DÉPOSEZ)
+   BARRE DES FAVORIS (MASQUÉE SOUS LA RECHERCHE SELON DEMANDE)
+   Les favoris sont maintenant exclusivement accessibles dans le bouton étoile ⭐
    ======================================================== */
 .favorites-bar-row {
-  width: 100%;
-  max-width: 100%;
-  margin: 6px auto 0;
-  padding: 0;
+  display: none !important;
 }
 
 .favorites-chips-container {
@@ -1392,16 +1390,21 @@ body.is-reordering-blocks .radar-map-view {
 }
 
 .hourly-card {
-  width: 90px;
-  padding: 12px 8px;
+  width: 108px;
+  min-width: 108px;
+  height: 275px;
+  min-height: 275px;
+  padding: 10px 6px;
   border-radius: var(--radius-sm);
   background: var(--bg-secondary);
   border: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
+  justify-content: space-between;
   align-items: center;
-  gap: 6px;
   text-align: center;
+  box-sizing: border-box;
+  flex-shrink: 0;
   transition: var(--transition-fast);
 }
 
@@ -1417,26 +1420,56 @@ body.is-reordering-blocks .radar-map-view {
   background: rgba(56, 189, 248, 0.08);
 }
 
+.hourly-card-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  height: 38px;
+  width: 100%;
+}
+
 .hourly-time {
-  font-size: 0.78rem;
-  font-weight: 700;
-  color: var(--text-secondary);
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--accent-cyan);
+  line-height: 1.1;
+  white-space: nowrap;
 }
 
 .hourly-date {
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   color: var(--text-muted);
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.hourly-icon-wrap {
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .hourly-icon {
-  font-size: 1.5rem;
-  margin: 2px 0;
+  font-size: 1.65rem;
+  line-height: 1;
+}
+
+.hourly-temp-wrap {
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
 }
 
 .hourly-temp {
-  font-size: 1rem;
+  font-size: 1.05rem;
   font-weight: 800;
   color: var(--text-primary);
+  line-height: 1;
 }
 
 .hourly-temp.temp-freezing {
@@ -1455,31 +1488,37 @@ body.is-reordering-blocks .radar-map-view {
   color: #fbbf24;
 }
 
-.hourly-precip {
-  font-size: 0.72rem;
-  font-weight: 600;
-  color: #38bdf8;
+.hourly-data-row {
+  height: 18px;
+  width: 100%;
   display: flex;
   align-items: center;
-  gap: 2px;
+  justify-content: center;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.hourly-precip {
+  font-weight: 600;
+  color: #38bdf8;
 }
 
 .hourly-snow {
-  font-size: 0.72rem;
   font-weight: 600;
   color: #c084fc;
-  display: flex;
-  align-items: center;
-  gap: 2px;
+}
+
+.hourly-val-muted {
+  color: var(--text-muted);
+  opacity: 0.45;
+  font-size: 0.7rem;
 }
 
 .hourly-wind {
-  font-size: 0.7rem;
   color: var(--text-muted);
 }
 
 .hourly-gust {
-  font-size: 0.72rem;
   font-weight: 700;
   color: #f87171;
 }
@@ -1490,7 +1529,11 @@ body.is-reordering-blocks .radar-map-view {
   border-top: 1px dashed var(--border-color);
   width: 100%;
   padding-top: 4px;
-  margin-top: 2px;
+  margin-top: 1px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* ========================================================
@@ -2151,12 +2194,13 @@ body.is-reordering-blocks .radar-map-view {
   min-width: 0;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  zoom: 0.9; /* Effet de réduction à 90% */
 }
 
 .meteociel-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.85rem;
+  font-size: 0.78rem;
   text-align: center;
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
   color: #000000;
@@ -2165,7 +2209,7 @@ body.is-reordering-blocks .radar-map-view {
 .meteociel-table th,
 .meteociel-table td {
   border: 1px solid #b1cbe3;
-  padding: 5px 4px;
+  padding: 4px 3px;
   vertical-align: middle;
 }
 

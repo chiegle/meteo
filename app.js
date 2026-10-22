@@ -981,6 +981,19 @@
 
     globalSearchInput.value = currentLocation.name;
 
+    // Agrandissement dynamique de la barre de recherche au clic / focus
+    const inputBox = globalSearchInput.closest(".global-search-input-box");
+    if (inputBox) {
+      globalSearchInput.addEventListener("focus", () => {
+        inputBox.classList.add("search-expanded");
+      });
+      globalSearchInput.addEventListener("blur", () => {
+        setTimeout(() => {
+          inputBox.classList.remove("search-expanded");
+        }, 250);
+      });
+    }
+
     globalSearchInput.addEventListener("input", (e) => {
       const query = e.target.value.trim();
       if (globalSearchClearBtn) {
@@ -1024,11 +1037,28 @@
           const fetchPromises = [];
 
           if (isDigits) {
-            fetchPromises.push(
-              fetch(`https://geo.api.gouv.fr/communes?codePostal=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement,region,population`)
-                .then(r => r.ok ? r.json() : [])
-                .catch(() => [])
-            );
+            if (query.length === 5) {
+              // Code postal complet français (ex: 38000, 63118, 75001)
+              fetchPromises.push(
+                fetch(`https://geo.api.gouv.fr/communes?codePostal=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement,region,population`)
+                  .then(r => r.ok ? r.json() : [])
+                  .catch(() => [])
+              );
+            } else if (query.length === 2) {
+              // Numéro de département français (ex: 38, 73, 74, 63)
+              fetchPromises.push(
+                fetch(`https://geo.api.gouv.fr/communes?codeDepartement=${encodeURIComponent(query)}&boost=population&limit=8&fields=nom,code,codesPostaux,centre,departement,region,population`)
+                  .then(r => r.ok ? r.json() : [])
+                  .catch(() => [])
+              );
+            } else {
+              // Code postal partiel (3 ou 4 chiffres)
+              fetchPromises.push(
+                fetch(`https://geo.api.gouv.fr/communes?codePostal=${encodeURIComponent(query)}&fields=nom,code,codesPostaux,centre,departement,region,population`)
+                  .then(r => r.ok ? r.json() : [])
+                  .catch(() => [])
+              );
+            }
           } else {
             fetchPromises.push(
               fetch(`https://geo.api.gouv.fr/communes?nom=${encodeURIComponent(query)}&boost=population&limit=6&fields=nom,code,codesPostaux,centre,departement,region,population`)
@@ -1039,7 +1069,7 @@
 
           // API Adresse officielle (Base Adresse Nationale)
           fetchPromises.push(
-            fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=6`)
+            fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(query)}&type=municipality&limit=8`)
               .then(r => r.ok ? r.json() : null)
               .catch(() => null)
           );
@@ -1602,15 +1632,15 @@
         score -= 25000;
       }
 
-      // 2. RECHERCHE PAR CODE POSTAL (ex: 63000 -> Clermont-Ferrand en 1er)
+      // 2. RECHERCHE PAR CODE POSTAL (ex: 38000, 63118 -> ville correspondante en 1er)
       if (isDigitsQuery) {
         if (pc === qNorm) {
-          score += 18000; // Correspondance exacte du code postal
+          score += 35000; // Correspondance exacte du code postal
         } else if (pc.startsWith(qNorm)) {
-          score += 8000;
+          score += 16000;
         }
         if (item.isCommune) {
-          score += 10000; // Commune officielle issue du découpage administratif
+          score += 15000; // Commune officielle issue du découpage administratif
         }
       }
 
@@ -1969,8 +1999,8 @@
     try {
       const fetchOpts = { cache: "no-store" };
 
-      // a) Modèle de Base Haute Résolution (Complet : T°, Isotherme, Lever/Coucher, WMO codes, Indice UV & Ciel clair)
-      const baseUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,uv_index,uv_index_clear_sky&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,uv_index_clear_sky_max&timezone=Europe%2FParis&forecast_days=7`;
+      // a) Modèle de Base Haute Résolution Étendu 16 jours (T°, Isotherme, Lever/Coucher, WMO codes, Indice UV & Ciel clair)
+      const baseUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,uv_index,uv_index_clear_sky&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,uv_index_clear_sky_max&timezone=Europe%2FParis&forecast_days=16`;
 
       // b) Modèle AROME HD 1.3km Météo-France (Spécifique Météociel Haute Résolution)
       const inFrance = location.lat >= 41 && location.lat <= 52 && location.lon >= -5 && location.lon <= 10;
@@ -2728,22 +2758,29 @@
   }
 
   // ========================================================
-  // AFFICHAGE TIMELINE MÉTÉO FRANCE (PAR DEMI-JOURNÉE SANS HEURES PASSÉES)
+  // AFFICHAGE TIMELINE MÉTÉO FRANCE (PAR DEMI-JOURNÉE SUR 15 JOURS SANS HEURES PASSÉES)
+  // Toutes les cartes ont la même hauteur et les informations au même niveau
   // ========================================================
   function renderAromeTimeline(data) {
-    const hourly = data.hourly;
-    if (!hourly || !hourly.time) return;
+    // Exploiter le dataset le plus complet disponible (jusqu'à 15-16 jours)
+    const masterData = (weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.time && weatherDataCache.hourly.time.length >= 120)
+      ? weatherDataCache
+      : (data || aromeDataCache || weatherDataCache);
+
+    if (!masterData || !masterData.hourly || !masterData.hourly.time) return;
+    const hourly = masterData.hourly;
 
     aromeHourlyScroll.innerHTML = "";
     const now = new Date();
     const nowTs = now.getTime();
 
-    // Découpage par demi-journées (Matin 08h, Après-midi 14h, Soirée/Nuit 20h)
-    // et suppression complète des créneaux déjà passés
+    // Découpage par demi-journées (Matin 08h, Après-midi 14h, Soirée/Nuit 20h) sur 15 jours
+    // et suppression stricte de tout créneau déjà passé
     const slots = [];
     const targetHours = [8, 14, 20];
+    const maxSlots = 45; // 15 jours x 3 demi-journées
 
-    for (let i = 0; i < hourly.time.length; i++) {
+    for (let i = 0; i < hourly.time.length && slots.length < maxSlots; i++) {
       const timeStr = hourly.time[i];
       const dateObj = new Date(timeStr);
       const hour = dateObj.getHours();
@@ -2767,7 +2804,7 @@
         }
 
         slots.push({
-          index: i,
+          masterIndex: i,
           timeStr,
           dateObj,
           hour,
@@ -2781,26 +2818,37 @@
       return;
     }
 
+    // Référence AROME haute résolution pour les 42 premières heures
+    const aromeH = (aromeDataCache && aromeDataCache.hourly) ? aromeDataCache.hourly : null;
+    const aromeTimes = aromeH && Array.isArray(aromeH.time) ? aromeH.time : [];
+
     slots.forEach(slot => {
-      const i = slot.index;
+      const timeStr = slot.timeStr;
       const dateObj = slot.dateObj;
       const hour = slot.hour;
-      const rawT = hourly.temperature_2m ? hourly.temperature_2m[i] : null;
+
+      // Chercher si ce créneau existe dans le modèle AROME 1.3km
+      const aromeIdx = aromeTimes.indexOf(timeStr);
+      const useArome = aromeIdx !== -1 && aromeH.temperature_2m && aromeH.temperature_2m[aromeIdx] != null;
+      const srcHourly = useArome ? aromeH : hourly;
+      const srcIdx = useArome ? aromeIdx : slot.masterIndex;
+
+      const rawT = srcHourly.temperature_2m ? srcHourly.temperature_2m[srcIdx] : null;
       if (rawT === null || rawT === undefined) return;
       const temp = Number(rawT);
 
       const hourLabel = dateObj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
       const dayLabel = dateObj.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" });
 
-      const precip = hourly.precipitation && hourly.precipitation[i] != null ? Number(hourly.precipitation[i]) : 0;
-      const snow = hourly.snowfall && hourly.snowfall[i] != null ? Number(hourly.snowfall[i]) : 0;
-      const wind = (hourly.wind_speed_10m && hourly.wind_speed_10m[i] != null) ? Math.round(hourly.wind_speed_10m[i]) : 0;
-      const gust = (hourly.wind_gusts_10m && hourly.wind_gusts_10m[i] != null) ? Math.round(hourly.wind_gusts_10m[i]) : 0;
+      const precip = (srcHourly.precipitation && srcHourly.precipitation[srcIdx] != null) ? Number(srcHourly.precipitation[srcIdx]) : 0;
+      const snow = (srcHourly.snowfall && srcHourly.snowfall[srcIdx] != null) ? Number(srcHourly.snowfall[srcIdx]) : 0;
+      const wind = (srcHourly.wind_speed_10m && srcHourly.wind_speed_10m[srcIdx] != null) ? Math.round(srcHourly.wind_speed_10m[srcIdx]) : 0;
+      const gust = (srcHourly.wind_gusts_10m && srcHourly.wind_gusts_10m[srcIdx] != null) ? Math.round(srcHourly.wind_gusts_10m[srcIdx]) : 0;
 
-      // Décodage intelligent du code météo avec fallback physique et gestion nuit/jour stricte
-      let code = (hourly.weather_code && hourly.weather_code[i] != null) ? hourly.weather_code[i] : null;
+      // Décodage intelligent du code météo avec gestion stricte nuit/jour
+      let code = (srcHourly.weather_code && srcHourly.weather_code[srcIdx] != null) ? srcHourly.weather_code[srcIdx] : null;
       if (code === null && weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.weather_code) {
-        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(slot.timeStr) : -1;
+        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(timeStr) : -1;
         if (matchIdx !== -1 && weatherDataCache.hourly.weather_code[matchIdx] != null) {
           code = weatherDataCache.hourly.weather_code[matchIdx];
         }
@@ -2813,13 +2861,14 @@
         else code = 3;
       }
 
-      const isNight = hour < 7 || hour >= 20;
+      // La nuit démarre dès 19h30 en automne / hiver ou 20h
+      const isNight = hour < 7 || hour >= 19;
       const wmo = decodeWMO(code, isNight);
 
-      // Isotherme 0°C avec fallback si non fourni par AROME brut
-      let iso = (hourly.freezing_level_height && hourly.freezing_level_height[i] != null) ? Math.round(hourly.freezing_level_height[i]) : null;
+      // Isotherme 0°C
+      let iso = (srcHourly.freezing_level_height && srcHourly.freezing_level_height[srcIdx] != null) ? Math.round(srcHourly.freezing_level_height[srcIdx]) : null;
       if (iso === null && weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.freezing_level_height) {
-        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(slot.timeStr) : -1;
+        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(timeStr) : -1;
         if (matchIdx !== -1 && weatherDataCache.hourly.freezing_level_height[matchIdx] != null) {
           iso = Math.round(weatherDataCache.hourly.freezing_level_height[matchIdx]);
         }
@@ -2835,16 +2884,34 @@
       else if (temp < 6) tempClass = "temp-cold";
       else if (temp > 18) tempClass = "temp-warm";
 
+      // Structure rigoureusement fixe et homogène : toutes les cartes ont exactement la même hauteur
+      // et chaque indicateur est parfaitement au même niveau horizontal
       card.innerHTML = `
-        <span class="hourly-time" style="font-weight:800; color:var(--accent-cyan); font-size:0.82rem;">${slot.periodLabel}</span>
-        <span class="hourly-date">${dayLabel} • ${hourLabel}</span>
-        <span class="hourly-icon" title="${wmo.desc}">${wmo.icon}</span>
-        <span class="hourly-temp ${tempClass}">${temp.toFixed(1)}°</span>
-        ${precip > 0 ? `<span class="hourly-precip">💧 ${precip.toFixed(1)}mm</span>` : ''}
-        ${snow > 0 ? `<span class="hourly-snow">❄️ ${snow.toFixed(1)}cm</span>` : ''}
-        <span class="hourly-wind">Vent ${wind}</span>
-        <span class="hourly-gust">Raf. ${gust}</span>
-        <span class="hourly-iso" title="Altitude isotherme 0°C">0°: ${isoText}</span>
+        <div class="hourly-card-header">
+          <span class="hourly-time">${slot.periodLabel}</span>
+          <span class="hourly-date">${dayLabel} • ${hourLabel}</span>
+        </div>
+        <div class="hourly-icon-wrap" title="${wmo.desc}">
+          <span class="hourly-icon">${wmo.icon}</span>
+        </div>
+        <div class="hourly-temp-wrap">
+          <span class="hourly-temp ${tempClass}">${temp.toFixed(1)}°</span>
+        </div>
+        <div class="hourly-data-row">
+          ${precip > 0 ? `<span class="hourly-precip">💧 ${precip.toFixed(1)} mm</span>` : `<span class="hourly-val-muted">💧 0 mm</span>`}
+        </div>
+        <div class="hourly-data-row">
+          ${snow > 0 ? `<span class="hourly-snow">❄️ ${snow.toFixed(1)} cm</span>` : `<span class="hourly-val-muted">❄️ --</span>`}
+        </div>
+        <div class="hourly-data-row">
+          <span class="hourly-wind">💨 ${wind} km/h</span>
+        </div>
+        <div class="hourly-data-row">
+          <span class="hourly-gust">🌪️ ${gust} km/h</span>
+        </div>
+        <div class="hourly-iso" title="Altitude isotherme 0°C">
+          0°: ${isoText}
+        </div>
       `;
 
       aromeHourlyScroll.appendChild(card);
@@ -3469,7 +3536,7 @@
 
         if (dayNum !== prevDay || i === 0) {
           prevDay = dayNum;
-          dayPositions.push({ x, date: d });
+          dayPositions.push({ x, date: d, hourIndex: i });
         } else {
           // Lignes verticales de la grille (démarrent strictement à 40px, sous les chiffres des heures)
           ctx.strokeStyle = hour % 2 === 0 ? "#cbd5e1" : "#e2e8f0";
@@ -3508,36 +3575,58 @@
         }
       }
 
+      // DISTINCTION VISUELLE ENTRE LES DIFFÉRENTS JOURS (Alternance de fond et séparateurs)
+      dayPositions.forEach((dp, idx) => {
+        const nextDp = dayPositions[idx + 1];
+        const startX = dp.x - slotW / 2;
+        const endX = nextDp ? (nextDp.x - slotW / 2) : (totalW - padRight);
+        const bandW = endX - startX;
+
+        // Alternance de fond doux pour un jour sur deux
+        if (idx % 2 === 1) {
+          ctx.fillStyle = "rgba(241, 245, 249, 0.75)";
+          ctx.fillRect(startX, 40, bandW, botPanelY1 - 40);
+        }
+
+        // Séparateur vertical net entre les jours
+        if (idx > 0) {
+          ctx.strokeStyle = "#94a3b8";
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(startX, 40);
+          ctx.lineTo(startX, botPanelY1);
+          ctx.stroke();
+        }
+
+        // Cartouche badge pour le nom du jour en haut
+        const dayName = dp.date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: bandW < 80 ? undefined : "short" });
+        const formattedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
+        const badgeW = Math.min(bandW - 10, 84);
+
+        if (badgeW >= 38) {
+          ctx.fillStyle = idx % 2 === 0 ? "#e2e8f0" : "#cbd5e1";
+          if (ctx.roundRect) {
+            ctx.beginPath();
+            ctx.roundRect(startX + 6, 2, badgeW, 16, 4);
+            ctx.fill();
+          } else {
+            ctx.fillRect(startX + 6, 2, badgeW, 16);
+          }
+          ctx.fillStyle = "#0f172a";
+          ctx.font = "bold 11px system-ui, -apple-system, sans-serif";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(formattedDay, startX + 6 + badgeW / 2, 10);
+        }
+      });
+
       // Ligne horizontale sous les heures pour séparer proprement la timeline
-      ctx.strokeStyle = "#e2e8f0";
-      ctx.lineWidth = 1;
+      ctx.strokeStyle = "#cbd5e1";
+      ctx.lineWidth = 1.2;
       ctx.beginPath();
       ctx.moveTo(padLeft, 40);
       ctx.lineTo(totalW - padRight, 40);
       ctx.stroke();
-
-      // Lignes verticales de séparation des jours et noms des jours (démarrent aussi sous les heures)
-      dayPositions.forEach((dp, idx) => {
-        ctx.strokeStyle = "#cbd5e1";
-        ctx.lineWidth = 1.2;
-        ctx.setLineDash([]);
-        ctx.beginPath();
-        ctx.moveTo(dp.x, 40);
-        ctx.lineTo(dp.x, botPanelY1);
-        ctx.stroke();
-
-        const nextDp = dayPositions[idx + 1];
-        const space = nextDp ? (nextDp.x - dp.x) : (totalW - padRight - dp.x);
-        // Évite tout chevauchement si la tranche horaire avant minuit est courte (ex: 22h)
-        if (space >= 45) {
-          const dayName = dp.date.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: space < 80 ? undefined : "short" });
-          ctx.fillStyle = "#1e293b";
-          ctx.font = "bold 12px system-ui, -apple-system, BlinkMacSystemFont, sans-serif";
-          ctx.textAlign = "left";
-          ctx.textBaseline = "top";
-          ctx.fillText(dayName.charAt(0).toUpperCase() + dayName.slice(1), dp.x + 8, 4);
-        }
-      });
 
       // 3. Barres de Précipitations (Bleu officiel Yr.no #0284c7)
       const barWidth = 12;

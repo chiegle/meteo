@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meteo-grenoble-v8.65';
+const CACHE_NAME = 'meteo-grenoble-v8.66';
 const ASSETS = [
   './',
   './index.html',
@@ -7,6 +7,12 @@ const ASSETS = [
   './tabs.css',
   './app.js',
   './tabs.js',
+  './icon-meteociel.png',
+  './icon-yrno.png',
+  './icon-meteofrance.png',
+  './icon-romma.png',
+  './icon-meteoblue.png',
+  './icon-bera.png',
   './manifest.json',
   './favicon.png',
   './favicon.ico',
