@@ -7,8 +7,8 @@
   <meta name="description" content="Dashboard météo par onglets horizontaux : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.34">
-  <link rel="stylesheet" href="style.css?v=8.67">
-  <link rel="stylesheet" href="tabs.css?v=8.67">
+  <link rel="stylesheet" href="style.css?v=8.68">
+  <link rel="stylesheet" href="tabs.css?v=8.68">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
@@ -35,12 +35,12 @@
 
     <!-- Bannière Hero Info & Métriques du Lieu Actuel (TOUT EN HAUT) -->
     <section class="summit-hero card" id="summitHeroSection">
-      <!-- En-tête unique : Lieu & En direct à gauche, Recherche & Actions à droite -->
+      <!-- En-tête STRICTEMENT sur une seule ligne : Flèche, Ville, Dépt italique, Altitude, Favori, Direct à gauche | Recherche & Actions à droite -->
       <div class="hero-header-single-row">
-        <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
+        <div class="hero-title-group" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
           <span class="accordion-arrow">▼</span>
-          <div class="hero-massif-tag" id="heroMassifTag">Isère / Alpes</div>
           <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
+          <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
           <span class="altitude-badge" id="heroAltitudeBadge">212 m</span>
           <button id="heroFavBtn" class="hero-fav-btn" title="Ajouter / Retirer des favoris">
             <span class="hero-fav-star">☆</span>
@@ -49,11 +49,11 @@
           <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
         </div>
 
-        <!-- Recherche et boutons d'actions placés à droite du badge En direct -->
+        <!-- Recherche et boutons d'actions directement à droite sur la MÊME ligne -->
         <div class="hero-search-inline-wrap">
           <div class="global-search-input-box expandable-search">
             <span class="search-lens-icon">🔍</span>
-            <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher une ville, code postal, sommet..." autocomplete="off">
+            <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher..." autocomplete="off">
             <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
             <div id="globalSearchSpinner" class="search-spinner" style="display:none;">⏳</div>
             <button id="geoLocateBtn" class="search-geo-btn" title="Me localiser (GPS actuel)" aria-label="Me localiser">
@@ -186,8 +186,8 @@
           <span>Météociel</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-yrno.png" class="tab-icon-img" alt="YR.no">
-          <span>YR.no</span>
+          <img src="icon-yrno.png" class="tab-icon-img" alt="YR.NO">
+          <span>YR.NO</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Maintenez appuyé pour réorganiser">
           <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France">
@@ -302,11 +302,11 @@
       <section class="module-section card yrno-section-card" id="ecmwfSection">
         <div class="section-header accordion-header" id="yrnoAccordionHeader" role="button" tabindex="0" aria-label="YR.NO" aria-expanded="true">
           <div class="section-title-wrap">
-            <h3 class="section-title" style="margin: 0;">📈 YR.no</h3>
+            <h3 class="section-title" style="margin: 0;">📈 YR.NO</h3>
           </div>
           <div class="section-actions">
-            <a id="yrLink" href="https://www.yr.no/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Yr.no">
-              <span>🇳🇴 Fiche Yr.no</span> ↗
+            <a id="yrLink" href="https://www.yr.no/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur YR.NO">
+              <span>🇳🇴 Fiche YR.NO</span> ↗
             </a>
           </div>
         </div>
@@ -314,7 +314,7 @@
           <div class="yrno-meteogram-box">
             <div class="yrno-canvas-loading" id="yrCanvasLoading" style="display:none;">
               <div class="yrno-spinner-icon">⏳</div>
-              <div>Calcul du météogramme Yr.no en cours...</div>
+              <div>Calcul du météogramme YR.NO en cours...</div>
             </div>
             <div class="yrno-scroll-wrapper" id="yrnoScrollWrapper">
               <canvas id="yrnoCanvas" width="980" height="320"></canvas>
@@ -506,7 +506,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.67"></script>
-  <script src="tabs.js?v=8.67"></script>
+  <script src="app.js?v=8.68"></script>
+  <script src="tabs.js?v=8.68"></script>
 </body>
 </html>

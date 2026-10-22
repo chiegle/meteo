@@ -428,6 +428,20 @@
     console.warn("Erreur lecture localisation stockée:", errLoc);
   }
 
+  // Purge de tout cache météo lourd en sessionStorage/localStorage pour économiser la mémoire
+  try {
+    Object.keys(sessionStorage).forEach(k => {
+      if (k.startsWith("meteo_full_") || k.startsWith("meteo_cache_")) {
+        sessionStorage.removeItem(k);
+      }
+    });
+    Object.keys(localStorage).forEach(k => {
+      if (k.startsWith("meteo_full_") || k.startsWith("meteo_cache_")) {
+        localStorage.removeItem(k);
+      }
+    });
+  } catch (_) {}
+
   let weatherDataCache = null;
   let aromeDataCache = null;
   let geocodeTimeout = null;
@@ -455,6 +469,7 @@
   // Hero Section
   const heroMassifTag = document.getElementById("heroMassifTag");
   const heroSummitName = document.getElementById("heroSummitName");
+  const heroDeptTag = document.getElementById("heroDeptTag");
   const heroAltitudeBadge = document.getElementById("heroAltitudeBadge");
   const heroLiveBadge = document.getElementById("heroLiveBadge");
   const currentTemp = document.getElementById("currentTemp");
@@ -980,7 +995,8 @@
   function setupGlobalSearch() {
     if (!globalSearchInput) return;
 
-    globalSearchInput.value = currentLocation.name;
+    // Le champ reste vide par défaut avec son placeholder "Rechercher..."
+    globalSearchInput.value = "";
 
     // Agrandissement dynamique de la barre de recherche au clic / focus
     // et suppression automatique du texte pour taper directement sans devoir effacer
@@ -994,9 +1010,6 @@
     globalSearchInput.addEventListener("blur", () => {
       setTimeout(() => {
         if (inputBox) inputBox.classList.remove("search-expanded");
-        if (!globalSearchInput.value.trim() && currentLocation && currentLocation.name) {
-          globalSearchInput.value = currentLocation.name;
-        }
       }, 250);
     });
 
@@ -1033,7 +1046,7 @@
         }
       } else if (e.key === "Escape") {
         globalSearchDropdown.style.display = "none";
-        globalSearchInput.value = currentLocation.name;
+        globalSearchInput.value = "";
         globalSearchInput.blur();
       }
     });
@@ -1518,9 +1531,9 @@
       localStorage.setItem("meteo_current_location", JSON.stringify(loc));
     } catch (e) {}
 
-    if (globalSearchInput) globalSearchInput.value = loc.name;
+    if (globalSearchInput) globalSearchInput.value = "";
     if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
-    if (globalSearchClearBtn) globalSearchClearBtn.style.display = "block";
+    if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
 
     // Synchroniser l'état actif des favoris (étoiles, chips, flyout)
     updateFavoritesUI();
@@ -1757,7 +1770,7 @@
       `;
 
       div.addEventListener("click", async () => {
-        if (globalSearchInput) globalSearchInput.value = cleanDisplayName;
+        if (globalSearchInput) globalSearchInput.value = "";
         if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
         if (globalSearchSpinner) globalSearchSpinner.style.display = "block";
 
@@ -1959,9 +1972,25 @@
     if (!location) return;
 
     // 1. Mise à jour immédiate des titres et badges d'en-tête (sans lat/lon et sans doublon d'altitude)
-    if (globalSearchInput) globalSearchInput.value = location.name;
+    if (globalSearchInput) globalSearchInput.value = "";
     if (heroSummitName) heroSummitName.textContent = location.name;
     if (heroAltitudeBadge) heroAltitudeBadge.textContent = `${Math.round(location.alt).toLocaleString('fr-FR')} m`;
+    if (heroDeptTag) {
+      let deptText = "";
+      if (location.admin1) {
+        let text = location.admin1;
+        if (text.includes(" - ")) {
+          text = text.split(" - ")[1].split(",")[0].trim();
+        } else if (text.includes(",")) {
+          text = text.split(",")[0].trim();
+        } else if (text.includes("/")) {
+          text = text.split("/")[0].trim();
+        }
+        deptText = text;
+      }
+      heroDeptTag.textContent = deptText;
+      heroDeptTag.style.display = deptText ? "inline" : "none";
+    }
     if (heroMassifTag) {
       if (location.isLake) {
         heroMassifTag.textContent = location.admin1 ? `🌊 Lac • ${location.admin1}` : "🌊 Lac / Plan d'eau";
@@ -2003,41 +2032,10 @@
     if (yrCurrentLocationName) yrCurrentLocationName.textContent = location.name;
     if (yrCurrentLocationAlt) yrCurrentLocationAlt.textContent = `${Math.round(location.alt).toLocaleString('fr-FR')} m`;
 
-    // Stale-While-Revalidate : si des données récentes existent, afficher instantanément
-    const cacheKey = `meteo_full_v8_${location.lat.toFixed(3)}_${location.lon.toFixed(3)}_${Math.round(location.alt)}`;
-    let hasRenderedCached = false;
-    try {
-      const cached = sessionStorage.getItem(cacheKey);
-      if (cached) {
-        const parsed = JSON.parse(cached);
-        if (parsed && parsed.data) {
-          weatherDataCache = parsed.data;
-          aromeDataCache = parsed.arome || parsed.data;
-          gfsDataCache = parsed.gfs || parsed.data;
-          yrnoDataCache = parsed.yrno || parsed.data;
-          renderCurrentMetrics(parsed.data);
-          renderEphemeris(parsed.data, location);
-          renderSelectedMeteocielModel();
-          renderAromeTimeline(aromeDataCache);
-          drawYrnoMeteogram(yrnoDataCache);
-          renderEcmwfDaily(parsed.ecmwf || parsed.data);
-          renderRommaStations(location);
-          updateMeteoblueMap(location);
-          if (parsed.updatedAt && heroLiveBadge) {
-            heroLiveBadge.textContent = `● En direct • Actualisé à ${parsed.updatedAt}`;
-          }
-          hasRenderedCached = true;
-        }
-      }
-    } catch (eCache) {
-      console.warn("Erreur lecture cache local:", eCache);
-    }
-
-    if (!hasRenderedCached) {
-      if (aromeHourlyScroll) aromeHourlyScroll.innerHTML = '<div class="loading-state">Calcul des prévisions en direct...</div>';
-      if (yrCanvasLoading) yrCanvasLoading.style.display = "flex";
-      if (dailyForecastGrid) dailyForecastGrid.innerHTML = '<div class="loading-state">Calcul des tendances 7 jours ECMWF...</div>';
-    }
+    // Pas de cache mémoire lourd des relevés : requêtes toujours fraîches en direct
+    if (aromeHourlyScroll) aromeHourlyScroll.innerHTML = '<div class="loading-state">Calcul des prévisions en direct...</div>';
+    if (yrCanvasLoading) yrCanvasLoading.style.display = "flex";
+    if (dailyForecastGrid) dailyForecastGrid.innerHTML = '<div class="loading-state">Calcul des tendances 7 jours ECMWF...</div>';
 
     // 2. Requêtes API TOUJOURS EN DIRECT (cache: 'no-store')
     try {
@@ -2127,18 +2125,6 @@
       if (heroLiveBadge) {
         heroLiveBadge.textContent = `● En direct • Actualisé à ${timeStr}`;
       }
-
-      // Persistance de la version fraîche en session pour affichage instantané aux visites suivantes
-      try {
-        sessionStorage.setItem(cacheKey, JSON.stringify({
-          data: primaryData,
-          arome: aromeData,
-          gfs: gfsData,
-          yrno: yrnoDataCache,
-          ecmwf: ecmwfData,
-          updatedAt: timeStr
-        }));
-      } catch (eSave) {}
 
       // 3. Rendu de tous les modules de l'application
       renderCurrentMetrics(primaryData);
@@ -4636,19 +4622,18 @@
     return arrows[index];
   }
 
-  // Code couleur évolutif pour le vent Météociel (partagé entre la flèche et la vitesse)
+  // Code couleur évolutif pour le vent Météociel selon les 7 tranches demandées :
+  // 0-10, 10-20, 20-35, 35-50, 50-70, 70-90, +90 km/h
   function getMeteocielWindClass(speed) {
-    if (speed === null || speed === undefined || speed === "--") return "td-vent-calm";
+    if (speed === null || speed === undefined || speed === "--") return "td-vent-0-10";
     const val = typeof speed === "number" ? speed : parseFloat(speed);
-    if (isNaN(val) || val < 8) return "td-vent-calm";
-    if (val < 18) return "td-vent-light";
-    if (val < 28) return "td-vent-mod";
-    if (val < 40) return "td-vent-breeze";
-    if (val < 55) return "td-vent-strong";
-    if (val < 70) return "td-vent-neargale";
-    if (val < 85) return "td-vent-gale";
-    if (val < 100) return "td-vent-storm";
-    return "td-vent-violent";
+    if (isNaN(val) || val < 10) return "td-vent-0-10";
+    if (val < 20) return "td-vent-10-20";
+    if (val < 35) return "td-vent-20-35";
+    if (val < 50) return "td-vent-35-50";
+    if (val < 70) return "td-vent-50-70";
+    if (val < 90) return "td-vent-70-90";
+    return "td-vent-90-plus";
   }
 
   // Classe de couleur de température Météociel

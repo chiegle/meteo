@@ -1,4 +1,4 @@
-const CACHE_NAME = 'meteo-grenoble-v8.67';
+const CACHE_NAME = 'meteo-grenoble-v8.68';
 const ASSETS = [
   './',
   './index.html',

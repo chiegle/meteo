@@ -115,7 +115,8 @@
     }
 
     // ========================================================
-    // RÉORGANISATION PAR APPUI LONG ULTRA-RÉACTIF (180ms) & FLUIDE
+    // RÉORGANISATION MODERNE DES ONGLETS (STYLE iOS / 120 FPS)
+    // Animation fluide par translation GPU & décalage doux
     // ========================================================
     let longPressTimer = null;
     let draggedBtn = null;
@@ -123,91 +124,202 @@
     let dragStartX = 0;
     let dragStartY = 0;
     let suppressNextClick = false;
+    let allTabs = [];
+    let initialCenters = [];
+    let initialRects = [];
+    let startIndex = -1;
+    let currentIndex = -1;
+    let tabGap = 8;
 
     function initTabDragAndDrop() {
       if (!tabsNav) return;
 
-      tabButtons.forEach(btn => {
-        btn.addEventListener("pointerdown", (e) => {
-          if (e.button !== 0 && e.pointerType === "mouse") return;
-          dragStartX = e.clientX;
-          dragStartY = e.clientY;
-          isDraggingTab = false;
-          draggedBtn = btn;
+      tabsNav.addEventListener("pointerdown", (e) => {
+        const btn = e.target.closest(".tab-nav-btn");
+        if (!btn || (e.button !== 0 && e.pointerType === "mouse")) return;
 
-          clearTimeout(longPressTimer);
-          // Appui long ultra rapide (180ms) pour une réactivité instantanée
-          longPressTimer = setTimeout(() => {
-            isDraggingTab = true;
-            suppressNextClick = true;
-            draggedBtn.classList.add("tab-dragging");
-            try {
-              btn.setPointerCapture(e.pointerId);
-            } catch (_) {}
-            if (navigator.vibrate) {
-              try { navigator.vibrate(35); } catch (_) {}
-            }
-          }, 180);
+        draggedBtn = btn;
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        isDraggingTab = false;
+        suppressNextClick = false;
+
+        clearTimeout(longPressTimer);
+        // Déclenchement réactif (130ms) pour une réactivité instantanée
+        longPressTimer = setTimeout(() => {
+          startDragging(e, btn);
+        }, 130);
+      });
+
+      function startDragging(e, btn) {
+        if (!draggedBtn || draggedBtn !== btn) return;
+        isDraggingTab = true;
+        suppressNextClick = true;
+
+        if (navigator.vibrate) {
+          try { navigator.vibrate(25); } catch (_) {}
+        }
+
+        try {
+          btn.setPointerCapture(e.pointerId);
+        } catch (_) {}
+
+        allTabs = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
+        startIndex = allTabs.indexOf(btn);
+        currentIndex = startIndex;
+
+        initialRects = allTabs.map(t => t.getBoundingClientRect());
+        initialCenters = initialRects.map(r => r.left + r.width / 2);
+
+        if (initialRects.length > 1) {
+          tabGap = Math.max(4, initialRects[1].left - initialRects[0].right);
+        }
+
+        btn.classList.add("tab-dragging");
+        btn.style.position = "relative";
+        btn.style.zIndex = "100";
+        btn.style.transform = "translate3d(0, 0, 0) scale(1.06)";
+
+        allTabs.forEach((t, i) => {
+          if (i !== startIndex) {
+            t.style.transition = "transform 0.22s cubic-bezier(0.2, 0, 0, 1)";
+          }
         });
+      }
 
-        btn.addEventListener("pointermove", (e) => {
-          const dx = Math.abs(e.clientX - dragStartX);
-          const dy = Math.abs(e.clientY - dragStartY);
+      tabsNav.addEventListener("pointermove", (e) => {
+        if (!draggedBtn) return;
 
-          if (!isDraggingTab) {
-            // Tolérance souple pour le micro-mouvement du doigt
-            if (dx > 14 || dy > 14) {
-              clearTimeout(longPressTimer);
-            }
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+
+        if (!isDraggingTab) {
+          // Si l'utilisateur commence à glisser horizontalement franchement, déclencher le drag
+          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+            clearTimeout(longPressTimer);
+            startDragging(e, draggedBtn);
+          } else if (Math.abs(dy) > 12) {
+            // Défilement vertical probable, annuler
+            clearTimeout(longPressTimer);
+            return;
+          } else {
             return;
           }
+        }
 
-          // En mode drag actif : déplacer fluidement les onglets
-          e.preventDefault();
-          const currentTarget = document.elementFromPoint(e.clientX, e.clientY);
-          const siblingBtn = currentTarget ? currentTarget.closest(".tab-nav-btn") : null;
+        e.preventDefault();
 
-          if (siblingBtn && siblingBtn !== draggedBtn && siblingBtn.parentElement === tabsNav) {
-            const rect = siblingBtn.getBoundingClientRect();
-            const midX = rect.left + rect.width / 2;
-            if (e.clientX < midX) {
-              tabsNav.insertBefore(draggedBtn, siblingBtn);
-            } else {
-              tabsNav.insertBefore(draggedBtn, siblingBtn.nextSibling);
+        // 1. Déplacer l'onglet dragué sous le doigt à 120 FPS
+        draggedBtn.style.transform = `translate3d(${dx}px, 0, 0) scale(1.06)`;
+
+        // 2. Calculer le nouvel index cible en comparant le centre visuel
+        const currentVisualCenter = initialCenters[startIndex] + dx;
+        let targetIndex = 0;
+
+        for (let i = 0; i < initialCenters.length; i++) {
+          if (currentVisualCenter > initialCenters[i]) {
+            targetIndex = i;
+          }
+        }
+        targetIndex = Math.max(0, Math.min(allTabs.length - 1, targetIndex));
+        currentIndex = targetIndex;
+
+        // 3. Décaler avec élégance tous les autres onglets
+        const draggedWidth = initialRects[startIndex].width;
+        const shiftAmount = draggedWidth + tabGap;
+
+        allTabs.forEach((t, i) => {
+          if (i === startIndex) return;
+
+          let offset = 0;
+          if (startIndex < targetIndex) {
+            // L'onglet se déplace vers la droite : les onglets intermédiaires glissent vers la gauche
+            if (i > startIndex && i <= targetIndex) {
+              offset = -shiftAmount;
+            }
+          } else if (startIndex > targetIndex) {
+            // L'onglet se déplace vers la gauche : les onglets intermédiaires glissent vers la droite
+            if (i < startIndex && i >= targetIndex) {
+              offset = shiftAmount;
             }
           }
+          t.style.transform = offset !== 0 ? `translate3d(${offset}px, 0, 0)` : "";
         });
+      });
 
-        const endDrag = (e) => {
-          clearTimeout(longPressTimer);
-          if (isDraggingTab && draggedBtn) {
-            try {
-              if (e && e.pointerId) draggedBtn.releasePointerCapture(e.pointerId);
-            } catch (_) {}
-            draggedBtn.classList.remove("tab-dragging");
-            isDraggingTab = false;
+      const finishDrag = (e) => {
+        clearTimeout(longPressTimer);
+
+        if (!draggedBtn) return;
+        const activeBtn = draggedBtn;
+        const wasDragging = isDraggingTab;
+
+        if (wasDragging) {
+          try {
+            if (e && e.pointerId) activeBtn.releasePointerCapture(e.pointerId);
+          } catch (_) {}
+
+          // Calculer le décalage vers le slot cible pour une transition finale fluide
+          let finalOffset = 0;
+          if (currentIndex !== startIndex) {
+            let targetLeft = initialRects[currentIndex].left;
+            if (currentIndex > startIndex) {
+              targetLeft = initialRects[currentIndex].right - initialRects[startIndex].width;
+            }
+            finalOffset = targetLeft - initialRects[startIndex].left;
+          }
+
+          activeBtn.classList.remove("tab-dragging");
+          activeBtn.classList.add("tab-dropping");
+          activeBtn.style.transform = `translate3d(${finalOffset}px, 0, 0) scale(1)`;
+
+          setTimeout(() => {
+            // Réorganisation du DOM à la fin de l'animation
+            if (currentIndex !== startIndex && activeBtn.parentElement === tabsNav) {
+              const currentChildren = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
+              const refNode = currentChildren[currentIndex];
+              if (currentIndex > startIndex) {
+                tabsNav.insertBefore(activeBtn, refNode.nextSibling);
+              } else {
+                tabsNav.insertBefore(activeBtn, refNode);
+              }
+            }
+
+            // Réinitialisation propre de tous les styles inline
+            allTabs.forEach(t => {
+              t.style.transform = "";
+              t.style.transition = "";
+              t.style.position = "";
+              t.style.zIndex = "";
+            });
+            activeBtn.classList.remove("tab-dropping");
+
             saveTabsOrder();
+
             setTimeout(() => {
               suppressNextClick = false;
+              isDraggingTab = false;
               draggedBtn = null;
-            }, 120);
-          } else {
-            draggedBtn = null;
-          }
-        };
+            }, 80);
+          }, 180);
+        } else {
+          draggedBtn = null;
+        }
+      };
 
-        btn.addEventListener("pointerup", endDrag);
-        btn.addEventListener("pointercancel", endDrag);
+      tabsNav.addEventListener("pointerup", finishDrag);
+      tabsNav.addEventListener("pointercancel", finishDrag);
 
-        // Clic normal pour changer d'onglet
-        btn.addEventListener("click", (e) => {
-          if (suppressNextClick || isDraggingTab) {
-            e.preventDefault();
-            e.stopPropagation();
-            return;
-          }
-          switchTab(btn.dataset.tab, true);
-        });
+      // Clic normal sur les onglets pour basculer
+      tabsNav.addEventListener("click", (e) => {
+        const btn = e.target.closest(".tab-nav-btn");
+        if (!btn) return;
+        if (suppressNextClick || isDraggingTab) {
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+        switchTab(btn.dataset.tab, true);
       });
     }
 
