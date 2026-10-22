@@ -450,6 +450,10 @@
   let yrnoDataCache = null;
   let lastSuccessfulFetchTime = Date.now();
 
+  // Cache léger en mémoire vive (RAM uniquement, 0 Ko sur le disque, TTL 15 min)
+  const memoryDataCache = new Map();
+  const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+
   // Barre de Recherche Globale & Favoris
   const globalSearchInput = document.getElementById("globalSearchInput");
   const globalSearchClearBtn = document.getElementById("globalSearchClearBtn");
@@ -1939,18 +1943,25 @@
     const lat = typeof location.lat === "number" ? location.lat : 45.1885;
     const lon = typeof location.lon === "number" ? location.lon : 5.7245;
     const targetName = location.nearestCity ? `${location.name} (${location.nearestCity})` : location.name;
-    extLink.title = `Consulter directement la carte radar et prévisions de ${targetName} sur Météoblue`;
+    extLink.title = `Consulter directement les prévisions de ${targetName} sur Météoblue`;
 
-    // Redirection directe garantie sur les coordonnées exactes
-    extLink.href = `https://www.meteoblue.com/fr/meteo/cartes/#coords=9.5/${lat.toFixed(4)}/${lon.toFixed(4)}&map=cloudsAndPrecipitation`;
+    const cleanName = (location.name || "grenoble")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]/g, "-")
+      .replace(/-+/g, "-");
 
-    // Résolution dynamique du slug et identifiant officiel Météoblue via API query3
+    // Redirection directe vers la fiche météo locale (format demandé https://www.meteoblue.com/en/weather/today/grenoble_france_3014728)
+    extLink.href = `https://www.meteoblue.com/en/weather/today/${cleanName}_france`;
+
+    // Résolution dynamique du slug officiel et identifiant Météoblue via API query3
     const queryCoord = `${lat.toFixed(4)} ${lon.toFixed(4)}`;
     fetch(`https://www.meteoblue.com/fr/server/search/query3?query=${encodeURIComponent(queryCoord)}&apikey=1iw4Jq5NZK60Ig7O`)
       .then(res => res.ok ? res.json() : null)
       .then(data => {
         if (data && Array.isArray(data.results) && data.results.length > 0 && data.results[0].url) {
-          extLink.href = `https://www.meteoblue.com/fr/meteo/cartes/${data.results[0].url}#coords=9.5/${lat.toFixed(4)}/${lon.toFixed(4)}&map=cloudsAndPrecipitation`;
+          extLink.href = `https://www.meteoblue.com/en/weather/today/${data.results[0].url}`;
         }
       })
       .catch(() => {});
@@ -2032,7 +2043,30 @@
     if (yrCurrentLocationName) yrCurrentLocationName.textContent = location.name;
     if (yrCurrentLocationAlt) yrCurrentLocationAlt.textContent = `${Math.round(location.alt).toLocaleString('fr-FR')} m`;
 
-    // Pas de cache mémoire lourd des relevés : requêtes toujours fraîches en direct
+    // Vérification du cache ultra-léger en mémoire vive (RAM, TTL 15 minutes) :
+    // Permet un affichage immédiat 0ms lors de la navigation sans solliciter la batterie ni le stockage
+    const memKey = `${location.lat.toFixed(3)}_${location.lon.toFixed(3)}_${Math.round(location.alt)}`;
+    const cachedEntry = memoryDataCache.get(memKey);
+    const nowTs = Date.now();
+    if (!forceFresh && cachedEntry && (nowTs - cachedEntry.timestamp < CACHE_TTL_MS)) {
+      weatherDataCache = cachedEntry.data;
+      aromeDataCache = cachedEntry.arome;
+      gfsDataCache = cachedEntry.gfs;
+      yrnoDataCache = cachedEntry.yrno;
+      renderCurrentMetrics(cachedEntry.data);
+      renderEphemeris(cachedEntry.data, location);
+      renderSelectedMeteocielModel();
+      renderAromeTimeline(aromeDataCache);
+      drawYrnoMeteogram(yrnoDataCache);
+      renderEcmwfDaily(cachedEntry.ecmwf || cachedEntry.data);
+      renderRommaStations(location);
+      updateMeteoblueMap(location);
+      if (heroLiveBadge) {
+        heroLiveBadge.textContent = `● En direct • Actualisé à ${cachedEntry.updatedAt}`;
+      }
+      return;
+    }
+
     if (aromeHourlyScroll) aromeHourlyScroll.innerHTML = '<div class="loading-state">Calcul des prévisions en direct...</div>';
     if (yrCanvasLoading) yrCanvasLoading.style.display = "flex";
     if (dailyForecastGrid) dailyForecastGrid.innerHTML = '<div class="loading-state">Calcul des tendances 7 jours ECMWF...</div>';
@@ -2143,7 +2177,20 @@
       drawYrnoMeteogram(yrnoDataCache);
       renderEcmwfDaily(ecmwfData || primaryData);
       renderRommaStations(location);
-          updateMeteoblueMap(location);
+      updateMeteoblueMap(location);
+
+      // Enregistrement dans le cache mémoire vive (RAM uniquement, sans stockage disque)
+      try {
+        memoryDataCache.set(memKey, {
+          timestamp: Date.now(),
+          updatedAt: timeStr,
+          data: primaryData,
+          arome: aromeData,
+          gfs: gfsData,
+          yrno: yrnoDataCache,
+          ecmwf: ecmwfData
+        });
+      } catch (_) {}
 
     } catch (err) {
       console.error("Échec récupération météo en direct:", err);

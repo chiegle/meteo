@@ -115,8 +115,8 @@
     }
 
     // ========================================================
-    // RÉORGANISATION MODERNE DES ONGLETS (STYLE iOS / 120 FPS)
-    // Animation fluide par translation GPU & décalage doux
+    // RÉORGANISATION FLUIDE & ANTI-COLLISION DES ONGLETS (120 FPS)
+    // Calcul exact par permutation et cumul des largeurs réelles
     // ========================================================
     let longPressTimer = null;
     let draggedBtn = null;
@@ -125,14 +125,21 @@
     let dragStartY = 0;
     let suppressNextClick = false;
     let allTabs = [];
+    let initialLefts = [];
+    let initialWidths = [];
     let initialCenters = [];
-    let initialRects = [];
     let startIndex = -1;
-    let currentIndex = -1;
-    let tabGap = 8;
+    let currentTargetIndex = -1;
+    let currentPermutation = [];
+    const TAB_GAP = 8;
 
     function initTabDragAndDrop() {
       if (!tabsNav) return;
+
+      // Empêcher tout drag d'image natif du navigateur
+      tabsNav.querySelectorAll(".tab-nav-btn").forEach(btn => {
+        btn.addEventListener("dragstart", (e) => e.preventDefault());
+      });
 
       tabsNav.addEventListener("pointerdown", (e) => {
         const btn = e.target.closest(".tab-nav-btn");
@@ -145,10 +152,10 @@
         suppressNextClick = false;
 
         clearTimeout(longPressTimer);
-        // Déclenchement réactif (130ms) pour une réactivité instantanée
+        // Déclenchement réactif (140ms) pour une réactivité instantanée
         longPressTimer = setTimeout(() => {
           startDragging(e, btn);
-        }, 130);
+        }, 140);
       });
 
       function startDragging(e, btn) {
@@ -166,14 +173,14 @@
 
         allTabs = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
         startIndex = allTabs.indexOf(btn);
-        currentIndex = startIndex;
+        currentTargetIndex = startIndex;
+        currentPermutation = [...allTabs];
 
-        initialRects = allTabs.map(t => t.getBoundingClientRect());
-        initialCenters = initialRects.map(r => r.left + r.width / 2);
-
-        if (initialRects.length > 1) {
-          tabGap = Math.max(4, initialRects[1].left - initialRects[0].right);
-        }
+        // Mesure exacte des positions géométriques réelles de chaque onglet
+        const containerLeft = tabsNav.getBoundingClientRect().left + tabsNav.scrollLeft;
+        initialLefts = allTabs.map(t => t.getBoundingClientRect().left + tabsNav.scrollLeft - containerLeft);
+        initialWidths = allTabs.map(t => t.offsetWidth);
+        initialCenters = initialLefts.map((l, i) => l + initialWidths[i] / 2);
 
         btn.classList.add("tab-dragging");
         btn.style.position = "relative";
@@ -194,12 +201,11 @@
         const dy = e.clientY - dragStartY;
 
         if (!isDraggingTab) {
-          // Si l'utilisateur commence à glisser horizontalement franchement, déclencher le drag
+          // Détection d'un glissement horizontal net avant le timeout
           if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
             clearTimeout(longPressTimer);
             startDragging(e, draggedBtn);
           } else if (Math.abs(dy) > 12) {
-            // Défilement vertical probable, annuler
             clearTimeout(longPressTimer);
             return;
           } else {
@@ -209,41 +215,50 @@
 
         e.preventDefault();
 
-        // 1. Déplacer l'onglet dragué sous le doigt à 120 FPS
+        // 1. L'onglet dragué suit le doigt en direct à 120 FPS
         draggedBtn.style.transform = `translate3d(${dx}px, 0, 0) scale(1.06)`;
 
-        // 2. Calculer le nouvel index cible en comparant le centre visuel
-        const currentVisualCenter = initialCenters[startIndex] + dx;
-        let targetIndex = 0;
+        // 2. Trouver l'index de destination en testant le chevauchement avec les centres
+        const draggedVisualCenter = initialCenters[startIndex] + dx;
+        let newTargetIndex = startIndex;
 
-        for (let i = 0; i < initialCenters.length; i++) {
-          if (currentVisualCenter > initialCenters[i]) {
-            targetIndex = i;
+        if (dx > 0) {
+          // Déplacement vers la droite
+          for (let i = startIndex + 1; i < allTabs.length; i++) {
+            if (draggedVisualCenter > initialCenters[i] - initialWidths[i] * 0.25) {
+              newTargetIndex = i;
+            }
+          }
+        } else if (dx < 0) {
+          // Déplacement vers la gauche
+          for (let i = startIndex - 1; i >= 0; i--) {
+            if (draggedVisualCenter < initialCenters[i] + initialWidths[i] * 0.25) {
+              newTargetIndex = i;
+            }
           }
         }
-        targetIndex = Math.max(0, Math.min(allTabs.length - 1, targetIndex));
-        currentIndex = targetIndex;
 
-        // 3. Décaler avec élégance tous les autres onglets
-        const draggedWidth = initialRects[startIndex].width;
-        const shiftAmount = draggedWidth + tabGap;
+        newTargetIndex = Math.max(0, Math.min(allTabs.length - 1, newTargetIndex));
+        currentTargetIndex = newTargetIndex;
 
-        allTabs.forEach((t, i) => {
-          if (i === startIndex) return;
+        // 3. Calculer la permutation exacte pour éliminer tout risque de chevauchement visuel
+        const permutation = [...allTabs];
+        permutation.splice(startIndex, 1);
+        permutation.splice(currentTargetIndex, 0, draggedBtn);
+        currentPermutation = permutation;
 
-          let offset = 0;
-          if (startIndex < targetIndex) {
-            // L'onglet se déplace vers la droite : les onglets intermédiaires glissent vers la gauche
-            if (i > startIndex && i <= targetIndex) {
-              offset = -shiftAmount;
-            }
-          } else if (startIndex > targetIndex) {
-            // L'onglet se déplace vers la gauche : les onglets intermédiaires glissent vers la droite
-            if (i < startIndex && i >= targetIndex) {
-              offset = shiftAmount;
-            }
+        // 4. Déterminer l'abscisse slotX réelle de chaque élément dans la nouvelle permutation
+        let slotX = initialLefts[0];
+        permutation.forEach((tab) => {
+          const tabOrigIdx = allTabs.indexOf(tab);
+          const origLeft = initialLefts[tabOrigIdx];
+          const targetOffset = slotX - origLeft;
+
+          if (tab !== draggedBtn) {
+            tab.style.transform = targetOffset !== 0 ? `translate3d(${targetOffset}px, 0, 0)` : "";
           }
-          t.style.transform = offset !== 0 ? `translate3d(${offset}px, 0, 0)` : "";
+
+          slotX += initialWidths[tabOrigIdx] + TAB_GAP;
         });
       });
 
@@ -259,33 +274,28 @@
             if (e && e.pointerId) activeBtn.releasePointerCapture(e.pointerId);
           } catch (_) {}
 
-          // Calculer le décalage vers le slot cible pour une transition finale fluide
-          let finalOffset = 0;
-          if (currentIndex !== startIndex) {
-            let targetLeft = initialRects[currentIndex].left;
-            if (currentIndex > startIndex) {
-              targetLeft = initialRects[currentIndex].right - initialRects[startIndex].width;
-            }
-            finalOffset = targetLeft - initialRects[startIndex].left;
+          // Calcul de la position finale exacte du slot d'arrivée
+          let finalSlotX = initialLefts[0];
+          for (let i = 0; i < currentPermutation.length; i++) {
+            const tab = currentPermutation[i];
+            const tabOrigIdx = allTabs.indexOf(tab);
+            if (tab === activeBtn) break;
+            finalSlotX += initialWidths[tabOrigIdx] + TAB_GAP;
           }
+
+          const finalOffset = finalSlotX - initialLefts[startIndex];
 
           activeBtn.classList.remove("tab-dragging");
           activeBtn.classList.add("tab-dropping");
           activeBtn.style.transform = `translate3d(${finalOffset}px, 0, 0) scale(1)`;
 
           setTimeout(() => {
-            // Réorganisation du DOM à la fin de l'animation
-            if (currentIndex !== startIndex && activeBtn.parentElement === tabsNav) {
-              const currentChildren = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
-              const refNode = currentChildren[currentIndex];
-              if (currentIndex > startIndex) {
-                tabsNav.insertBefore(activeBtn, refNode.nextSibling);
-              } else {
-                tabsNav.insertBefore(activeBtn, refNode);
-              }
-            }
+            // Réorganisation DOM propre selon l'ordre exact de la permutation
+            currentPermutation.forEach(tab => {
+              tabsNav.appendChild(tab);
+            });
 
-            // Réinitialisation propre de tous les styles inline
+            // Réinitialisation intégrale des styles inline
             allTabs.forEach(t => {
               t.style.transform = "";
               t.style.transition = "";
@@ -310,7 +320,7 @@
       tabsNav.addEventListener("pointerup", finishDrag);
       tabsNav.addEventListener("pointercancel", finishDrag);
 
-      // Clic normal sur les onglets pour basculer
+      // Clic normal sur n'importe quelle partie du bouton (icône ou texte) pour changer d'onglet
       tabsNav.addEventListener("click", (e) => {
         const btn = e.target.closest(".tab-nav-btn");
         if (!btn) return;

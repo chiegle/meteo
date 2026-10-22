@@ -7,8 +7,8 @@
   <meta name="description" content="Dashboard météo par onglets horizontaux : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.34">
-  <link rel="stylesheet" href="style.css?v=8.68">
-  <link rel="stylesheet" href="tabs.css?v=8.68">
+  <link rel="stylesheet" href="style.css?v=8.69">
+  <link rel="stylesheet" href="tabs.css?v=8.69">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
@@ -37,7 +37,7 @@
     <section class="summit-hero card" id="summitHeroSection">
       <!-- En-tête STRICTEMENT sur une seule ligne : Flèche, Ville, Dépt italique, Altitude, Favori, Direct à gauche | Recherche & Actions à droite -->
       <div class="hero-header-single-row">
-        <div class="hero-title-group" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
+        <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
           <span class="accordion-arrow">▼</span>
           <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
           <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
@@ -182,27 +182,27 @@
     <div class="tabs-nav-bar-wrap">
       <nav class="horizontal-tabs-nav" id="horizontalTabsNav" aria-label="Modules météo">
         <button type="button" class="tab-nav-btn active" data-tab="meteociel" aria-selected="true" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-meteociel.png" class="tab-icon-img" alt="Météociel">
+          <img src="icon-meteociel.png" class="tab-icon-img" alt="Météociel" draggable="false">
           <span>Météociel</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-yrno.png" class="tab-icon-img" alt="YR.NO">
+          <img src="icon-yrno.png" class="tab-icon-img" alt="YR.NO" draggable="false">
           <span>YR.NO</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France">
+          <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France" draggable="false">
           <span>Météo France</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="romma" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-romma.png" class="tab-icon-img" alt="ROMMA">
+          <img src="icon-romma.png" class="tab-icon-img" alt="ROMMA" draggable="false">
           <span>ROMMA</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="meteoblue" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-meteoblue.png" class="tab-icon-img" alt="Météoblue">
+          <img src="icon-meteoblue.png" class="tab-icon-img" alt="Météoblue" draggable="false">
           <span>Météoblue</span>
         </button>
         <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false" title="Maintenez appuyé pour réorganiser">
-          <img src="icon-bera.png" class="tab-icon-img" alt="Sécurité & BERA">
+          <img src="icon-bera.png" class="tab-icon-img" alt="Sécurité & BERA" draggable="false">
           <span>Sécurité & BERA</span>
         </button>
       </nav>
@@ -410,7 +410,7 @@
             <h3 class="section-title" style="margin: 0;">📡 Radar Météoblue</h3>
           </div>
           <div class="section-actions">
-            <a id="meteoblueExtLink" href="https://www.meteoblue.com/fr/meteo/cartes/grenoble_france_3128026#coords=9.5/45.1885/5.7245&map=cloudsAndPrecipitation" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Météoblue">
+            <a id="meteoblueExtLink" href="https://www.meteoblue.com/en/weather/today/grenoble_france_3014728" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Météoblue">
               <span>🗺️ Fiche Météoblue</span> ↗
             </a>
           </div>
@@ -506,7 +506,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.68"></script>
-  <script src="tabs.js?v=8.68"></script>
+  <script src="app.js?v=8.69"></script>
+  <script src="tabs.js?v=8.69"></script>
 </body>
 </html>

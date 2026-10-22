@@ -1409,8 +1409,8 @@ body.is-reordering-blocks .radar-map-view {
   min-height: 275px;
   padding: 10px 6px;
   border-radius: var(--radius-sm);
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-color);
+  background: #0d0d0d;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -1422,15 +1422,15 @@ body.is-reordering-blocks .radar-map-view {
 }
 
 .hourly-card:hover {
-  border-color: var(--border-highlight);
-  background: var(--bg-card-hover);
+  border-color: var(--accent-cyan);
+  background: #171717;
   transform: translateY(-2px);
 }
 
 .hourly-card.current-hour {
   border-color: var(--accent-cyan);
-  box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
-  background: rgba(56, 189, 248, 0.08);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+  background: rgba(56, 189, 248, 0.12);
 }
 
 .hourly-card-header {
@@ -2444,62 +2444,80 @@ body.is-reordering-blocks .radar-map-view {
   text-align: center;
 }
 
+.td-vent-dir {
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 2px !important;
+  width: 28px;
+  vertical-align: middle;
+  text-align: center;
+  color: #000000 !important;
+  font-weight: 800 !important;
+}
+
+.td-vent-moy,
+.td-vent-raf {
+  color: #000066 !important;
+  font-weight: 800 !important;
+  text-align: center;
+}
+
 .td-vent-raf {
   width: 32px;
   border-right: 2px solid #5fa6b8 !important; /* Ligne de séparation nette Vent / Pluie */
 }
 
-/* Classes de vent évolutives Météociel selon les 7 tranches demandées :
-   0-10, 10-20, 20-35, 35-50, 50-70, 70-90, +90 km/h (partagées entre flèche et vitesse) */
+/* Classes de vent évolutives Météociel rigoureusement identiques au site officiel (Screen 4) :
+   0-10 (#66ccff), 10-20 (#0099ff), 20-35 (#00ff99), 35-50 (#33cc66), 50-70 (#66ff00), 70-90 (#ffcc00), +90 (#ff3300) */
 .td-vent-0-10,
 .td-vent-calm {
-  background-color: #ecfdf5 !important;
-  color: #065f46 !important;
-  font-weight: bold;
+  background-color: #66ccff !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-vent-10-20,
 .td-vent-light {
-  background-color: #cffafe !important;
-  color: #164e63 !important;
-  font-weight: bold;
+  background-color: #0099ff !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-vent-20-35,
 .td-vent-mod,
 .td-vent-breeze {
-  background-color: #7dd3fc !important;
-  color: #0c4a6e !important;
-  font-weight: bold;
+  background-color: #00ff99 !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-vent-35-50,
 .td-vent-strong {
-  background-color: #0284c7 !important;
-  color: #ffffff !important;
-  font-weight: bold;
+  background-color: #33cc66 !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-vent-50-70,
 .td-vent-neargale {
-  background-color: #f59e0b !important;
-  color: #451a03 !important;
-  font-weight: bold;
+  background-color: #66ff00 !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-vent-70-90,
 .td-vent-gale {
-  background-color: #ea580c !important;
-  color: #ffffff !important;
-  font-weight: bold;
+  background-color: #ffcc00 !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-vent-90-plus,
 .td-vent-storm,
 .td-vent-violent {
-  background-color: #dc2626 !important;
+  background-color: #ff3300 !important;
   color: #ffffff !important;
-  font-weight: bold;
+  font-weight: 800 !important;
 }
 
 /* Distinction visuelle des jours dans la timeline Météo France */
@@ -2509,7 +2527,7 @@ body.is-reordering-blocks .radar-map-view {
 }
 
 .hourly-card.day-alt {
-  background: rgba(255, 255, 255, 0.02) !important;
+  background: #080808 !important;
 }
 
 /* Surbrillance lors de la navigation clavier dans les résultats de recherche */

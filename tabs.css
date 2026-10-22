@@ -78,7 +78,7 @@ body.tabs-view {
   box-shadow: 0 0 14px rgba(56, 189, 248, 0.35);
 }
 
-/* Logos officiels dans les onglets */
+/* Logos officiels dans les onglets (zéro capture d'image lors du clic/drag) */
 .tab-icon-img {
   width: 20px;
   height: 20px;
@@ -87,12 +87,16 @@ body.tabs-view {
   vertical-align: middle;
   border-radius: 4px;
   flex-shrink: 0;
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  -webkit-user-drag: none !important;
 }
 
 /* Style de l'onglet en cours de réorganisation fluide */
 .tab-nav-btn.tab-dragging {
-  opacity: 0.95;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 20px var(--accent-cyan) !important;
+  opacity: 0.96;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.9), 0 0 24px var(--accent-cyan) !important;
   border-color: var(--accent-cyan) !important;
   z-index: 100 !important;
   cursor: grabbing !important;
@@ -117,27 +121,30 @@ body.tabs-view {
    EN-TÊTE STRICTEMENT SUR UNE SEULE LIGNE (Screen 1 & 2)
    Lieu, Dépt, Direct à gauche | Recherche & Actions à droite
    ======================================================== */
+.tabs-view .summit-hero,
+.tabs-view .summit-hero.card {
+  overflow: visible !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  position: relative;
+  z-index: 100;
+}
+
 .hero-header-single-row {
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
   justify-content: space-between !important;
   gap: 8px !important;
-  position: relative;
+  position: relative !important;
   padding: 8px 12px !important;
   border-bottom: 1px solid var(--border-color);
   margin-bottom: 0 !important;
   flex-wrap: nowrap !important;
-  overflow-x: auto;
-  overflow-y: visible;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  overflow: visible !important;
   width: 100%;
   box-sizing: border-box;
-}
-
-.hero-header-single-row::-webkit-scrollbar {
-  display: none;
+  z-index: 100;
 }
 
 .hero-header-single-row .hero-title-group {
@@ -149,10 +156,41 @@ body.tabs-view {
   min-width: 0;
   cursor: pointer;
   user-select: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
+.hero-header-single-row .hero-title-group::-webkit-scrollbar {
+  display: none;
+}
+
+.hero-header-single-row #heroAccordionHeader .accordion-arrow,
 .hero-header-single-row .accordion-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  color: var(--accent-cyan);
+  font-size: 0.8rem;
+  line-height: 1;
+  transition: transform 0.22s cubic-bezier(0.2, 0, 0, 1), background var(--transition-fast);
+  margin-right: 4px;
   flex-shrink: 0;
+}
+
+.hero-header-single-row #heroAccordionHeader:hover .accordion-arrow {
+  background: var(--accent-cyan);
+  color: #0b1320;
+}
+
+.hero-header-single-row #heroAccordionHeader.collapsed .accordion-arrow,
+.hero-title-group.collapsed .accordion-arrow {
+  transform: rotate(-90deg) !important;
 }
 
 .hero-header-single-row .hero-summit-name {
@@ -218,10 +256,11 @@ body.tabs-view {
   align-items: center !important;
   gap: 6px !important;
   flex-wrap: nowrap !important;
-  position: relative;
+  position: relative !important;
   flex-shrink: 0;
-  z-index: 60;
+  z-index: 1000 !important;
   margin-left: auto;
+  overflow: visible !important;
 }
 
 /* Boîte de recherche compacte par défaut, extensible au clic */
@@ -282,15 +321,22 @@ body.tabs-view {
   margin-bottom: 0 !important;
 }
 
-/* Positionnement du menu d'autocomplétion & favoris */
-.hero-search-inline-wrap .global-search-dropdown {
+/* Positionnement du menu d'autocomplétion & favoris (Flottant au premier plan absolu - Screen 3) */
+.hero-search-inline-wrap .global-search-dropdown,
+.global-search-dropdown {
   position: absolute;
   top: calc(100% + 6px);
   right: 0;
   left: auto;
   width: 380px;
   max-width: 92vw;
-  z-index: 1000;
+  background: #0d0d0d !important;
+  border: 1.5px solid var(--accent-cyan) !important;
+  border-radius: var(--radius-md);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95), 0 0 18px rgba(56, 189, 248, 0.35) !important;
+  z-index: 99999 !important;
+  max-height: 380px;
+  overflow-y: auto;
 }
 
 .hero-search-inline-wrap .favorites-flyout {
@@ -298,6 +344,13 @@ body.tabs-view {
   top: calc(100% + 6px);
   right: 0;
   left: auto;
+  width: 320px;
+  max-width: 92vw;
+  background: #0d0d0d !important;
+  border: 1.5px solid var(--border-highlight) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95);
+  z-index: 99999 !important;
+}
   width: 320px;
   max-width: 92vw;
   z-index: 1000;
