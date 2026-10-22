@@ -115,20 +115,36 @@
     }
 
     // ========================================================
-    // RÉORGANISATION FLUIDE & ANTI-COLLISION DES ONGLETS (FLIP DOM SWAP)
-    // Zéro risque de superposition ou d'onglet bloqué
+    // DOUBLE-CLIC SUR UN ONGLET -> SITE OFFICIEL
+    // APPUI LONG SUR UN ONGLET -> POP-UP DE RÉORGANISATION
     // ========================================================
-    let longPressTimer = null;
-    let draggedBtn = null;
-    let isDragging = false;
-    let startX = 0;
-    let startY = 0;
-    let suppressClick = false;
+    const TAB_LINK_IDS = {
+      meteociel: "meteocielExtLink",
+      ecmwf: "yrLink",
+      arome: "meteofranceLink",
+      romma: "rommaExtLink",
+      meteoblue: "meteoblueExtLink"
+    };
+    const SAFETY_URL = "https://meteofrance.com/meteo-montagne/alpes-du-nord";
 
-    function initTabDragAndDrop() {
+    function getTabExternalUrl(tabKey) {
+      if (tabKey === "safety") return SAFETY_URL;
+      const link = document.getElementById(TAB_LINK_IDS[tabKey]);
+      return link && link.href ? link.href : null;
+    }
+
+    const LONG_PRESS_MS = 500;
+    const DOUBLE_TAP_MS = 350;
+    let longPressTimer = null;
+    let pressStartX = 0;
+    let pressStartY = 0;
+    let suppressClick = false;
+    let lastTapKey = null;
+    let lastTapTime = 0;
+
+    function initTabInteractions() {
       if (!tabsNav) return;
 
-      // Empêcher tout drag d'image natif du navigateur
       tabsNav.querySelectorAll("img").forEach(img => {
         img.setAttribute("draggable", "false");
         img.addEventListener("dragstart", (e) => e.preventDefault());
@@ -137,151 +153,143 @@
       tabsNav.querySelectorAll(".tab-nav-btn").forEach(btn => {
         btn.setAttribute("draggable", "false");
         btn.addEventListener("dragstart", (e) => e.preventDefault());
+        btn.addEventListener("contextmenu", (e) => e.preventDefault());
         btn.addEventListener("pointerdown", onPointerDown);
       });
 
-      function onPointerDown(e) {
-        const btn = e.target.closest(".tab-nav-btn");
-        if (!btn || (e.button !== 0 && e.pointerType === "mouse")) return;
-
-        draggedBtn = btn;
-        startX = e.clientX;
-        startY = e.clientY;
-        isDragging = false;
-        suppressClick = false;
-
-        window.addEventListener("pointermove", onPointerMove, { passive: false });
-        window.addEventListener("pointerup", onPointerUp);
-        window.addEventListener("pointercancel", onPointerUp);
-
+      function clearPress() {
         clearTimeout(longPressTimer);
-        // Déclenchement réactif à 140ms
-        longPressTimer = setTimeout(() => {
-          startDrag();
-        }, 140);
+        longPressTimer = null;
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", clearPress);
+        window.removeEventListener("pointercancel", clearPress);
       }
 
-      function startDrag() {
-        if (!draggedBtn) return;
-        isDragging = true;
-        suppressClick = true;
-
-        if (navigator.vibrate) {
-          try { navigator.vibrate(25); } catch (_) {}
-        }
-
-        draggedBtn.classList.add("tab-dragging");
+      function onPointerDown(e) {
+        if (e.pointerType === "mouse" && e.button !== 0) return;
+        pressStartX = e.clientX;
+        pressStartY = e.clientY;
+        suppressClick = false;
+        clearPress();
+        window.addEventListener("pointermove", onPointerMove, { passive: true });
+        window.addEventListener("pointerup", clearPress);
+        window.addEventListener("pointercancel", clearPress);
+        longPressTimer = setTimeout(() => {
+          clearPress();
+          suppressClick = true;
+          if (navigator.vibrate) {
+            try { navigator.vibrate(20); } catch (_) {}
+          }
+          openReorderPopup();
+        }, LONG_PRESS_MS);
       }
 
       function onPointerMove(e) {
-        if (!draggedBtn) return;
-
-        const dx = e.clientX - startX;
-        const dy = e.clientY - startY;
-
-        if (!isDragging) {
-          // Si déplacement horizontal net, démarrer le drag immédiatement
-          if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
-            clearTimeout(longPressTimer);
-            startDrag();
-          } else if (Math.abs(dy) > 10) {
-            // Défilement vertical de la page -> annuler
-            cancelDrag();
-            return;
-          } else {
-            return;
-          }
-        }
-
-        e.preventDefault();
-
-        // Trouver le bouton sous le curseur
-        const allBtns = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
-        const targetBtn = allBtns.find(b => {
-          if (b === draggedBtn) return false;
-          const rect = b.getBoundingClientRect();
-          return e.clientX >= rect.left && e.clientX <= rect.right;
-        });
-
-        if (targetBtn) {
-          // FLIP DOM Swap instantané sans aucune collision
-          const rectsBefore = allBtns.map(b => b.getBoundingClientRect());
-
-          const draggedIdx = allBtns.indexOf(draggedBtn);
-          const targetIdx = allBtns.indexOf(targetBtn);
-
-          if (draggedIdx < targetIdx) {
-            tabsNav.insertBefore(draggedBtn, targetBtn.nextSibling);
-          } else {
-            tabsNav.insertBefore(draggedBtn, targetBtn);
-          }
-
-          const allBtnsAfter = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
-          const rectsAfter = allBtnsAfter.map(b => b.getBoundingClientRect());
-
-          // Transition FLIP fluide sur les frères déplacés
-          allBtnsAfter.forEach((b, idx) => {
-            if (b === draggedBtn) return;
-            const prevIdx = allBtns.indexOf(b);
-            if (prevIdx === -1) return;
-            const diffX = rectsBefore[prevIdx].left - rectsAfter[idx].left;
-            if (diffX !== 0) {
-              b.style.transform = `translateX(${diffX}px)`;
-              b.style.transition = "none";
-              requestAnimationFrame(() => {
-                b.style.transition = "transform 0.2s cubic-bezier(0.2, 0, 0, 1)";
-                b.style.transform = "";
-              });
-            }
-          });
+        // Défilement horizontal de la barre -> pas d'appui long
+        if (Math.abs(e.clientX - pressStartX) > 10 || Math.abs(e.clientY - pressStartY) > 10) {
+          clearPress();
         }
       }
 
-      function onPointerUp(e) {
-        clearTimeout(longPressTimer);
-        window.removeEventListener("pointermove", onPointerMove);
-        window.removeEventListener("pointerup", onPointerUp);
-        window.removeEventListener("pointercancel", onPointerUp);
-
-        if (isDragging && draggedBtn) {
-          draggedBtn.classList.remove("tab-dragging");
-          saveTabsOrder();
-          setTimeout(() => {
-            suppressClick = false;
-            isDragging = false;
-            draggedBtn = null;
-          }, 60);
-        } else {
-          cancelDrag();
-        }
-      }
-
-      function cancelDrag() {
-        clearTimeout(longPressTimer);
-        if (draggedBtn) {
-          draggedBtn.classList.remove("tab-dragging");
-        }
-        window.removeEventListener("pointermove", onPointerMove);
-        window.removeEventListener("pointerup", onPointerUp);
-        window.removeEventListener("pointercancel", onPointerUp);
-        isDragging = false;
-        draggedBtn = null;
-      }
-
-      // Clic normal sur n'importe quelle partie du bouton (icône ou texte) pour changer d'onglet
+      // Clic : changer d'onglet • Double-clic (ou double tap) : ouvrir le site officiel
       tabsNav.addEventListener("click", (e) => {
         const btn = e.target.closest(".tab-nav-btn");
         if (!btn) return;
-        if (suppressClick || isDragging) {
+        if (suppressClick) {
+          suppressClick = false;
           e.preventDefault();
           e.stopPropagation();
           return;
         }
-        switchTab(btn.dataset.tab, true);
+        const key = btn.dataset.tab;
+        const now = Date.now();
+        if (lastTapKey === key && now - lastTapTime < DOUBLE_TAP_MS) {
+          lastTapKey = null;
+          lastTapTime = 0;
+          const url = getTabExternalUrl(key);
+          if (url) window.open(url, "_blank", "noopener,noreferrer");
+          return;
+        }
+        lastTapKey = key;
+        lastTapTime = now;
+        switchTab(key, true);
       });
     }
 
-    initTabDragAndDrop();
+    // Pop-up de réorganisation des onglets
+    function openReorderPopup() {
+      if (!tabsNav || document.querySelector(".tabs-reorder-overlay")) return;
+
+      const overlay = document.createElement("div");
+      overlay.className = "tabs-reorder-overlay";
+      overlay.innerHTML = `
+        <div class="tabs-reorder-dialog" role="dialog" aria-modal="true" aria-label="Réorganiser les onglets">
+          <div class="tabs-reorder-header">
+            <span>Réorganiser les onglets</span>
+            <button type="button" class="tabs-reorder-close" aria-label="Fermer">✕</button>
+          </div>
+          <ul class="tabs-reorder-list"></ul>
+          <button type="button" class="tabs-reorder-done">Terminé</button>
+        </div>
+      `;
+      const list = overlay.querySelector(".tabs-reorder-list");
+
+      function renderList(movedKey) {
+        const btns = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
+        list.innerHTML = "";
+        btns.forEach((btn, idx) => {
+          const img = btn.querySelector("img");
+          const label = btn.querySelector("span");
+          const li = document.createElement("li");
+          li.className = "tabs-reorder-item" + (btn.dataset.tab === movedKey ? " just-moved" : "");
+          li.innerHTML = `
+            <img src="${img ? img.getAttribute("src") : ""}" alt="">
+            <span class="tabs-reorder-name">${label ? label.textContent : btn.dataset.tab}</span>
+            <button type="button" class="tabs-reorder-move" data-dir="-1" aria-label="Monter" ${idx === 0 ? "disabled" : ""}>▲</button>
+            <button type="button" class="tabs-reorder-move" data-dir="1" aria-label="Descendre" ${idx === btns.length - 1 ? "disabled" : ""}>▼</button>
+          `;
+          li.querySelectorAll(".tabs-reorder-move").forEach(mv => {
+            mv.addEventListener("click", () => {
+              const dir = parseInt(mv.dataset.dir, 10);
+              const all = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
+              const i = all.indexOf(btn);
+              const j = i + dir;
+              if (j < 0 || j >= all.length) return;
+              if (dir < 0) tabsNav.insertBefore(btn, all[j]);
+              else tabsNav.insertBefore(btn, all[j].nextSibling);
+              saveTabsOrder();
+              renderList(btn.dataset.tab);
+            });
+          });
+          list.appendChild(li);
+        });
+      }
+
+      function close() {
+        document.removeEventListener("keydown", onKey);
+        overlay.remove();
+        const active = tabsNav.querySelector(".tab-nav-btn.active");
+        if (active) {
+          try { active.scrollIntoView({ block: "nearest", inline: "center" }); } catch (_) {}
+        }
+      }
+
+      function onKey(e) {
+        if (e.key === "Escape") close();
+      }
+
+      overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) close();
+      });
+      overlay.querySelector(".tabs-reorder-close").addEventListener("click", close);
+      overlay.querySelector(".tabs-reorder-done").addEventListener("click", close);
+      document.addEventListener("keydown", onKey);
+
+      renderList(null);
+      document.body.appendChild(overlay);
+    }
+
+    initTabInteractions();
 
     // Empêcher le clic sur les en-têtes d'accords dans la vue par onglet de replier le contenu
     document.querySelectorAll(".tabs-view .module-section .accordion-header").forEach(h => {

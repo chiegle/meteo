@@ -402,6 +402,24 @@
     return item;
   }
 
+  // Pictogrammes officiels Météo-France (icons/mf/*.svg) à partir du code WMO
+  const MF_PICTO_BY_WMO = {
+    0: "p1", 1: "p2", 2: "p3", 3: "p3bis",
+    45: "p6", 48: "p8",
+    51: "p9", 53: "p9", 55: "p9", 56: "p11", 57: "p11",
+    61: "p13", 63: "p14", 65: "p15", 66: "p11", 67: "p11",
+    71: "p18", 73: "p22", 75: "p23", 77: "p18",
+    80: "p12", 81: "p14bis", 82: "p15",
+    85: "p17", 86: "p21",
+    95: "p16", 96: "p24", 99: "p24"
+  };
+
+  function getMfPictoHtml(code, isNight = false, alt = "") {
+    const base = MF_PICTO_BY_WMO[code] || "p3";
+    const safeAlt = String(alt).replace(/\x22/g, "&quot;");
+    return `<img class="mf-picto" src="icons/mf/${base}${isNight ? "n" : "j"}.svg" alt="${safeAlt}" draggable="false">`;
+  }
+
   // ========================================================
   // STATE & DOM ELEMENTS
   // ========================================================
@@ -550,7 +568,7 @@
   const meteoblueResetBtn = document.getElementById("meteoblueResetBtn");
   const rommaCenterLocationBtn = document.getElementById("rommaCenterLocationBtn");
   const rommaCurrentViewLabel = document.getElementById("rommaCurrentViewLabel");
-  const DEFAULT_ROMMA_HASH = "10.8/45.05/5.84";
+  const DEFAULT_ROMMA_HASH = "11/45.1833/5.7917"; // Gières par défaut
 
   // ========================================================
   // GESTION DES FAVORIS (LOCALSTORAGE & DRAG & DROP)
@@ -2666,6 +2684,13 @@
       if (radarMap) {
         radarMap.invalidateSize();
       }
+      if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
+        const pending = rommaMapIframe.dataset.pendingSrc || `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
+        if (rommaMapIframe.dataset.loadedSrc !== pending) {
+          rommaMapIframe.dataset.loadedSrc = pending;
+          rommaMapIframe.src = pending;
+        }
+      }
     }
     window.refreshMeteoComponents = refreshAllComponents;
 
@@ -2937,7 +2962,7 @@
       const confEl = document.getElementById(`mfConf${p.key}`);
 
       if (descEl) descEl.textContent = p.data.desc;
-      if (iconEl) iconEl.textContent = p.data.icon;
+      if (iconEl) iconEl.innerHTML = p.data.icon;
       if (tempEl) tempEl.textContent = `${p.data.temp}°`;
       if (windSpeedEl) windSpeedEl.textContent = `${p.data.wind} km/h`;
       if (windArrowEl) windArrowEl.textContent = p.data.windArrow;
@@ -2967,7 +2992,7 @@
     for (let i = 0; i < hourly.time.length; i++) {
       const timeStr = hourly.time[i];
       const d = new Date(timeStr);
-      const dateKey = d.toISOString().split("T")[0]; // YYYY-MM-DD
+      const dateKey = String(timeStr).split("T")[0]; // YYYY-MM-DD local
 
       if (!daysMap.has(dateKey)) {
         daysMap.set(dateKey, []);
@@ -3056,33 +3081,33 @@
         dayNum,
         tMin,
         tMax,
-        dayIcon: dayWmo.icon,
+        dayIcon: getMfPictoHtml(dayCode, false, dayWmo.desc),
         dayWind,
         confidence,
         matin: {
           desc: wmoMatin.desc,
-          icon: wmoMatin.icon,
+          icon: getMfPictoHtml(sMatin.code, false, wmoMatin.desc),
           temp: sMatin.temp,
           wind: sMatin.wind,
           windArrow: getMeteocielWindArrow(sMatin.windDir)
         },
         apresMidi: {
           desc: wmoApresMidi.desc,
-          icon: wmoApresMidi.icon,
+          icon: getMfPictoHtml(sApresMidi.code, false, wmoApresMidi.desc),
           temp: sApresMidi.temp,
           wind: sApresMidi.wind,
           windArrow: getMeteocielWindArrow(sApresMidi.windDir)
         },
         soiree: {
           desc: wmoSoiree.desc,
-          icon: wmoSoiree.icon,
+          icon: getMfPictoHtml(sSoiree.code, true, wmoSoiree.desc),
           temp: sSoiree.temp,
           wind: sSoiree.wind,
           windArrow: getMeteocielWindArrow(sSoiree.windDir)
         },
         nuit: {
           desc: wmoNuit.desc,
-          icon: wmoNuit.icon,
+          icon: getMfPictoHtml(sNuit.code, true, wmoNuit.desc),
           temp: sNuit.temp,
           wind: sNuit.wind,
           windArrow: getMeteocielWindArrow(sNuit.windDir)
@@ -4033,25 +4058,29 @@
            lat >= 43.8 && lat <= 46.8 && lon >= 4.8 && lon <= 7.8;
   }
 
+  function isNearGieres(lat, lon) {
+    // ~15 km autour de Gières (agglomération grenobloise) -> centrage par défaut sur Gières
+    return Math.abs(lat - 45.1833) < 0.14 && Math.abs(lon - 5.7917) < 0.19;
+  }
+
   function updateRommaMap(loc, forceCenter = false) {
     if (!rommaMapIframe) return;
 
-    if (loc && isNearAlps(loc.lat, loc.lon)) {
-      const hash = `10.5/${loc.lat.toFixed(4)}/${loc.lon.toFixed(4)}`;
-      const targetSrc = `https://www.romma.fr/map/carte.php#${hash}`;
-      const targetExt = `https://www.romma.fr/#${hash}`;
+    const useLoc = loc && isNearAlps(loc.lat, loc.lon) && !isNearGieres(loc.lat, loc.lon);
+    const hash = useLoc ? `11/${loc.lat.toFixed(4)}/${loc.lon.toFixed(4)}` : DEFAULT_ROMMA_HASH;
+    const targetSrc = `https://www.romma.fr/map/carte.php#${hash}`;
+    const targetExt = `https://www.romma.fr/#${hash}`;
 
-      if (forceCenter || !rommaMapIframe.src.includes(hash)) {
+    rommaMapIframe.dataset.pendingSrc = targetSrc;
+    if (rommaExtLink) rommaExtLink.href = targetExt;
+
+    if (rommaMapIframe.offsetParent !== null) {
+      if (forceCenter || rommaMapIframe.dataset.loadedSrc !== targetSrc) {
+        rommaMapIframe.dataset.loadedSrc = targetSrc;
         rommaMapIframe.src = targetSrc;
       }
-      if (rommaExtLink) rommaExtLink.href = targetExt;
-    } else {
-      const defaultSrc = `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
-      const defaultExt = `https://www.romma.fr/#${DEFAULT_ROMMA_HASH}`;
-      if (forceCenter || !rommaMapIframe.src.includes(DEFAULT_ROMMA_HASH)) {
-        rommaMapIframe.src = defaultSrc;
-      }
-      if (rommaExtLink) rommaExtLink.href = defaultExt;
+    } else if (forceCenter) {
+      delete rommaMapIframe.dataset.loadedSrc;
     }
   }
 
@@ -5170,12 +5199,6 @@
         tdHumi.textContent = `${s.humidity} %`;
         tr.appendChild(tdHumi);
 
-        // Colonne Pression (Screen 1 : couleur du jour, ex: 1024 hPa)
-        const tdPression = document.createElement("td");
-        tdPression.className = `td-pression ${dayClass}`;
-        tdPression.textContent = `${s.pressure} hPa`;
-        tr.appendChild(tdPression);
-
         // Colonne Temps (Screen 1 : couleur du jour + icône)
         const tdTemps = document.createElement("td");
         tdTemps.className = `td-temps ${dayClass}`;
@@ -5191,7 +5214,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.74").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.75").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

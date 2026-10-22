@@ -423,3 +423,216 @@ body.tabs-view {
     transform: translateY(0);
   }
 }
+
+
+/* ========================================================
+   BARRE D'ONGLETS + RECHERCHE/FAVORIS TOUT À DROITE
+   ======================================================== */
+.tabs-nav-bar-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1000;
+}
+
+.tabs-nav-bar-wrap .horizontal-tabs-nav {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tabs-nav-bar-wrap .hero-search-inline-wrap {
+  margin-left: 0;
+}
+
+/* Pas de sélection / menu contextuel natif pendant l'appui long */
+.tab-nav-btn {
+  -webkit-touch-callout: none;
+}
+
+/* Les en-têtes de bloc (nom + bouton de redirection) sont masqués :
+   la redirection se fait par double-clic sur l'onglet */
+.tabs-panels-container > .module-section > .accordion-header {
+  display: none !important;
+}
+
+/* Données actuelles intégrées dans l'onglet Météo France */
+.tabs-view #aromeSection .summit-hero {
+  margin: 0 0 14px 0;
+}
+
+/* Pictogrammes officiels Météo-France */
+.mf-picto {
+  display: block;
+  margin: 0 auto;
+  object-fit: contain;
+  pointer-events: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.mf-period-icon .mf-picto {
+  width: 64px;
+  height: 64px;
+}
+
+.mf-day-pill-icon .mf-picto {
+  width: 40px;
+  height: 40px;
+}
+
+/* ROMMA : aucune barre de défilement */
+.romma-map-container,
+.romma-map-iframe {
+  overflow: hidden !important;
+}
+
+/* Mobile : icônes seules dans les onglets */
+@media (max-width: 700px) {
+  .tab-nav-btn > span {
+    display: none;
+  }
+
+  .tab-nav-btn {
+    padding: 7px 9px;
+    gap: 0;
+  }
+
+  .tab-icon-img {
+    width: 22px;
+    height: 22px;
+  }
+
+  .horizontal-tabs-nav {
+    gap: 6px;
+  }
+
+  .tabs-nav-bar-wrap {
+    padding: 8px;
+    gap: 6px;
+  }
+
+  .tabs-nav-bar-wrap .hero-search-inline-wrap .global-search-input-box {
+    flex: 0 1 110px;
+    min-width: 90px;
+  }
+
+  .tabs-nav-bar-wrap .hero-search-inline-wrap .global-search-input-box:focus-within,
+  .tabs-nav-bar-wrap .hero-search-inline-wrap .global-search-input-box.search-expanded {
+    flex: 1 1 200px;
+    min-width: 170px;
+  }
+}
+
+/* ========================================================
+   POP-UP DE RÉORGANISATION DES ONGLETS (appui long)
+   ======================================================== */
+.tabs-reorder-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: tabFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tabs-reorder-dialog {
+  width: 100%;
+  max-width: 360px;
+  background: #0d0d0d;
+  border: 1.5px solid var(--border-highlight, #333);
+  border-radius: var(--radius-md, 12px);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+  padding: 14px;
+  color: var(--text-primary);
+}
+
+[data-theme="light"] .tabs-reorder-dialog {
+  background: #ffffff;
+}
+
+.tabs-reorder-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 800;
+  font-size: 0.95rem;
+}
+
+.tabs-reorder-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tabs-reorder-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm, 8px);
+  background: var(--bg-card);
+  transition: transform 0.18s cubic-bezier(0.2, 0, 0, 1), border-color 0.15s;
+}
+
+.tabs-reorder-item.just-moved {
+  border-color: var(--accent-cyan);
+}
+
+.tabs-reorder-item img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.tabs-reorder-item .tabs-reorder-name {
+  flex: 1;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.tabs-reorder-move,
+.tabs-reorder-close,
+.tabs-reorder-done {
+  border: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm, 8px);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.tabs-reorder-move {
+  width: 34px;
+  height: 34px;
+  font-size: 0.9rem;
+}
+
+.tabs-reorder-move:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+.tabs-reorder-close {
+  width: 30px;
+  height: 30px;
+}
+
+.tabs-reorder-done {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px;
+  background: rgba(56, 189, 248, 0.18);
+  border-color: var(--accent-cyan);
+  color: var(--accent-cyan);
+}

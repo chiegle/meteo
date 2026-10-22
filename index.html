@@ -6,17 +6,17 @@
   <title>Ma météo</title>
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
-  <link rel="manifest" href="manifest.json?v=8.74">
-  <link rel="stylesheet" href="style.css?v=8.74">
-  <link rel="stylesheet" href="tabs.css?v=8.74">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.74">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.74">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.74">
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.74">
-  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.74">
-  <link rel="shortcut icon" href="favicon.ico?v=8.74">
-  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.74">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.74">
+  <link rel="manifest" href="manifest.json?v=8.75">
+  <link rel="stylesheet" href="style.css?v=8.75">
+  <link rel="stylesheet" href="tabs.css?v=8.75">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.75">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.75">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.75">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.75">
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.75">
+  <link rel="shortcut icon" href="favicon.ico?v=8.75">
+  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.75">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.75">
   <script>
     // Fail-safe global error watchdog
     window.addEventListener('error', function(e) {
@@ -33,176 +33,75 @@
   <!-- Contenu Principal -->
   <main class="main-content">
 
-    <!-- Bannière Hero Info & Métriques du Lieu Actuel (TOUT EN HAUT) -->
-    <section class="summit-hero card" id="summitHeroSection">
-      <!-- En-tête STRICTEMENT sur une seule ligne : Flèche, Ville, Dépt italique, Altitude, Favori, Direct à gauche | Recherche & Actions à droite -->
-      <div class="hero-header-single-row">
-        <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
-          <span class="accordion-arrow">▼</span>
-          <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
-          <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
-          <span class="altitude-badge" id="heroAltitudeBadge">212 m</span>
-          <button id="heroFavBtn" class="hero-fav-btn" title="Ajouter / Retirer des favoris">
-            <span class="hero-fav-star">☆</span>
-            <span class="hero-fav-text" id="heroFavLabel">Favori</span>
-          </button>
-          <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
-        </div>
-
-        <!-- Recherche et boutons d'actions directement à droite sur la MÊME ligne -->
-        <div class="hero-search-inline-wrap">
-          <div class="global-search-input-box expandable-search">
-            <span class="search-lens-icon">🔍</span>
-            <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher..." autocomplete="off">
-            <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
-            <div id="globalSearchSpinner" class="search-spinner" style="display:none;">⏳</div>
-            <button id="geoLocateBtn" class="search-geo-btn" title="Me localiser (GPS actuel)" aria-label="Me localiser">
-              <svg class="geo-target-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="7"></circle>
-                <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
-                <line x1="12" y1="1" x2="12" y2="5"></line>
-                <line x1="12" y1="19" x2="12" y2="23"></line>
-                <line x1="1" y1="12" x2="5" y2="12"></line>
-                <line x1="19" y1="12" x2="23" y2="12"></line>
-              </svg>
-            </button>
-          </div>
-
-          <!-- Bouton étoile favoris -->
-          <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
-            <span class="star-icon">⭐</span>
-          </button>
-
-          <!-- Menu déroulant d'autocomplétion -->
-          <div id="globalSearchDropdown" class="global-search-dropdown" style="display:none;"></div>
-
-          <!-- Panneau déroulant / Popover des Favoris -->
-          <div id="favoritesFlyout" class="favorites-flyout" style="display:none;">
-            <div class="fav-flyout-header">
-              <div class="fav-flyout-title">
-                <span>⭐ Mes Lieux Favoris</span>
-                <span class="fav-flyout-count" id="favFlyoutCount">(0)</span>
-              </div>
-              <button id="closeFavoritesFlyoutBtn" class="fav-flyout-close" title="Fermer" aria-label="Fermer">✕</button>
-            </div>
-            <p class="fav-flyout-hint">Glissez-déposez ou maintenez enfoncé pour changer l'ordre.</p>
-            <div class="fav-flyout-list" id="favFlyoutList"></div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Barre masquée pour compatibilité interne -->
-      <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
-        <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
-      </div>
-
-      <!-- Quick Metrics Grid Enroulable -->
-      <div class="accordion-body hero-accordion-body">
-        <div class="metrics-grid">
-          <div class="metric-card">
-            <span class="metric-icon">🌡️</span>
-            <div class="metric-data">
-              <span class="metric-label">T° Actuelle</span>
-              <span class="metric-value" id="currentTemp">-- °C</span>
-              <span class="metric-sub" id="currentWindchill">Ressentie -- °C</span>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <span class="metric-icon">💨</span>
-            <div class="metric-data">
-              <span class="metric-label">Vent / Rafales</span>
-              <span class="metric-value" id="currentWind">-- km/h</span>
-              <span class="metric-sub" id="currentGusts">Raf. max -- km/h</span>
-            </div>
-          </div>
-
-          <div class="metric-card">
-            <span class="metric-icon">❄️</span>
-            <div class="metric-data">
-              <span class="metric-label">Isotherme 0°C</span>
-              <span class="metric-value" id="currentIsoZero">-- m</span>
-            </div>
-          </div>
-
-          <div class="metric-card metric-card-uv" id="metricCardUv">
-            <span class="metric-icon" id="currentUvIcon">☀️</span>
-            <div class="metric-data">
-              <div class="uv-title-row">
-                <span class="metric-label">Indice UV</span>
-              </div>
-              <div class="uv-value-row">
-                <span class="metric-value" id="currentUv">--</span>
-                <span class="uv-max-tag" id="uvMaxTag">(Max --)</span>
-              </div>
-              <div class="uv-gauge-track" id="uvGaugeTrack">
-                <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
-              </div>
-
-              <!-- Info-bulle / Popover au survol -->
-              <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
-                <div class="uv-tooltip-header">
-                  <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
-                  <button type="button" class="uv-tooltip-close" id="uvTooltipClose" aria-label="Fermer l'info-bulle">✕</button>
-                </div>
-                <div class="uv-tooltip-body">
-                  <div class="uv-tooltip-stat-row">
-                    <div class="uv-stat-box">
-                      <span class="uv-stat-label">Actuel</span>
-                      <strong class="uv-stat-val" id="ttUvCurrent">-- / 11</strong>
-                    </div>
-                    <div class="uv-stat-box">
-                      <span class="uv-stat-label">Pic du jour</span>
-                      <strong class="uv-stat-val" id="ttUvMax">-- / 11</strong>
-                    </div>
-                    <div class="uv-stat-box">
-                      <span class="uv-stat-label">Si ciel dégagé</span>
-                      <strong class="uv-stat-val" id="ttUvClearSky">-- / 11</strong>
-                    </div>
-                  </div>
-                  <div class="uv-tooltip-scale-table">
-                    <div class="uv-scale-row uv-row-low"><span class="uv-scale-dot"></span><strong>0 à 2 : Faible</strong> <span>Sans risque (> 1h) • Crème non requise</span></div>
-                    <div class="uv-scale-row uv-row-mod"><span class="uv-scale-dot"></span><strong>3 à 5 : Modéré</strong> <span>Coup de soleil ~45 min • SPF 30+ & lunettes</span></div>
-                    <div class="uv-scale-row uv-row-high"><span class="uv-scale-dot"></span><strong>6 à 7 : Élevé</strong> <span>Coup de soleil ~25 min • SPF 50+ & chapeau</span></div>
-                    <div class="uv-scale-row uv-row-vhigh"><span class="uv-scale-dot"></span><strong>8 à 10 : Très élevé</strong> <span>Coup de soleil ~15 min • Éviter les heures chaudes</span></div>
-                    <div class="uv-scale-row uv-row-ext"><span class="uv-scale-dot"></span><strong>11+ : Extrême</strong> <span>Danger brûlure < 10 min • Ombre obligatoire</span></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- BARRE D'ONGLETS HORIZONTAUX STICKY (RÉORGANISABLE PAR APPUI LONG) -->
     <div class="tabs-nav-bar-wrap">
       <nav class="horizontal-tabs-nav" id="horizontalTabsNav" aria-label="Modules météo">
-        <button type="button" class="tab-nav-btn active" data-tab="meteociel" aria-selected="true" title="Maintenez appuyé pour réorganiser">
+        <button type="button" class="tab-nav-btn active" data-tab="meteociel" aria-selected="true" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-meteociel.png" class="tab-icon-img" alt="Météociel" draggable="false">
           <span>Météociel</span>
         </button>
-        <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+        <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-yrno.png" class="tab-icon-img" alt="YR.NO" draggable="false">
           <span>YR.NO</span>
         </button>
-        <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+        <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France" draggable="false">
           <span>Météo France</span>
         </button>
-        <button type="button" class="tab-nav-btn" data-tab="romma" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+        <button type="button" class="tab-nav-btn" data-tab="romma" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-romma.png" class="tab-icon-img" alt="ROMMA" draggable="false">
           <span>ROMMA</span>
         </button>
-        <button type="button" class="tab-nav-btn" data-tab="meteoblue" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+        <button type="button" class="tab-nav-btn" data-tab="meteoblue" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-meteoblue.png" class="tab-icon-img" alt="Météoblue" draggable="false">
           <span>Météoblue</span>
         </button>
-        <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+        <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-bera.png" class="tab-icon-img" alt="Sécurité & BERA" draggable="false">
           <span>Sécurité & BERA</span>
         </button>
       </nav>
+
+      <!-- Recherche + favoris tout à droite des onglets -->
+      <div class="hero-search-inline-wrap">
+        <div class="global-search-input-box expandable-search">
+          <span class="search-lens-icon">🔍</span>
+          <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher..." autocomplete="off">
+          <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
+          <div id="globalSearchSpinner" class="search-spinner" style="display:none;">⏳</div>
+          <button id="geoLocateBtn" class="search-geo-btn" title="Me localiser (GPS actuel)" aria-label="Me localiser">
+            <svg class="geo-target-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="7"></circle>
+              <circle cx="12" cy="12" r="2" fill="currentColor"></circle>
+              <line x1="12" y1="1" x2="12" y2="5"></line>
+              <line x1="12" y1="19" x2="12" y2="23"></line>
+              <line x1="1" y1="12" x2="5" y2="12"></line>
+              <line x1="19" y1="12" x2="23" y2="12"></line>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Bouton étoile favoris -->
+        <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
+          <span class="star-icon">⭐</span>
+        </button>
+
+        <!-- Menu déroulant d'autocomplétion -->
+        <div id="globalSearchDropdown" class="global-search-dropdown" style="display:none;"></div>
+
+        <!-- Panneau déroulant / Popover des Favoris -->
+        <div id="favoritesFlyout" class="favorites-flyout" style="display:none;">
+          <div class="fav-flyout-header">
+            <div class="fav-flyout-title">
+              <span>⭐ Mes Lieux Favoris</span>
+              <span class="fav-flyout-count" id="favFlyoutCount">(0)</span>
+            </div>
+            <button id="closeFavoritesFlyoutBtn" class="fav-flyout-close" title="Fermer" aria-label="Fermer">✕</button>
+          </div>
+          <p class="fav-flyout-hint">Glissez-déposez ou maintenez enfoncé pour changer l'ordre.</p>
+          <div class="fav-flyout-list" id="favFlyoutList"></div>
+        </div>
+      </div>
     </div>
 
     <!-- CONTENEUR DES PANNEAUX D'ONGLETS HORIZONTAUX -->
@@ -235,7 +134,6 @@
                       <th colspan="3" class="th-col th-vent">Vent km/h</th>
                       <th rowspan="2" class="th-col th-pluie">Pluie<br><span class="th-sub">sur 3h</span></th>
                       <th rowspan="2" class="th-col th-humi">Humidité</th>
-                      <th rowspan="2" class="th-col th-pression">Pression</th>
                       <th rowspan="2" class="th-col th-temps">Temps</th>
                     </tr>
                     <tr class="tr-head-sub">
@@ -246,7 +144,7 @@
                   </thead>
                   <tbody id="meteocielTableBody">
                     <tr>
-                      <td colspan="10" class="meteociel-loading-row">Chargement des prévisions Météociel...</td>
+                      <td colspan="9" class="meteociel-loading-row">Chargement des prévisions Météociel...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -364,6 +262,107 @@
           </div>
         </div>
         <div class="accordion-body">
+          <!-- Données actuelles (déplacées dans l'onglet Météo France) -->
+          <section class="summit-hero card" id="summitHeroSection">
+            <!-- En-tête sur une seule ligne : Ville, Dépt italique, Altitude, Favori, Direct -->
+            <div class="hero-header-single-row">
+              <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
+                <span class="accordion-arrow">▼</span>
+                <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
+                <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
+                <span class="altitude-badge" id="heroAltitudeBadge">212 m</span>
+                <button id="heroFavBtn" class="hero-fav-btn" title="Ajouter / Retirer des favoris">
+                  <span class="hero-fav-star">☆</span>
+                  <span class="hero-fav-text" id="heroFavLabel">Favori</span>
+                </button>
+                <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
+              </div>
+
+            </div>
+
+            <!-- Barre masquée pour compatibilité interne -->
+            <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
+              <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
+            </div>
+
+            <!-- Quick Metrics Grid Enroulable -->
+            <div class="accordion-body hero-accordion-body">
+              <div class="metrics-grid">
+                <div class="metric-card">
+                  <span class="metric-icon">🌡️</span>
+                  <div class="metric-data">
+                    <span class="metric-label">T° Actuelle</span>
+                    <span class="metric-value" id="currentTemp">-- °C</span>
+                    <span class="metric-sub" id="currentWindchill">Ressentie -- °C</span>
+                  </div>
+                </div>
+
+                <div class="metric-card">
+                  <span class="metric-icon">💨</span>
+                  <div class="metric-data">
+                    <span class="metric-label">Vent / Rafales</span>
+                    <span class="metric-value" id="currentWind">-- km/h</span>
+                    <span class="metric-sub" id="currentGusts">Raf. max -- km/h</span>
+                  </div>
+                </div>
+
+                <div class="metric-card">
+                  <span class="metric-icon">❄️</span>
+                  <div class="metric-data">
+                    <span class="metric-label">Isotherme 0°C</span>
+                    <span class="metric-value" id="currentIsoZero">-- m</span>
+                  </div>
+                </div>
+
+                <div class="metric-card metric-card-uv" id="metricCardUv">
+                  <span class="metric-icon" id="currentUvIcon">☀️</span>
+                  <div class="metric-data">
+                    <div class="uv-title-row">
+                      <span class="metric-label">Indice UV</span>
+                    </div>
+                    <div class="uv-value-row">
+                      <span class="metric-value" id="currentUv">--</span>
+                      <span class="uv-max-tag" id="uvMaxTag">(Max --)</span>
+                    </div>
+                    <div class="uv-gauge-track" id="uvGaugeTrack">
+                      <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
+                    </div>
+
+                    <!-- Info-bulle / Popover au survol -->
+                    <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
+                      <div class="uv-tooltip-header">
+                        <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
+                        <button type="button" class="uv-tooltip-close" id="uvTooltipClose" aria-label="Fermer l'info-bulle">✕</button>
+                      </div>
+                      <div class="uv-tooltip-body">
+                        <div class="uv-tooltip-stat-row">
+                          <div class="uv-stat-box">
+                            <span class="uv-stat-label">Actuel</span>
+                            <strong class="uv-stat-val" id="ttUvCurrent">-- / 11</strong>
+                          </div>
+                          <div class="uv-stat-box">
+                            <span class="uv-stat-label">Pic du jour</span>
+                            <strong class="uv-stat-val" id="ttUvMax">-- / 11</strong>
+                          </div>
+                          <div class="uv-stat-box">
+                            <span class="uv-stat-label">Si ciel dégagé</span>
+                            <strong class="uv-stat-val" id="ttUvClearSky">-- / 11</strong>
+                          </div>
+                        </div>
+                        <div class="uv-tooltip-scale-table">
+                          <div class="uv-scale-row uv-row-low"><span class="uv-scale-dot"></span><strong>0 à 2 : Faible</strong> <span>Sans risque (> 1h) • Crème non requise</span></div>
+                          <div class="uv-scale-row uv-row-mod"><span class="uv-scale-dot"></span><strong>3 à 5 : Modéré</strong> <span>Coup de soleil ~45 min • SPF 30+ & lunettes</span></div>
+                          <div class="uv-scale-row uv-row-high"><span class="uv-scale-dot"></span><strong>6 à 7 : Élevé</strong> <span>Coup de soleil ~25 min • SPF 50+ & chapeau</span></div>
+                          <div class="uv-scale-row uv-row-vhigh"><span class="uv-scale-dot"></span><strong>8 à 10 : Très élevé</strong> <span>Coup de soleil ~15 min • Éviter les heures chaudes</span></div>
+                          <div class="uv-scale-row uv-row-ext"><span class="uv-scale-dot"></span><strong>11+ : Extrême</strong> <span>Danger brûlure < 10 min • Ombre obligatoire</span></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
           <div id="aromeTimelineView" class="arome-timeline-container">
             <!-- DESIGN OFFICIEL MÉTÉO FRANCE (Screen 3) -->
             <div class="mf-official-container" id="mfOfficialContainer">
@@ -445,7 +444,7 @@
             <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
               <span>🎯 Recentrer</span>
             </button>
-            <a href="https://www.romma.fr/#10.8/45.05/5.84" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
+            <a href="https://www.romma.fr/#11/45.1833/5.7917" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
               <span>🗺️ ROMMA</span> ↗
             </a>
           </div>
@@ -455,9 +454,10 @@
             <iframe 
               id="rommaMapIframe" 
               class="romma-map-iframe" 
-              src="https://www.romma.fr/map/carte.php#10.8/45.05/5.84" 
+              src="about:blank" 
+              data-pending-src="https://www.romma.fr/map/carte.php#11/45.1833/5.7917" 
+              scrolling="no" 
               allowfullscreen="true" 
-              loading="lazy"
               title="Carte interactive officielle du réseau ROMMA">
             </iframe>
           </div>
@@ -567,7 +567,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.74"></script>
-  <script src="tabs.js?v=8.74"></script>
+  <script src="app.js?v=8.75"></script>
+  <script src="tabs.js?v=8.75"></script>
 </body>
 </html>
