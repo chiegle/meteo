@@ -16,7 +16,8 @@
       arome: document.getElementById("aromeSection"),
       romma: document.getElementById("rommaSection"),
       meteoblue: document.getElementById("meteoblueSection"),
-      safety: document.getElementById("safetySection")
+      safety: document.getElementById("safetySection"),
+      webcams: document.getElementById("webcamsSection")
     };
 
     // 1. Restauration de l'ordre personnalisé des onglets
@@ -32,8 +33,10 @@
           savedOrder.forEach(tabKey => {
             if (btnMap[tabKey]) {
               tabsNav.appendChild(btnMap[tabKey]);
+              delete btnMap[tabKey];
             }
           });
+          Object.values(btnMap).forEach(btn => tabsNav.appendChild(btn));
         }
       } catch (err) {
         console.warn("Erreur restauration ordre des onglets:", err);
@@ -123,7 +126,8 @@
       ecmwf: "yrLink",
       arome: "meteofranceLink",
       romma: "rommaExtLink",
-      meteoblue: "meteoblueExtLink"
+      meteoblue: "meteoblueExtLink",
+      webcams: "webcamsExtLink"
     };
     const SAFETY_URL = "https://meteofrance.com/meteo-montagne/alpes-du-nord";
 

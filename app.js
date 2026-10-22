@@ -2034,6 +2034,7 @@
     updateYrnoHeaders(location);
     updateMeteofranceHeaders(location);
     updateMeteoblueHeaders(location);
+    updateWebcamsSection(location);
 
     // Résolution automatique immédiate de la commune la plus proche si le code postal n'est pas encore connu
     if (!location.postcode && typeof location.lat === "number" && typeof location.lon === "number") {
@@ -2052,6 +2053,7 @@
             updateMeteocielHeaders(location);
             updateMeteofranceHeaders(location);
             updateMeteoblueHeaders(location);
+            updateWebcamsSection(location);
           }
         }
       })
@@ -2691,6 +2693,7 @@
           rommaMapIframe.src = pending;
         }
       }
+      mountVisibleWebcamMedia();
     }
     window.refreshMeteoComponents = refreshAllComponents;
 
@@ -4587,6 +4590,476 @@
   }
 
   // ========================================================
+  // MODULE WEBCAMS RÉGIONALES (OPTION A : FILTRES + MOSAÏQUE + LIGHTBOX)
+  // Affichage strict : Isère (38) uniquement si ville en 38 • Clermont/PDD (63) uniquement si ville en 63
+  // ========================================================
+  const WEBCAMS_BY_REGION = {
+    "38": {
+      label: "🏔️ Isère (38)",
+      defaultUrl: "https://www.chamrousse.com/webcams.html",
+      filters: [
+        { key: "all", label: "Tout Isère", url: "https://www.chamrousse.com/webcams.html" },
+        { key: "chamrousse", label: "🏔️ Chamrousse", url: "https://www.chamrousse.com/webcams.html" },
+        { key: "bastille", label: "🚡 La Bastille", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
+        { key: "7laux", label: "🎿 Les 7 Laux", url: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/" }
+      ],
+      items: [
+        {
+          id: "cham-croix",
+          site: "chamrousse",
+          siteLabel: "Chamrousse",
+          title: "La Croix de Chamrousse",
+          alt: "2 250 m",
+          type: "iframe",
+          src: "https://www.skaping.com/chamrousse/la-croix",
+          officialUrl: "https://www.chamrousse.com/webcams.html"
+        },
+        {
+          id: "cham-cretes",
+          site: "chamrousse",
+          siteLabel: "Chamrousse",
+          title: "Les Crêtes",
+          alt: "1 960 m",
+          type: "iframe",
+          src: "https://www.skaping.com/chamrousse/les-cretes",
+          officialUrl: "https://www.chamrousse.com/webcams.html"
+        },
+        {
+          id: "cham-recoin",
+          site: "chamrousse",
+          siteLabel: "Chamrousse",
+          title: "Recoin • Place de Belledonne",
+          alt: "1 650 m",
+          type: "iframe",
+          src: "https://www.skaping.com/chamrousse/recoin/archives",
+          officialUrl: "https://www.chamrousse.com/webcams.html"
+        },
+        {
+          id: "cham-vercors",
+          site: "chamrousse",
+          siteLabel: "Chamrousse",
+          title: "Vue Grenoble & Vercors",
+          alt: "1 780 m",
+          type: "image",
+          src: "http://static.meteo-chamrousse.com/webcam/webcam-chamrousse.jpg",
+          officialUrl: "https://www.chamrousse.com/webcams.html"
+        },
+        {
+          id: "cham-casserousse",
+          site: "chamrousse",
+          siteLabel: "Chamrousse",
+          title: "Panorama Casserousse",
+          alt: "1 650 m",
+          type: "iframe",
+          src: "https://www.skaping.com/chamrousse/panorama-casserousse",
+          officialUrl: "https://www.chamrousse.com/webcams.html"
+        },
+        {
+          id: "bastille-sommet",
+          site: "bastille",
+          siteLabel: "La Bastille",
+          title: "Grenoble • Sommet de la Bastille",
+          alt: "476 m",
+          type: "iframe",
+          src: "https://www.skaping.com/grenoble/bastille",
+          officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
+        },
+        {
+          id: "bastille-hdv",
+          site: "bastille",
+          siteLabel: "La Bastille",
+          title: "Grenoble • Hôtel de Ville & Belledonne",
+          alt: "214 m",
+          type: "iframe",
+          src: "https://www.skaping.com/grenoble/hotel-de-ville",
+          officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
+        },
+        {
+          id: "7laux-bouquetins",
+          site: "7laux",
+          siteLabel: "Les 7 Laux",
+          title: "Prapoutel • Sommet des Bouquetins",
+          alt: "2 100 m",
+          type: "iframe",
+          src: "https://www.skaping.com/les7laux/prapoutel/sommetdesbouquetins",
+          officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
+        },
+        {
+          id: "7laux-oursiere",
+          site: "7laux",
+          siteLabel: "Les 7 Laux",
+          title: "Le Pleynet • L'Oursière",
+          alt: "1 950 m",
+          type: "iframe",
+          src: "https://www.skaping.com/les7laux/pleynet/oursiere",
+          officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
+        },
+        {
+          id: "7laux-pipay",
+          site: "7laux",
+          siteLabel: "Les 7 Laux",
+          title: "Pipay • Grand Cerf",
+          alt: "1 550 m",
+          type: "iframe",
+          src: "https://www.skaping.com/les7laux/pipay/grand-cerf",
+          officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
+        },
+        {
+          id: "7laux-loups",
+          site: "7laux",
+          siteLabel: "Les 7 Laux",
+          title: "Le Pleynet • Les Loups",
+          alt: "1 450 m",
+          type: "iframe",
+          src: "https://www.skaping.com/les7laux/pleynet/les-loups",
+          officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
+        }
+      ]
+    },
+    "63": {
+      label: "🌋 Clermont & Puy-de-Dôme (63)",
+      defaultUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php",
+      filters: [
+        { key: "all", label: "Tout 63", url: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php" },
+        { key: "pdd", label: "🌋 Puy de Dôme (OPGC & Sommet)", url: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php" },
+        { key: "routes63", label: "🛣️ Département Puy-de-Dôme (Routes)", url: "https://www.puy-de-dome.fr/routes-deplacements/webcam.html" }
+      ],
+      items: [
+        {
+          id: "pdd-opgc",
+          site: "pdd",
+          siteLabel: "OPGC Puy de Dôme",
+          title: "Observatoire OPGC • Vue Puy de Dôme (Cezeaux)",
+          alt: "1 465 m",
+          type: "image",
+          src: "https://wwwobs.univ-bpclermont.fr/opgc/webcampdd.jpg",
+          fallbackVideo: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_1/video_Webcam_1.mp4",
+          officialUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php"
+        },
+        {
+          id: "pdd-cam1",
+          site: "pdd",
+          siteLabel: "Sommet Puy de Dôme",
+          title: "Sommet Puy de Dôme • Vue Chaîne des Puys (Nord)",
+          alt: "1 465 m",
+          type: "video",
+          src: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_1/video_Webcam_1.mp4",
+          officialUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php"
+        },
+        {
+          id: "pdd-cam2",
+          site: "pdd",
+          siteLabel: "Sommet Puy de Dôme",
+          title: "Sommet Puy de Dôme • Gare & Clermont-Ferrand",
+          alt: "1 465 m",
+          type: "video",
+          src: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_2/video_Webcam_2.mp4",
+          officialUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php"
+        },
+        {
+          id: "pdd-cam3",
+          site: "pdd",
+          siteLabel: "Sommet Puy de Dôme",
+          title: "Sommet Puy de Dôme • Temple de Mercure (Sud)",
+          alt: "1 465 m",
+          type: "video",
+          src: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_3/video_Webcam_3.mp4",
+          officialUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php"
+        },
+        {
+          id: "pdd-cam4",
+          site: "pdd",
+          siteLabel: "Pied du Dôme",
+          title: "Pied du Dôme • Maison de Site (Départ Crémaillère)",
+          alt: "880 m",
+          type: "video",
+          src: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_4/video_Webcam_4.mp4",
+          officialUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php"
+        },
+        {
+          id: "routes-pdd63",
+          site: "routes63",
+          siteLabel: "Département 63",
+          title: "Routes & Cols du Puy-de-Dôme (Inforoute 63)",
+          alt: "Réseau 63",
+          type: "iframe",
+          src: "https://www.inforoute-massif-central.fr/",
+          officialUrl: "https://www.puy-de-dome.fr/routes-deplacements/webcam.html"
+        }
+      ]
+    }
+  };
+
+  let activeWebcamRegion = null;
+  let activeWebcamFilter = "all";
+
+  function getWebcamRegionForLocation(loc) {
+    if (!loc) return "38";
+    const pc = String(loc.postcode || "").trim();
+    const admin = String(loc.admin1 || "").toLowerCase();
+    const name = String(loc.name || "").toLowerCase();
+
+    if (pc.startsWith("38") || admin.includes("isère") || admin.includes("isere") || admin.includes("(38)")) {
+      return "38";
+    }
+    if (
+      pc.startsWith("63") ||
+      admin.includes("puy-de-dôme") ||
+      admin.includes("puy-de-dome") ||
+      admin.includes("(63)") ||
+      name.includes("clermont-ferrand") ||
+      name.includes("puy de dôme") ||
+      name.includes("puy-de-dôme")
+    ) {
+      return "63";
+    }
+    if (typeof loc.lat === "number" && typeof loc.lon === "number") {
+      if (loc.lat >= 45.28 && loc.lat <= 46.26 && loc.lon >= 2.38 && loc.lon <= 3.99) {
+        return "63";
+      }
+      if (loc.lat >= 44.68 && loc.lat <= 45.88 && loc.lon >= 4.74 && loc.lon <= 6.38) {
+        return "38";
+      }
+    }
+    return null;
+  }
+
+  function mountVisibleWebcamMedia(forceReload = false) {
+    const section = document.getElementById("webcamsSection");
+    if (!section || section.offsetParent === null) return;
+    const ts = Date.now();
+
+    section.querySelectorAll(".webcam-card").forEach(card => {
+      if (card.style.display === "none") return;
+      const box = card.querySelector(".webcam-media-box");
+      if (!box) return;
+      if (box.dataset.mounted === "1" && !forceReload) return;
+      box.dataset.mounted = "1";
+
+      const type = box.dataset.type;
+      const src = box.dataset.src;
+      const fallbackVideo = box.dataset.fallbackVideo || "";
+      const title = box.dataset.title || "Webcam";
+
+      box.innerHTML = "";
+      if (type === "iframe") {
+        const ifr = document.createElement("iframe");
+        ifr.className = "webcam-embed-iframe";
+        ifr.src = src;
+        ifr.allowFullscreen = true;
+        ifr.loading = "lazy";
+        ifr.title = title;
+        ifr.setAttribute("scrolling", "no");
+        box.appendChild(ifr);
+      } else if (type === "video") {
+        const vid = document.createElement("video");
+        vid.className = "webcam-embed-video";
+        vid.autoplay = true;
+        vid.muted = true;
+        vid.loop = true;
+        vid.playsInline = true;
+        vid.src = `${src}?t=${ts}`;
+        box.appendChild(vid);
+      } else if (type === "image") {
+        const img = document.createElement("img");
+        img.className = "webcam-embed-img";
+        img.alt = title;
+        img.src = `${src}?t=${ts}`;
+        img.onerror = () => {
+          if (fallbackVideo) {
+            box.innerHTML = "";
+            const vid = document.createElement("video");
+            vid.className = "webcam-embed-video";
+            vid.autoplay = true;
+            vid.muted = true;
+            vid.loop = true;
+            vid.playsInline = true;
+            vid.src = `${fallbackVideo}?t=${ts}`;
+            box.appendChild(vid);
+          }
+        };
+        box.appendChild(img);
+      }
+    });
+  }
+
+  function openWebcamLightbox(item) {
+    const existing = document.querySelector(".webcam-lightbox-overlay");
+    if (existing) existing.remove();
+
+    const ts = Date.now();
+    const overlay = document.createElement("div");
+    overlay.className = "webcam-lightbox-overlay";
+
+    let mediaHtml = "";
+    if (item.type === "iframe") {
+      mediaHtml = `<iframe class="webcam-lightbox-iframe" src="${item.src}" allowfullscreen scrolling="no" title="${item.title}"></iframe>`;
+    } else if (item.type === "video") {
+      mediaHtml = `<video class="webcam-lightbox-video" src="${item.src}?t=${ts}" autoplay muted loop playsinline controls></video>`;
+    } else {
+      mediaHtml = `<img class="webcam-lightbox-img" src="${item.src}?t=${ts}" alt="${item.title}">`;
+    }
+
+    overlay.innerHTML = `
+      <div class="webcam-lightbox-dialog" role="dialog" aria-modal="true">
+        <div class="webcam-lightbox-header">
+          <div class="webcam-lightbox-title-wrap">
+            <span class="webcam-site-tag">${item.siteLabel}</span>
+            <strong>${item.title}</strong>
+            <span class="altitude-badge">${item.alt}</span>
+          </div>
+          <div class="webcam-lightbox-actions">
+            <a href="${item.officialUrl}" target="_blank" rel="noopener noreferrer" class="ext-link-btn">Site officiel ↗</a>
+            <button type="button" class="tabs-reorder-close" aria-label="Fermer">✕</button>
+          </div>
+        </div>
+        <div class="webcam-lightbox-body">${mediaHtml}</div>
+      </div>
+    `;
+
+    const imgEl = overlay.querySelector(".webcam-lightbox-img");
+    if (imgEl && item.fallbackVideo) {
+      imgEl.onerror = () => {
+        const body = overlay.querySelector(".webcam-lightbox-body");
+        if (body) {
+          body.innerHTML = `<video class="webcam-lightbox-video" src="${item.fallbackVideo}?t=${ts}" autoplay muted loop playsinline controls></video>`;
+        }
+      };
+    }
+
+    function close() {
+      document.removeEventListener("keydown", onKey);
+      overlay.remove();
+    }
+    function onKey(e) {
+      if (e.key === "Escape") close();
+    }
+    overlay.addEventListener("click", (e) => {
+      if (e.target === overlay) close();
+    });
+    overlay.querySelector(".tabs-reorder-close").addEventListener("click", close);
+    document.addEventListener("keydown", onKey);
+    document.body.appendChild(overlay);
+  }
+
+  function applyWebcamFilter(filterKey) {
+    activeWebcamFilter = filterKey;
+    const cfg = WEBCAMS_BY_REGION[activeWebcamRegion];
+    if (!cfg) return;
+
+    const filtersBar = document.getElementById("webcamsFiltersBar");
+    if (filtersBar) {
+      filtersBar.querySelectorAll(".webcam-filter-pill").forEach(btn => {
+        const active = btn.dataset.filter === filterKey;
+        btn.classList.toggle("active", active);
+        btn.setAttribute("aria-selected", active ? "true" : "false");
+      });
+    }
+
+    const activeFilterObj = cfg.filters.find(f => f.key === filterKey) || cfg.filters[0];
+    const extLink = document.getElementById("webcamsExtLink");
+    if (extLink && activeFilterObj) {
+      extLink.href = activeFilterObj.url;
+    }
+
+    const grid = document.getElementById("webcamsGrid");
+    if (grid) {
+      grid.querySelectorAll(".webcam-card").forEach(card => {
+        const show = filterKey === "all" || card.dataset.site === filterKey;
+        card.style.display = show ? "" : "none";
+      });
+    }
+
+    mountVisibleWebcamMedia(false);
+  }
+
+  function updateWebcamsSection(loc) {
+    const region = getWebcamRegionForLocation(loc || currentLocation);
+    const badge = document.getElementById("webcamsRegionBadge");
+    const filtersBar = document.getElementById("webcamsFiltersBar");
+    const grid = document.getElementById("webcamsGrid");
+    const extLink = document.getElementById("webcamsExtLink");
+    if (!grid || !filtersBar) return;
+
+    if (!region || !WEBCAMS_BY_REGION[region]) {
+      activeWebcamRegion = null;
+      if (badge) badge.textContent = "📷 Hors secteur 38 / 63";
+      filtersBar.innerHTML = "";
+      grid.innerHTML = `
+        <div class="webcams-empty-state">
+          Aucune webcam configurée pour cette commune.<br>
+          <span>Les webcams d'Isère (Chamrousse, La Bastille, Les 7 Laux) s'affichent automatiquement pour les villes du <strong>38</strong>, et celles de Clermont / Puy-de-Dôme pour les villes du <strong>63</strong>.</span>
+        </div>
+      `;
+      return;
+    }
+
+    if (activeWebcamRegion === region && grid.children.length > 0 && !grid.querySelector(".webcams-empty-state")) {
+      mountVisibleWebcamMedia(false);
+      return;
+    }
+
+    activeWebcamRegion = region;
+    activeWebcamFilter = "all";
+    const cfg = WEBCAMS_BY_REGION[region];
+
+    if (badge) badge.textContent = cfg.label;
+    if (extLink) extLink.href = cfg.defaultUrl;
+
+    filtersBar.innerHTML = "";
+    cfg.filters.forEach(f => {
+      const count = f.key === "all" ? cfg.items.length : cfg.items.filter(it => it.site === f.key).length;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "webcam-filter-pill" + (f.key === "all" ? " active" : "");
+      btn.dataset.filter = f.key;
+      btn.innerHTML = `<span>${f.label}</span><span class="webcam-filter-count">${count}</span>`;
+      btn.addEventListener("click", () => applyWebcamFilter(f.key));
+      btn.addEventListener("dblclick", () => {
+        window.open(f.url, "_blank", "noopener,noreferrer");
+      });
+      filtersBar.appendChild(btn);
+    });
+
+    grid.innerHTML = "";
+    cfg.items.forEach(item => {
+      const card = document.createElement("article");
+      card.className = "webcam-card";
+      card.dataset.site = item.site;
+      card.innerHTML = `
+        <div class="webcam-card-header">
+          <div class="webcam-card-title-group">
+            <span class="webcam-site-tag">${item.siteLabel}</span>
+            <h4 class="webcam-card-title">${item.title}</h4>
+          </div>
+          <div class="webcam-card-actions">
+            <span class="altitude-badge">${item.alt}</span>
+            <button type="button" class="webcam-Action-btn webcam-expand-btn" title="Agrandir en plein écran" aria-label="Plein écran">⛶</button>
+            <a href="${item.officialUrl}" target="_blank" rel="noopener noreferrer" class="webcam-Action-btn" title="Ouvrir la page officielle">↗</a>
+          </div>
+        </div>
+        <div class="webcam-media-box" data-type="${item.type}" data-src="${item.src}" data-fallback-video="${item.fallbackVideo || ""}" data-title="${item.title}">
+          <div class="webcam-media-placeholder">📷 Chargement du direct...</div>
+        </div>
+      `;
+      card.querySelector(".webcam-expand-btn").addEventListener("click", () => openWebcamLightbox(item));
+      card.querySelector(".webcam-card-header").addEventListener("dblclick", () => {
+        window.open(item.officialUrl, "_blank", "noopener,noreferrer");
+      });
+      grid.appendChild(card);
+    });
+
+    mountVisibleWebcamMedia(false);
+  }
+
+  const webcamsRefreshBtn = document.getElementById("webcamsRefreshBtn");
+  if (webcamsRefreshBtn) {
+    webcamsRefreshBtn.addEventListener("click", () => {
+      mountVisibleWebcamMedia(true);
+    });
+  }
+
+  // ========================================================
   // MODULE MÉTÉOCIEL GRENOBLE (VILLE)
   // Reproduction fidèle des 3 visuels plébiscités :
   // 1. Éphéméride & Lune (Image 3)
@@ -5214,7 +5687,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.75").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.76").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

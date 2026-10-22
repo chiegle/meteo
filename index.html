@@ -6,17 +6,17 @@
   <title>Ma météo</title>
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
-  <link rel="manifest" href="manifest.json?v=8.75">
-  <link rel="stylesheet" href="style.css?v=8.75">
-  <link rel="stylesheet" href="tabs.css?v=8.75">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.75">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.75">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.75">
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.75">
-  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.75">
-  <link rel="shortcut icon" href="favicon.ico?v=8.75">
-  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.75">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.75">
+  <link rel="manifest" href="manifest.json?v=8.76">
+  <link rel="stylesheet" href="style.css?v=8.76">
+  <link rel="stylesheet" href="tabs.css?v=8.76">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.76">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.76">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.76">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.76">
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.76">
+  <link rel="shortcut icon" href="favicon.ico?v=8.76">
+  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.76">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.76">
   <script>
     // Fail-safe global error watchdog
     window.addEventListener('error', function(e) {
@@ -59,6 +59,10 @@
         <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
           <img src="icon-bera.png" class="tab-icon-img" alt="Sécurité & BERA" draggable="false">
           <span>Sécurité & BERA</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="webcams" id="webcamsTabBtn" aria-selected="false" title="Double-clic : ouvrir le site officiel • Appui long : réorganiser les onglets">
+          <img src="icon-webcam.png" class="tab-icon-img" alt="Webcams" draggable="false">
+          <span>Webcams</span>
         </button>
       </nav>
 
@@ -564,10 +568,34 @@
         </div>
       </section>
 
+      <!-- ONGLET 7 : WEBCAMS (ISÈRE 38 / PUY-DE-DÔME 63 SELON LA VILLE ACTIVE) -->
+      <section class="module-section card" id="webcamsSection">
+        <div class="section-header accordion-header" id="webcamsAccordionHeader" role="button" tabindex="0" aria-label="Webcams" aria-expanded="true">
+          <div class="section-title-wrap">
+            <h3 class="section-title" style="margin: 0;">📷 Webcams en Direct</h3>
+          </div>
+          <div class="section-actions">
+            <a id="webcamsExtLink" href="https://www.chamrousse.com/webcams.html" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la page officielle des webcams">
+              <span>📷 Site officiel</span> ↗
+            </a>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="webcams-toolbar" id="webcamsToolbar">
+            <div class="webcams-region-badge" id="webcamsRegionBadge">🏔️ Isère (38)</div>
+            <div class="webcams-filters-bar" id="webcamsFiltersBar" role="tablist" aria-label="Filtrer par site"></div>
+            <button type="button" class="webcams-refresh-btn" id="webcamsRefreshBtn" title="Actualiser les flux webcams">
+              <span>🔄 Actualiser</span>
+            </button>
+          </div>
+          <div class="webcams-grid" id="webcamsGrid"></div>
+        </div>
+      </section>
+
     </div>
   </main>
 
-  <script src="app.js?v=8.75"></script>
-  <script src="tabs.js?v=8.75"></script>
+  <script src="app.js?v=8.76"></script>
+  <script src="tabs.js?v=8.76"></script>
 </body>
 </html>
