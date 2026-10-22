@@ -238,6 +238,7 @@
                       <th colspan="3" class="th-col th-vent">Vent km/h</th>
                       <th rowspan="2" class="th-col th-pluie">Pluie<br><span class="th-sub">sur 3h</span></th>
                       <th rowspan="2" class="th-col th-humi">Humidité</th>
+                      <th rowspan="2" class="th-col th-pression">Pression</th>
                       <th rowspan="2" class="th-col th-temps">Temps</th>
                     </tr>
                     <tr class="tr-head-sub">
@@ -248,7 +249,7 @@
                   </thead>
                   <tbody id="meteocielTableBody">
                     <tr>
-                      <td colspan="9" class="meteociel-loading-row">Chargement des prévisions Météociel...</td>
+                      <td colspan="10" class="meteociel-loading-row">Chargement des prévisions Météociel...</td>
                     </tr>
                   </tbody>
                 </table>
@@ -367,9 +368,72 @@
         </div>
         <div class="accordion-body">
           <div id="aromeTimelineView" class="arome-timeline-container">
-            <div class="hourly-scroll" id="aromeHourlyScroll">
-              <div class="loading-state">Chargement des données Météo-France (AROME 1.3km)...</div>
+            <!-- DESIGN OFFICIEL MÉTÉO FRANCE (Screen 3) -->
+            <div class="mf-official-container" id="mfOfficialContainer">
+              <!-- 1. Carte Détail du Jour Sélectionné (4 périodes : Matin, Après-midi, Soirée, Nuit) -->
+              <div class="mf-day-detail-card" id="mfDayDetailCard">
+                <div class="mf-day-detail-header" id="mfDayDetailTitle">Chargement...</div>
+                <div class="mf-periods-grid">
+                  <!-- MATIN -->
+                  <div class="mf-period-col" id="mfPeriodMatin">
+                    <span class="mf-period-name">MATIN</span>
+                    <span class="mf-period-desc" id="mfDescMatin">--</span>
+                    <div class="mf-period-icon" id="mfIconMatin">☀️</div>
+                    <div class="mf-period-temp" id="mfTempMatin">--°</div>
+                    <div class="mf-period-wind" id="mfWindMatin">
+                      <span class="mf-wind-arrow" id="mfWindArrowMatin">▲</span>
+                      <span id="mfWindSpeedMatin">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfMatin">Indice de confiance: 4/5</div>
+                  </div>
+                  <!-- APRÈS-MIDI -->
+                  <div class="mf-period-col" id="mfPeriodApresMidi">
+                    <span class="mf-period-name">APRÈS-MIDI</span>
+                    <span class="mf-period-desc" id="mfDescApresMidi">--</span>
+                    <div class="mf-period-icon" id="mfIconApresMidi">☀️</div>
+                    <div class="mf-period-temp" id="mfTempApresMidi">--°</div>
+                    <div class="mf-period-wind" id="mfWindApresMidi">
+                      <span class="mf-wind-arrow" id="mfWindArrowApresMidi">▲</span>
+                      <span id="mfWindSpeedApresMidi">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfApresMidi">Indice de confiance: 4/5</div>
+                  </div>
+                  <!-- SOIRÉE -->
+                  <div class="mf-period-col" id="mfPeriodSoiree">
+                    <span class="mf-period-name">SOIRÉE</span>
+                    <span class="mf-period-desc" id="mfDescSoiree">--</span>
+                    <div class="mf-period-icon" id="mfIconSoiree">🌙</div>
+                    <div class="mf-period-temp" id="mfTempSoiree">--°</div>
+                    <div class="mf-period-wind" id="mfWindSoiree">
+                      <span class="mf-wind-arrow" id="mfWindArrowSoiree">▲</span>
+                      <span id="mfWindSpeedSoiree">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfSoiree">Indice de confiance: 4/5</div>
+                  </div>
+                  <!-- NUIT -->
+                  <div class="mf-period-col" id="mfPeriodNuit">
+                    <span class="mf-period-name">NUIT</span>
+                    <span class="mf-period-desc" id="mfDescNuit">--</span>
+                    <div class="mf-period-icon" id="mfIconNuit">🌙</div>
+                    <div class="mf-period-temp" id="mfTempNuit">--°</div>
+                    <div class="mf-period-wind" id="mfWindNuit">
+                      <span class="mf-wind-arrow" id="mfWindArrowNuit">▲</span>
+                      <span id="mfWindSpeedNuit">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfNuit">Indice de confiance: 4/5</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Barre de Sélection des Jours (Style officiel Météo France - 15 jours) -->
+              <div class="mf-days-scroll-wrapper">
+                <div class="mf-days-selector-bar" id="mfDaysSelectorBar">
+                  <div class="loading-state">Calcul des tendances Météo France sur 15 jours...</div>
+                </div>
+              </div>
             </div>
+            <!-- Conteneur alternatif conservé pour compatibilité interne -->
+            <div class="hourly-scroll" id="aromeHourlyScroll" style="display:none;"></div>
           </div>
         </div>
       </section>

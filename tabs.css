@@ -351,9 +351,13 @@ body.tabs-view {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.95);
   z-index: 99999 !important;
 }
-  width: 320px;
-  max-width: 92vw;
-  z-index: 1000;
+
+/* Suppression absolue de tout scroll interne au bloc Météociel */
+.meteociel-table-card,
+.meteociel-table-responsive {
+  overflow-y: visible !important;
+  height: auto !important;
+  max-height: none !important;
 }
 
 /* Bouton de bascule de vue (Liste / Onglets) dans la barre de recherche */

@@ -1093,10 +1093,11 @@ body.is-reordering-blocks .radar-map-view {
   }
 }
 
-.metric-card-uv:active .uv-tooltip-popover {
-  opacity: 0 !important;
-  visibility: hidden !important;
-  pointer-events: none !important;
+.uv-tooltip-popover.open {
+  opacity: 1 !important;
+  visibility: visible !important;
+  transform: translateY(0) !important;
+  pointer-events: auto !important;
 }
 
 .uv-tooltip-header {
@@ -1392,8 +1393,246 @@ body.is-reordering-blocks .radar-map-view {
 }
 
 .arome-timeline-container {
+  width: 100%;
+  overflow: visible;
+}
+
+/* ========================================================
+   MÉTÉO FRANCE - DESIGN OFFICIEL (Screen 3)
+   ======================================================== */
+.mf-official-container {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+}
+
+/* 1. Carte Détail du Jour Sélectionné (Fond bleu Météo-France officiel ou OLED sombre) */
+.mf-day-detail-card {
+  background: linear-gradient(135deg, #0076c9 0%, #008ee0 50%, #1c9bd4 100%);
+  color: #ffffff;
+  border-radius: var(--radius-md, 12px);
+  padding: 18px 20px 20px 20px;
+  box-shadow: 0 10px 28px rgba(0, 118, 201, 0.25), 0 2px 6px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  position: relative;
+  overflow: hidden;
+}
+
+[data-theme="dark"] .mf-day-detail-card,
+body.oled-theme .mf-day-detail-card {
+  background: linear-gradient(135deg, #05162a 0%, #092442 50%, #0d325a 100%);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.15);
+}
+
+.mf-day-detail-header {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #ffffff;
+  margin-bottom: 16px;
+  letter-spacing: 0.3px;
+  text-transform: capitalize;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.mf-periods-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0;
+  align-items: stretch;
+}
+
+.mf-period-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 8px 12px;
+  position: relative;
+}
+
+.mf-period-col:not(:last-child) {
+  border-right: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+[data-theme="dark"] .mf-period-col:not(:last-child),
+body.oled-theme .mf-period-col:not(:last-child) {
+  border-right-color: rgba(56, 189, 248, 0.2);
+}
+
+.mf-period-name {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #ffffff;
+  opacity: 0.95;
+  margin-bottom: 4px;
+}
+
+.mf-period-desc {
+  font-size: 0.82rem;
+  color: #e0f2fe;
+  min-height: 2.2em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+}
+
+.mf-period-icon {
+  font-size: 2.6rem;
+  line-height: 1;
+  margin: 10px 0 8px 0;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.25));
+}
+
+.mf-period-temp {
+  font-size: 1.95rem;
+  font-weight: 900;
+  color: #ffffff;
+  line-height: 1.1;
+  margin-bottom: 8px;
+}
+
+.mf-period-wind {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  font-size: 0.8rem;
+  color: #ffffff;
+  opacity: 0.95;
+  font-weight: 600;
+}
+
+.mf-wind-arrow {
+  display: inline-block;
+  font-size: 0.95rem;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.mf-confidence-badge {
+  margin-top: 10px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: var(--radius-pill, 9999px);
+  padding: 3px 8px;
+  color: #ffffff;
+}
+
+/* 2. Barre de Sélection des 15 Jours (Météo France officiel) */
+.mf-days-scroll-wrapper {
+  width: 100%;
   overflow-x: auto;
-  padding-bottom: 8px;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 6px;
+}
+
+.mf-days-selector-bar {
+  display: flex;
+  gap: 8px;
+  min-width: min-content;
+}
+
+.mf-day-pill {
+  flex: 0 0 92px;
+  background: var(--bg-card, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: var(--radius-sm, 8px);
+  padding: 10px 6px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  user-select: none;
+  position: relative;
+}
+
+[data-theme="dark"] .mf-day-pill,
+body.oled-theme .mf-day-pill {
+  background: #0d0d0d;
+  border-color: #222222;
+}
+
+.mf-day-pill:hover {
+  border-color: var(--accent-cyan);
+  transform: translateY(-2px);
+}
+
+.mf-day-pill.active {
+  border-color: var(--accent-cyan) !important;
+  background: rgba(56, 189, 248, 0.12) !important;
+  box-shadow: 0 0 12px rgba(56, 189, 248, 0.3);
+}
+
+.mf-day-pill.active::after {
+  content: "";
+  position: absolute;
+  top: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 0 7px 7px 7px;
+  border-style: solid;
+  border-color: transparent transparent var(--accent-cyan) transparent;
+}
+
+.mf-day-pill-name {
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.mf-day-pill-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+  margin: 2px 0;
+}
+
+.mf-day-pill-temps {
+  display: flex;
+  gap: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.mf-day-tmin {
+  color: #38bdf8;
+}
+
+.mf-day-tmax {
+  color: #f87171;
+}
+
+.mf-day-pill-wind {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+}
+
+@media (max-width: 600px) {
+  .mf-periods-grid {
+    grid-template-columns: repeat(2, 1fr);
+    row-gap: 12px;
+  }
+  .mf-period-col:nth-child(2) {
+    border-right: none;
+  }
+  .mf-period-col:nth-child(1),
+  .mf-period-col:nth-child(2) {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 12px;
+  }
 }
 
 .hourly-scroll {
@@ -2169,22 +2408,24 @@ body.is-reordering-blocks .radar-map-view {
   display: block;
 }
 
-/* 3. Grand Tableau Horaire Météociel (Conforme Image 1) */
+/* 3. Grand Tableau Horaire Météociel (Conforme Screen 1 - Zéro scroll interne) */
 .meteociel-table-card {
   margin-top: 0;
   background: #ffffff;
-  border: 1px solid #9fc3c8;
+  border: 1px solid #7799cc;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: visible !important;
   width: 100%;
   max-width: 100%;
   min-width: 0;
+  height: auto !important;
+  max-height: none !important;
 }
 
 .meteociel-table-header-bar {
-  background: #e1f1fa;
-  padding: 10px 14px;
-  border-bottom: 1px solid #9fc3c8;
+  background: #aaaaff;
+  padding: 8px 12px;
+  border-bottom: 1.5px solid #7799cc;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -2194,13 +2435,14 @@ body.is-reordering-blocks .radar-map-view {
 
 .meteociel-table-title {
   font-size: 0.95rem;
-  font-weight: 700;
-  color: #001b5e;
+  font-weight: 800;
+  color: #000066;
 }
 
 .meteociel-table-hint {
   font-size: 0.75rem;
-  color: #475569;
+  color: #000066;
+  opacity: 0.85;
 }
 
 .meteociel-table-responsive {
@@ -2208,123 +2450,97 @@ body.is-reordering-blocks .radar-map-view {
   max-width: 100%;
   min-width: 0;
   overflow-x: auto;
+  overflow-y: visible !important;
+  height: auto !important;
+  max-height: none !important;
   -webkit-overflow-scrolling: touch;
-  zoom: 0.9; /* Effet de réduction à 90% */
+  zoom: 0.9; /* Réduction proportionnelle à 90% */
 }
 
 .meteociel-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.78rem;
+  font-size: 0.75rem;
   text-align: center;
   font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
-  color: #000000;
+  color: #000066;
 }
 
 .meteociel-table th,
 .meteociel-table td {
-  border: 1px solid #b1cbe3;
-  padding: 4px 3px;
+  border: 1px solid #7799cc !important;
+  padding: 3px 2px;
   vertical-align: middle;
 }
 
-/* En-têtes du tableau Météociel différenciés par colonne */
+/* En-têtes du tableau Météociel Screen 1 : Uniforme lavande #aaaaff */
 .meteociel-table thead th {
-  background-color: #a9c0fe;
-  color: #001b5e;
+  background-color: #aaaaff !important;
+  color: #000066 !important;
   font-weight: 800 !important;
-  padding: 6px 4px;
+  padding: 5px 2px;
   vertical-align: middle;
+  border: 1px solid #7799cc !important;
 }
 
 .th-jour {
-  width: 44px;
-  max-width: 48px;
-  padding: 4px 2px !important;
-  background-color: #b5c7f8 !important;
-  color: #0d235c !important;
-  font-weight: 800 !important;
-  border-right: 1.5px solid #8ca6db !important;
+  width: 38px;
+  max-width: 42px;
+  padding: 3px 1px !important;
 }
 
 .th-heure {
-  width: 48px;
-  max-width: 52px;
-  padding: 4px 2px !important;
-  background-color: #c4d5fc !important;
-  color: #0d235c !important;
-  font-weight: 800 !important;
-  border-right: 1.5px solid #8ca6db !important;
+  width: 40px;
+  max-width: 44px;
+  padding: 3px 1px !important;
 }
 
 .th-temp {
-  width: 46px;
-  max-width: 50px;
-  padding: 4px 2px !important;
-  background-color: #fce1c6 !important; /* Teinte thermique pastel douce */
-  color: #592800 !important;
-  font-weight: 800 !important;
-  border-right: 2px solid #d99f6b !important;
+  width: 42px;
+  max-width: 46px;
+  padding: 3px 1px !important;
 }
 
 .th-vent {
-  background-color: #9ee5f0 !important; /* Teinte éolienne / cyan frais */
-  color: #003644 !important;
-  font-weight: 800 !important;
-  border-right: 2px solid #5fa6b8 !important; /* Séparation nette Vent / Pluie */
-  border-bottom: 1.5px solid #6ebbc9 !important;
-  padding: 4px 2px !important;
-  text-align: center;
+  padding: 3px 1px !important;
 }
 
 .th-sub-col {
-  background-color: #b2edf5 !important;
-  color: #004354 !important;
-  font-weight: 500 !important;
-  font-size: 0.78rem;
-  padding: 4px 2px !important;
-  text-align: center;
+  background-color: #aaaaff !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
+  font-size: 0.74rem;
+  padding: 3px 1px !important;
 }
 
-.th-vent-dir {
-  width: 28px;
-}
-
-.th-vent-moy {
-  width: 32px;
-}
-
-.th-vent-raf {
-  width: 32px;
-  border-right: 2px solid #5fa6b8 !important;
-}
+.th-vent-dir { width: 22px; }
+.th-vent-moy { width: 26px; }
+.th-vent-raf { width: 26px; }
 
 .th-pluie {
-  background-color: #96beff !important; /* Teinte hydrologique / bleu pluie */
-  color: #002661 !important;
-  font-weight: 800 !important;
-  border-right: 2px solid #6b9be0 !important;
-  width: 58px;
-  padding: 4px 2px !important;
+  width: 46px;
+  max-width: 50px;
+  padding: 3px 1px !important;
 }
 
 .th-humi {
-  background-color: #cfc2f7 !important; /* Teinte hygrométrie / lilas */
-  color: #27125e !important;
-  font-weight: 800 !important;
-  border-right: 1.5px solid #a394d6 !important;
-  width: 48px;
-  max-width: 52px;
-  padding: 4px 2px !important;
-  font-size: 0.78rem;
+  width: 42px;
+  max-width: 46px;
+  padding: 3px 1px !important;
+  white-space: nowrap;
+}
+
+.th-pression {
+  width: 50px;
+  max-width: 54px;
+  padding: 3px 1px !important;
   white-space: nowrap;
 }
 
 .th-temps {
-  background-color: #e2f0fb !important; /* Teinte ciel / icônes */
-  color: #123456 !important;
-  font-weight: 800 !important;
-  width: 44px;
+  width: 34px;
+  max-width: 38px;
+  padding: 3px 1px !important;
 }
 
 /* Texte "sur 3h" en italique et non en gras */
@@ -2332,25 +2548,26 @@ body.is-reordering-blocks .radar-map-view {
   display: inline-block;
   font-weight: 400 !important;
   font-style: italic !important;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   opacity: 0.9;
   margin-top: 1px;
 }
 
-/* Démarcation sous les titres des colonnes (séparation en-tête / données) */
-.meteociel-table thead th[rowspan="2"],
-.meteociel-table thead .tr-head-sub th {
-  border-bottom: 1.5px solid #4a77a6 !important;
+/* Alternance jour pair (#ccffff) / jour impair (#ddeeff) Screen 1 */
+.td-day-even {
+  background-color: #ccffff !important;
+  color: #000066 !important;
+}
+
+.td-day-odd {
+  background-color: #ddeeff !important;
+  color: #000066 !important;
 }
 
 /* Cellules du tableau */
 .td-jour-group {
-  background-color: #cbf5f7 !important;
-  color: #001b5e;
   font-weight: bold;
-  padding: 6px 2px !important;
-  width: 44px;
-  max-width: 48px;
+  padding: 4px 2px !important;
   vertical-align: middle;
   text-align: center;
 }
@@ -2360,99 +2577,71 @@ body.is-reordering-blocks .radar-map-view {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 1px;
   line-height: 1.15;
 }
 
 .td-jour-name {
-  font-size: 0.82rem;
-  font-weight: 700;
+  font-size: 0.8rem;
+  font-weight: 800;
   text-transform: capitalize;
 }
 
 .td-jour-num {
-  font-size: 0.96rem;
-  font-weight: 800;
+  font-size: 0.94rem;
+  font-weight: 900;
 }
 
-/* Colonnes Heure et Température élargies */
+/* Colonnes Heure */
 .td-heure {
-  width: 48px;
-  max-width: 52px;
-  padding: 4px 2px !important;
-  background-color: #e4f8fb;
   font-weight: bold;
-  font-size: 0.82rem;
-  color: #001b5e;
+  font-size: 0.78rem;
   white-space: nowrap;
 }
 
-/* Ligne actuelle du créneau en cours (repère visuel immédiat Météociel) */
+/* Ligne actuelle du créneau en cours (repère visuel immédiat) */
 .meteociel-table tr.tr-current-slot td {
-  border-top: 2px solid #0284c7 !important;
-  border-bottom: 2px solid #0284c7 !important;
+  border-top: 2px solid #000066 !important;
+  border-bottom: 2px solid #000066 !important;
   position: relative;
 }
 
 .meteociel-table tr.tr-current-slot td.td-heure {
-  background-color: #dbeafe !important;
-  border-left: 3px solid #0284c7 !important;
-  color: #0369a1 !important;
-  font-weight: 800 !important;
+  border-left: 3px solid #000066 !important;
+  font-weight: 900 !important;
 }
 
 .meteociel-table tr.tr-current-slot td:last-child {
-  border-right: 3px solid #0284c7 !important;
+  border-right: 3px solid #000066 !important;
 }
 
 .td-temp {
-  width: 46px;
-  max-width: 50px;
-  padding: 4px 2px !important;
-  font-size: 0.84rem;
+  font-size: 0.8rem;
   white-space: nowrap;
-  border-right: 2px solid #d99f6b !important;
 }
 
-/* Températures */
-.t-cold-blue { background-color: #88aaff; font-weight: bold; }
-.t-cyan { background-color: #70e0ff; font-weight: bold; }
-.t-lime-green { background-color: #44ff44; font-weight: bold; }
-.t-green-bright { background-color: #76ff03; font-weight: bold; }
-.t-green-yellow { background-color: #a6ff00; font-weight: bold; }
-.t-yellow { background-color: #ffff00; font-weight: bold; }
-.t-yellow-orange { background-color: #ffcc00; font-weight: bold; }
-.t-orange { background-color: #ff9900; font-weight: bold; }
-.t-hot-red { background-color: #ff4444; color: #fff; font-weight: bold; }
+/* Températures Screen 1 */
+.t-subzero { background-color: #33ccff !important; color: #000066 !important; font-weight: 800 !important; }
+.t-cyan { background-color: #66ffff !important; color: #000066 !important; font-weight: 800 !important; }
+.t-spring-green { background-color: #66ff99 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-bright-green { background-color: #66ff66 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-lime { background-color: #66ff00 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-yellow-lime { background-color: #ccff00 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-yellow { background-color: #ffff00 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-yellow-orange { background-color: #ffcc00 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-orange { background-color: #ff9900 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-hot-orange { background-color: #ff6600 !important; color: #000066 !important; font-weight: 800 !important; }
+.t-hot-red { background-color: #ff3300 !important; color: #ffffff !important; font-weight: 800 !important; }
 
-/* Vent (La flèche partage la même charte couleur que la vitesse) */
+/* Vent Screen 1 (Flèche noire #000000, chiffres #000066, même couleur de fond pour dir et moy) */
 .td-vent-dir {
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   line-height: 1;
-  padding: 2px !important;
-  width: 28px;
-  vertical-align: middle;
-  text-align: center;
-}
-
-.td-vent-moy {
-  width: 32px;
-}
-
-.td-vent-val {
-  font-weight: bold;
-  text-align: center;
-}
-
-.td-vent-dir {
-  font-size: 1.15rem;
-  line-height: 1;
-  padding: 2px !important;
-  width: 28px;
+  padding: 2px 1px !important;
   vertical-align: middle;
   text-align: center;
   color: #000000 !important;
-  font-weight: 800 !important;
+  font-weight: 900 !important;
 }
 
 .td-vent-moy,
@@ -2460,142 +2649,78 @@ body.is-reordering-blocks .radar-map-view {
   color: #000066 !important;
   font-weight: 800 !important;
   text-align: center;
+  font-size: 0.76rem;
+  padding: 2px 1px !important;
 }
 
-.td-vent-raf {
-  width: 32px;
-  border-right: 2px solid #5fa6b8 !important; /* Ligne de séparation nette Vent / Pluie */
-}
+.w-5  { background-color: #97e6ff !important; }
+.w-10 { background-color: #33ccff !important; }
+.w-15 { background-color: #0099ff !important; }
+.w-20 { background-color: #00ff99 !important; }
+.w-25 { background-color: #33cc66 !important; }
+.w-35 { background-color: #66cc33 !important; }
+.w-50 { background-color: #99cc00 !important; }
+.w-65 { background-color: #66ff00 !important; }
+.w-80 { background-color: #ffcc00 !important; }
+.w-95 { background-color: #ff6600 !important; }
+.w-100 { background-color: #ff3300 !important; color: #ffffff !important; }
 
-/* Classes de vent évolutives Météociel rigoureusement identiques au site officiel (Screen 4) :
-   0-10 (#66ccff), 10-20 (#0099ff), 20-35 (#00ff99), 35-50 (#33cc66), 50-70 (#66ff00), 70-90 (#ffcc00), +90 (#ff3300) */
-.td-vent-0-10,
-.td-vent-calm {
-  background-color: #66ccff !important;
-  color: #000066 !important;
-  font-weight: 800 !important;
-}
-
-.td-vent-10-20,
-.td-vent-light {
-  background-color: #0099ff !important;
-  color: #000066 !important;
-  font-weight: 800 !important;
-}
-
-.td-vent-20-35,
-.td-vent-mod,
-.td-vent-breeze {
-  background-color: #00ff99 !important;
-  color: #000066 !important;
-  font-weight: 800 !important;
-}
-
-.td-vent-35-50,
-.td-vent-strong {
-  background-color: #33cc66 !important;
-  color: #000066 !important;
-  font-weight: 800 !important;
-}
-
-.td-vent-50-70,
-.td-vent-neargale {
-  background-color: #66ff00 !important;
-  color: #000066 !important;
-  font-weight: 800 !important;
-}
-
-.td-vent-70-90,
-.td-vent-gale {
-  background-color: #ffcc00 !important;
-  color: #000066 !important;
-  font-weight: 800 !important;
-}
-
-.td-vent-90-plus,
-.td-vent-storm,
-.td-vent-violent {
-  background-color: #ff3300 !important;
-  color: #ffffff !important;
-  font-weight: 800 !important;
-}
-
-/* Distinction visuelle des jours dans la timeline Météo France */
-.hourly-card.day-separator {
-  border-left: 2.5px solid var(--accent-cyan) !important;
-  margin-left: 8px !important;
-}
-
-.hourly-card.day-alt {
-  background: #080808 !important;
-}
-
-/* Surbrillance lors de la navigation clavier dans les résultats de recherche */
-.search-dropdown-item.selected,
-.search-dropdown-item.keyboard-active {
-  background-color: rgba(56, 189, 248, 0.18) !important;
-  border-left: 3px solid var(--accent-cyan) !important;
-}
-
-/* Pluie sur 3h (Vrai bleu eau/pluie, bien distinct du cyan vent) */
+/* Pluie sur 3h Screen 1 */
 .td-pluie-none {
-  background-color: #f1f8fc !important;
-  color: #728a9c !important;
-  border-right: 2px solid #6b9be0 !important;
+  font-weight: normal;
 }
 
 .td-pluie-light {
-  background-color: #a3cfff !important; /* Vrai bleu eau / pluie distinct du cyan vent #bbf0f7 */
-  color: #002759 !important;
-  font-weight: bold;
-  border-right: 2px solid #6b9be0 !important;
+  background-color: #aaffff !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-pluie-medium {
-  background-color: #246d8c !important;
-  color: #ffffff !important;
-  font-weight: bold;
-  border-right: 2px solid #6b9be0 !important;
+  background-color: #88d8d8 !important;
+  color: #000066 !important;
+  font-weight: 800 !important;
 }
 
 .td-pluie-heavy {
-  background-color: #0044aa !important;
+  background-color: #338080 !important;
   color: #ffffff !important;
-  font-weight: 800;
-  border-right: 2px solid #6b9be0 !important;
+  font-weight: 800 !important;
 }
 
-/* Humidité réduite */
+/* Humidité Screen 1 */
 .td-humi {
-  width: 48px;
-  max-width: 52px;
-  padding: 4px 2px !important;
-  font-size: 0.82rem;
-  font-weight: bold;
+  font-size: 0.76rem;
+  font-weight: 800 !important;
   white-space: nowrap;
   text-align: center;
 }
 
-/* Pression */
-.td-pres {
-  background-color: #d8f5f7;
-  font-size: 0.8rem;
+.h-low      { background-color: #a5a5a5 !important; color: #000066 !important; }
+.h-mid      { background-color: #909090 !important; color: #000066 !important; }
+.h-high     { background-color: #858585 !important; color: #000066 !important; }
+.h-veryhigh { background-color: #777777 !important; color: #ffffff !important; }
+
+/* Pression Screen 1 */
+.td-pression {
+  font-size: 0.74rem;
+  font-weight: 700;
   white-space: nowrap;
 }
 
 /* Icônes Météo */
 .td-temps {
-  background-color: #f0faff;
-  font-size: 1.3rem;
-  padding: 2px !important;
+  font-size: 1.15rem;
+  padding: 2px 1px !important;
   line-height: 1;
 }
 
 .meteociel-loading-row {
   text-align: center;
   padding: 24px !important;
-  color: #475569;
-  background-color: #f8fafc;
+  color: #000066;
+  background-color: #ccffff;
+  font-weight: bold;
 }
 
 /* Séparateur Montagne */

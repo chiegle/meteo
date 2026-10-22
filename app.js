@@ -2497,12 +2497,56 @@
     setupBlockReordering();
     setTimeout(initRadarMap, 100);
 
-    // Tuile Indice UV : aucune action au clic
-    if (metricCardUv) {
-      metricCardUv.addEventListener("click", (e) => {
+    // Gestion interactive de l'info-bulle Indice UV
+    const uvTooltipPopover = document.getElementById("uvTooltipPopover");
+    if (uvInfoBtn && uvTooltipPopover) {
+      uvInfoBtn.addEventListener("click", (e) => {
         e.preventDefault();
+        e.stopPropagation();
+        uvTooltipPopover.classList.toggle("open");
       });
     }
+
+    if (uvTooltipClose && uvTooltipPopover) {
+      uvTooltipClose.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        uvTooltipPopover.classList.remove("open");
+      });
+    }
+
+    // Fermeture automatique au clic n'importe où ailleurs (Recherche, Info-bulle UV, Favoris)
+    document.addEventListener("click", (e) => {
+      // 1. Fermer le menu déroulant de recherche et replier la barre de recherche
+      const searchBox = document.getElementById("globalSearchBox");
+      const searchWrap = document.querySelector(".hero-search-inline-wrap") || searchBox;
+      const searchDropdown = document.getElementById("globalSearchDropdown");
+      if (searchDropdown && searchWrap && !searchWrap.contains(e.target) && !searchDropdown.contains(e.target)) {
+        searchDropdown.style.display = "none";
+        if (searchBox) searchBox.classList.remove("search-expanded");
+        const clearBtn = document.getElementById("globalSearchClear");
+        if (clearBtn && globalSearchInput && !globalSearchInput.value) {
+          clearBtn.style.display = "none";
+        }
+      }
+
+      // 2. Fermer l'info-bulle UV si on clique en dehors
+      if (uvTooltipPopover && uvTooltipPopover.classList.contains("open")) {
+        const uvCard = document.getElementById("metricCardUv");
+        if (uvCard && !uvCard.contains(e.target)) {
+          uvTooltipPopover.classList.remove("open");
+        }
+      }
+
+      // 3. Fermer le panneau des favoris si on clique en dehors
+      const favWrap = document.querySelector(".favorites-flyout-wrap");
+      const favFlyout = document.getElementById("favoritesFlyout");
+      if (favFlyout && favFlyout.style.display !== "none" && favWrap && !favWrap.contains(e.target)) {
+        favFlyout.style.display = "none";
+        const favBtn = document.getElementById("favoritesToggleBtn");
+        if (favBtn) favBtn.setAttribute("aria-expanded", "false");
+      }
+    });
 
     // Info-bulle & Guideline au survol du météogramme Yr.no
     if (yrCanvas) {
@@ -2862,178 +2906,220 @@
   }
 
   // ========================================================
-  // AFFICHAGE TIMELINE MÉTÉO FRANCE (PAR DEMI-JOURNÉE SUR 15 JOURS SANS HEURES PASSÉES)
-  // Toutes les cartes ont la même hauteur et les informations au même niveau
   // ========================================================
+  // DESIGN OFFICIEL MÉTÉO FRANCE (Screen 3)
+  // Carte 4 périodes (Matin, Après-midi, Soirée, Nuit) + Sélecteur 15 jours
+  // ========================================================
+  let mfDaysForecastData = [];
+
+  function showMfDayDetail(dayIndex) {
+    if (!mfDaysForecastData || !mfDaysForecastData[dayIndex]) return;
+    const day = mfDaysForecastData[dayIndex];
+
+    const titleEl = document.getElementById("mfDayDetailTitle");
+    if (titleEl) {
+      titleEl.textContent = day.fullDateStr;
+    }
+
+    const periods = [
+      { key: "Matin", data: day.matin },
+      { key: "ApresMidi", data: day.apresMidi },
+      { key: "Soiree", data: day.soiree },
+      { key: "Nuit", data: day.nuit }
+    ];
+
+    periods.forEach(p => {
+      const descEl = document.getElementById(`mfDesc${p.key}`);
+      const iconEl = document.getElementById(`mfIcon${p.key}`);
+      const tempEl = document.getElementById(`mfTemp${p.key}`);
+      const windSpeedEl = document.getElementById(`mfWindSpeed${p.key}`);
+      const windArrowEl = document.getElementById(`mfWindArrow${p.key}`);
+      const confEl = document.getElementById(`mfConf${p.key}`);
+
+      if (descEl) descEl.textContent = p.data.desc;
+      if (iconEl) iconEl.textContent = p.data.icon;
+      if (tempEl) tempEl.textContent = `${p.data.temp}°`;
+      if (windSpeedEl) windSpeedEl.textContent = `${p.data.wind} km/h`;
+      if (windArrowEl) windArrowEl.textContent = p.data.windArrow;
+      if (confEl) confEl.textContent = `Indice de confiance: ${day.confidence}`;
+    });
+  }
+
   function renderAromeTimeline(data) {
-    // Exploiter le dataset le plus complet disponible (jusqu'à 15-16 jours)
     const masterData = (weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.time && weatherDataCache.hourly.time.length >= 120)
       ? weatherDataCache
       : (data || aromeDataCache || weatherDataCache);
 
     if (!masterData || !masterData.hourly || !masterData.hourly.time) return;
     const hourly = masterData.hourly;
+    const daily = masterData.daily || {};
 
-    aromeHourlyScroll.innerHTML = "";
-    const now = new Date();
-    const nowTs = now.getTime();
+    const daysSelectorBar = document.getElementById("mfDaysSelectorBar");
+    if (!daysSelectorBar) return;
+    daysSelectorBar.innerHTML = "";
 
-    // Découpage par demi-journées (Matin 08h, Après-midi 14h, Soirée/Nuit 20h) sur 15 jours
-    // et suppression stricte de tout créneau déjà passé
-    const slots = [];
-    const targetHours = [8, 14, 20];
-    const maxSlots = 45; // 15 jours x 3 demi-journées
-
-    for (let i = 0; i < hourly.time.length && slots.length < maxSlots; i++) {
-      const timeStr = hourly.time[i];
-      const dateObj = new Date(timeStr);
-      const hour = dateObj.getHours();
-
-      const isTarget = targetHours.includes(hour);
-      const isCurrentNight = (now.getHours() < 6 && hour === Math.max(0, now.getHours()));
-
-      if (isTarget || isCurrentNight) {
-        // Enlève strictement les heures déjà passées
-        if (dateObj.getTime() < nowTs - 2 * 3600 * 1000) {
-          continue;
-        }
-
-        let periodLabel = "Matin";
-        if (hour >= 6 && hour < 12) periodLabel = "Matin";
-        else if (hour >= 12 && hour < 18) periodLabel = "Après-midi";
-        else periodLabel = "Soirée / Nuit";
-
-        if (dateObj.toDateString() === now.toDateString() && Math.abs(dateObj.getTime() - nowTs) < 3 * 3600 * 1000) {
-          periodLabel = "En cours";
-        }
-
-        slots.push({
-          masterIndex: i,
-          timeStr,
-          dateObj,
-          hour,
-          periodLabel
-        });
-      }
-    }
-
-    if (slots.length === 0) {
-      aromeHourlyScroll.innerHTML = '<div class="loading-state">Aucune prévision à venir disponible.</div>';
-      return;
-    }
-
-    // Référence AROME haute résolution pour les 42 premières heures
+    // Modèle AROME haute résolution (pour les 42 premières heures)
     const aromeH = (aromeDataCache && aromeDataCache.hourly) ? aromeDataCache.hourly : null;
     const aromeTimes = aromeH && Array.isArray(aromeH.time) ? aromeH.time : [];
 
-    let lastCardDateStr = "";
-    let dayFlipCounter = 0;
+    // 1. Grouper les données horaires par date calendrier
+    const daysMap = new Map();
+    for (let i = 0; i < hourly.time.length; i++) {
+      const timeStr = hourly.time[i];
+      const d = new Date(timeStr);
+      const dateKey = d.toISOString().split("T")[0]; // YYYY-MM-DD
 
-    slots.forEach(slot => {
-      const timeStr = slot.timeStr;
-      const dateObj = slot.dateObj;
-      const hour = slot.hour;
-
-      // Détection de changement de jour pour la distinction visuelle
-      const curCardDateStr = dateObj.toDateString();
-      const isNewDay = lastCardDateStr !== "" && curCardDateStr !== lastCardDateStr;
-      if (isNewDay) dayFlipCounter++;
-      lastCardDateStr = curCardDateStr;
+      if (!daysMap.has(dateKey)) {
+        daysMap.set(dateKey, []);
+      }
 
       // Chercher si ce créneau existe dans le modèle AROME 1.3km
       const aromeIdx = aromeTimes.indexOf(timeStr);
       const useArome = aromeIdx !== -1 && aromeH.temperature_2m && aromeH.temperature_2m[aromeIdx] != null;
       const srcHourly = useArome ? aromeH : hourly;
-      const srcIdx = useArome ? aromeIdx : slot.masterIndex;
+      const srcIdx = useArome ? aromeIdx : i;
 
-      const rawT = srcHourly.temperature_2m ? srcHourly.temperature_2m[srcIdx] : null;
-      if (rawT === null || rawT === undefined) return;
-      const temp = Number(rawT);
+      daysMap.get(dateKey).push({
+        date: d,
+        hour: d.getHours(),
+        temp: Math.round(srcHourly.temperature_2m ? srcHourly.temperature_2m[srcIdx] : 0),
+        code: (srcHourly.weather_code && srcHourly.weather_code[srcIdx] != null) ? srcHourly.weather_code[srcIdx] : 0,
+        wind: Math.round(srcHourly.wind_speed_10m ? srcHourly.wind_speed_10m[srcIdx] : 0),
+        windDir: srcHourly.wind_direction_10m ? srcHourly.wind_direction_10m[srcIdx] : 0,
+        precip: srcHourly.precipitation ? srcHourly.precipitation[srcIdx] : 0,
+        snow: srcHourly.snowfall ? srcHourly.snowfall[srcIdx] : 0
+      });
+    }
 
-      const hourLabel = dateObj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      const dayLabel = dateObj.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric" });
+    mfDaysForecastData = [];
+    const dateKeys = Array.from(daysMap.keys()).slice(0, 15);
 
-      const precip = (srcHourly.precipitation && srcHourly.precipitation[srcIdx] != null) ? Number(srcHourly.precipitation[srcIdx]) : 0;
-      const snow = (srcHourly.snowfall && srcHourly.snowfall[srcIdx] != null) ? Number(srcHourly.snowfall[srcIdx]) : 0;
-      const wind = (srcHourly.wind_speed_10m && srcHourly.wind_speed_10m[srcIdx] != null) ? Math.round(srcHourly.wind_speed_10m[srcIdx]) : 0;
-      const gust = (srcHourly.wind_gusts_10m && srcHourly.wind_gusts_10m[srcIdx] != null) ? Math.round(srcHourly.wind_gusts_10m[srcIdx]) : 0;
+    dateKeys.forEach((dateKey, dayIdx) => {
+      const slots = daysMap.get(dateKey);
+      if (!slots || slots.length === 0) return;
 
-      // Décodage intelligent du code météo avec gestion stricte nuit/jour
-      let code = (srcHourly.weather_code && srcHourly.weather_code[srcIdx] != null) ? srcHourly.weather_code[srcIdx] : null;
-      if (code === null && weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.weather_code) {
-        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(timeStr) : -1;
-        if (matchIdx !== -1 && weatherDataCache.hourly.weather_code[matchIdx] != null) {
-          code = weatherDataCache.hourly.weather_code[matchIdx];
+      const firstDate = slots[0].date;
+      const dayNameShort = firstDate.toLocaleDateString("fr-FR", { weekday: "short" });
+      const dayNum = firstDate.getDate();
+      const fullDateStr = firstDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+
+      // Trouver le créneau le plus proche pour chacune des 4 périodes
+      function getClosestSlot(targetHour) {
+        let closest = slots[0];
+        let minDiff = 999;
+        slots.forEach(s => {
+          const diff = Math.abs(s.hour - targetHour);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = s;
+          }
+        });
+        return closest;
+      }
+
+      const sMatin = getClosestSlot(8);
+      const sApresMidi = getClosestSlot(14);
+      const sSoiree = getClosestSlot(20);
+      const sNuit = getClosestSlot(2);
+
+      const wmoMatin = decodeWMO(sMatin.code, false);
+      const wmoApresMidi = decodeWMO(sApresMidi.code, false);
+      const wmoSoiree = decodeWMO(sSoiree.code, true);
+      const wmoNuit = decodeWMO(sNuit.code, true);
+
+      // Températures Min et Max du jour
+      let tMin = daily.temperature_2m_min && daily.temperature_2m_min[dayIdx] != null
+        ? Math.round(daily.temperature_2m_min[dayIdx])
+        : Math.min(...slots.map(s => s.temp));
+      let tMax = daily.temperature_2m_max && daily.temperature_2m_max[dayIdx] != null
+        ? Math.round(daily.temperature_2m_max[dayIdx])
+        : Math.max(...slots.map(s => s.temp));
+
+      // Code météo du jour
+      const dayCode = daily.weather_code && daily.weather_code[dayIdx] != null
+        ? daily.weather_code[dayIdx]
+        : sApresMidi.code;
+      const dayWmo = decodeWMO(dayCode, false);
+
+      // Vent moyen du jour
+      const dayWind = sApresMidi.wind || 10;
+
+      // Indice de confiance officiel : 4/5 pour J à J+3, 3/5 pour J+4 à J+7, 2/5 pour J+8 à J+14
+      let confidence = "4/5";
+      if (dayIdx >= 3 && dayIdx <= 7) confidence = "3/5";
+      else if (dayIdx > 7) confidence = "2/5";
+
+      const dayItem = {
+        dayIdx,
+        fullDateStr,
+        dayNameShort: dayNameShort.toUpperCase().slice(0, 4) + ".",
+        dayNum,
+        tMin,
+        tMax,
+        dayIcon: dayWmo.icon,
+        dayWind,
+        confidence,
+        matin: {
+          desc: wmoMatin.desc,
+          icon: wmoMatin.icon,
+          temp: sMatin.temp,
+          wind: sMatin.wind,
+          windArrow: getMeteocielWindArrow(sMatin.windDir)
+        },
+        apresMidi: {
+          desc: wmoApresMidi.desc,
+          icon: wmoApresMidi.icon,
+          temp: sApresMidi.temp,
+          wind: sApresMidi.wind,
+          windArrow: getMeteocielWindArrow(sApresMidi.windDir)
+        },
+        soiree: {
+          desc: wmoSoiree.desc,
+          icon: wmoSoiree.icon,
+          temp: sSoiree.temp,
+          wind: sSoiree.wind,
+          windArrow: getMeteocielWindArrow(sSoiree.windDir)
+        },
+        nuit: {
+          desc: wmoNuit.desc,
+          icon: wmoNuit.icon,
+          temp: sNuit.temp,
+          wind: sNuit.wind,
+          windArrow: getMeteocielWindArrow(sNuit.windDir)
         }
-      }
-      if (code === null) {
-        if (snow > 0) code = snow >= 1.0 ? 73 : 71;
-        else if (precip >= 2.0) code = 63;
-        else if (precip >= 0.5) code = 61;
-        else if (precip > 0) code = 51;
-        else code = 3;
-      }
+      };
 
-      // La nuit démarre dès 19h30 en automne / hiver ou 20h
-      const isNight = hour < 7 || hour >= 19;
-      const wmo = decodeWMO(code, isNight);
+      mfDaysForecastData.push(dayItem);
 
-      // Isotherme 0°C
-      let iso = (srcHourly.freezing_level_height && srcHourly.freezing_level_height[srcIdx] != null) ? Math.round(srcHourly.freezing_level_height[srcIdx]) : null;
-      if (iso === null && weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.freezing_level_height) {
-        const matchIdx = weatherDataCache.hourly.time ? weatherDataCache.hourly.time.indexOf(timeStr) : -1;
-        if (matchIdx !== -1 && weatherDataCache.hourly.freezing_level_height[matchIdx] != null) {
-          iso = Math.round(weatherDataCache.hourly.freezing_level_height[matchIdx]);
-        }
-      }
-      const isoText = iso !== null ? `${iso}m` : "--";
-
-      const isCurrent = slot.periodLabel === "En cours";
-      const card = document.createElement("div");
-      card.className = `hourly-card ${isCurrent ? "current-hour" : ""} ${isNewDay ? "day-separator" : ""} ${dayFlipCounter % 2 === 1 ? "day-alt" : ""}`;
-
-      let tempClass = "temp-mild";
-      if (temp <= 0) tempClass = "temp-freezing";
-      else if (temp < 6) tempClass = "temp-cold";
-      else if (temp > 18) tempClass = "temp-warm";
-
-      // Ligne unique intelligente pluie / neige selon les prévisions
-      let precipHtml = `<span class="hourly-val-muted">💧 0 mm</span>`;
-      if (snow > 0) {
-        precipHtml = `<span class="hourly-snow">❄️ ${snow.toFixed(1)} cm</span>`;
-      } else if (precip > 0) {
-        precipHtml = `<span class="hourly-precip">💧 ${precip.toFixed(1)} mm</span>`;
-      }
-
-      // Structure rigoureusement fixe et homogène : toutes les cartes ont exactement la même hauteur
-      // et chaque indicateur est parfaitement au même niveau horizontal
-      card.innerHTML = `
-        <div class="hourly-card-header">
-          <span class="hourly-time">${slot.periodLabel}</span>
-          <span class="hourly-date">${dayLabel} • ${hourLabel}</span>
+      // Création de la pilule de sélection du jour
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = `mf-day-pill ${dayIdx === 0 ? "active" : ""}`;
+      pill.dataset.dayIndex = dayIdx;
+      pill.innerHTML = `
+        <span class="mf-day-pill-name">${dayItem.dayNameShort} ${dayItem.dayNum}</span>
+        <span class="mf-day-pill-icon">${dayItem.dayIcon}</span>
+        <div class="mf-day-pill-temps">
+          <span class="mf-day-tmin">${dayItem.tMin}°</span>
+          <span class="mf-day-tmax">${dayItem.tMax}°</span>
         </div>
-        <div class="hourly-icon-wrap" title="${wmo.desc}">
-          <span class="hourly-icon">${wmo.icon}</span>
-        </div>
-        <div class="hourly-temp-wrap">
-          <span class="hourly-temp ${tempClass}">${temp.toFixed(1)}°</span>
-        </div>
-        <div class="hourly-data-row">
-          ${precipHtml}
-        </div>
-        <div class="hourly-data-row">
-          <span class="hourly-wind">💨 ${wind} km/h</span>
-        </div>
-        <div class="hourly-data-row">
-          <span class="hourly-gust">🌪️ ${gust} km/h</span>
-        </div>
-        <div class="hourly-iso" title="Altitude isotherme 0°C">
-          0°: ${isoText}
-        </div>
+        <span class="mf-day-pill-wind">${dayItem.dayWind} km/h</span>
       `;
 
-      aromeHourlyScroll.appendChild(card);
+      pill.addEventListener("click", () => {
+        daysSelectorBar.querySelectorAll(".mf-day-pill").forEach(p => p.classList.remove("active"));
+        pill.classList.add("active");
+        showMfDayDetail(dayIdx);
+      });
+
+      daysSelectorBar.appendChild(pill);
     });
+
+    // Afficher le détail du premier jour par défaut
+    if (mfDaysForecastData.length > 0) {
+      showMfDayDetail(0);
+    }
+  }
   }
 
   // ========================================================
@@ -4669,42 +4755,48 @@
     return arrows[index];
   }
 
-  // Code couleur évolutif pour le vent Météociel selon les 7 tranches demandées :
-  // 0-10, 10-20, 20-35, 35-50, 50-70, 70-90, +90 km/h
+  // Code couleur officiel pour le vent Météociel rigoureusement conforme à Screen 1 :
+  // <=5 (w-5: #97e6ff), <=10 (w-10: #33ccff), <=15 (w-15: #0099ff), <=20 (w-20: #00ff99),
+  // <=25 (w-25: #33cc66), <=35 (w-35: #66cc33), <=50 (w-50: #99cc00), <=65 (w-65: #66ff00),
+  // <=80 (w-80: #ffcc00), <=95 (w-95: #ff6600), >=96 (w-100: #ff3300)
   function getMeteocielWindClass(speed) {
-    if (speed === null || speed === undefined || speed === "--") return "td-vent-0-10";
+    if (speed === null || speed === undefined || speed === "--") return "w-5";
     const val = typeof speed === "number" ? speed : parseFloat(speed);
-    if (isNaN(val) || val < 10) return "td-vent-0-10";
-    if (val < 20) return "td-vent-10-20";
-    if (val < 35) return "td-vent-20-35";
-    if (val < 50) return "td-vent-35-50";
-    if (val < 70) return "td-vent-50-70";
-    if (val < 90) return "td-vent-70-90";
-    return "td-vent-90-plus";
+    if (isNaN(val) || val <= 5) return "w-5";
+    if (val <= 10) return "w-10";
+    if (val <= 15) return "w-15";
+    if (val <= 20) return "w-20";
+    if (val <= 25) return "w-25";
+    if (val <= 35) return "w-35";
+    if (val <= 50) return "w-50";
+    if (val <= 65) return "w-65";
+    if (val <= 80) return "w-80";
+    if (val <= 95) return "w-95";
+    return "w-100";
   }
 
-  // Classe de couleur de température Météociel
+  // Classe de couleur de température Météociel Screen 1
   function getMeteocielTempClass(temp) {
-    if (temp <= -5) return "t-cold-blue";
-    if (temp <= 0) return "t-cyan";
+    if (temp < 0) return "t-subzero";
     if (temp <= 3) return "t-cyan";
-    if (temp <= 7) return "t-lime-green";
-    if (temp <= 11) return "t-green-bright";
-    if (temp <= 15) return "t-yellow";
-    if (temp <= 19) return "t-yellow-orange";
-    if (temp <= 24) return "t-orange";
+    if (temp <= 5) return "t-spring-green";
+    if (temp <= 7) return "t-bright-green";
+    if (temp <= 9) return "t-lime";
+    if (temp <= 11) return "t-yellow-lime";
+    if (temp <= 14) return "t-yellow";
+    if (temp <= 18) return "t-yellow-orange";
+    if (temp <= 22) return "t-orange";
+    if (temp <= 26) return "t-hot-orange";
     return "t-hot-red";
   }
 
-  // Style de dégradé violet / gris pour l'humidité
-  function getMeteocielHumidityStyle(humi) {
-    const clamped = Math.max(40, Math.min(100, humi));
-    const factor = (clamped - 40) / 60; // 0 à 1
-    const r = Math.round(210 - factor * 95);
-    const g = Math.round(215 - factor * 95);
-    const b = Math.round(235 - factor * 75);
-    const textCol = clamped >= 88 ? "#ffffff" : "#001b5e";
-    return `background-color: rgb(${r}, ${g}, ${b}); color: ${textCol}; font-weight: bold;`;
+  // Classes de couleur d'humidité Météociel Screen 1 (<60%: #a5a5a5, 60-74%: #909090, 75-84%: #858585, >=85%: #777777)
+  function getMeteocielHumidityClass(humi) {
+    if (humi === null || humi === undefined || isNaN(humi)) return "h-mid";
+    if (humi < 60) return "h-low";
+    if (humi < 75) return "h-mid";
+    if (humi < 85) return "h-high";
+    return "h-veryhigh";
   }
 
   // Icône météo rétro stylée Météociel
@@ -5002,8 +5094,10 @@
       curDayObj.slots.push(slot);
     });
 
-    // Génération du HTML avec les classes et styles fidèles
-    daysMap.forEach(group => {
+    // Génération du HTML avec les classes et styles fidèles (Screen 1)
+    daysMap.forEach((group, dayGroupIdx) => {
+      const dayClass = (dayGroupIdx % 2 === 0) ? "td-day-even" : "td-day-odd";
+
       group.slots.forEach((s, idx) => {
         const tr = document.createElement("tr");
         const isCurrent = (s === currentSlotObj);
@@ -5014,28 +5108,28 @@
         // Colonne Jour fusionnée (Jour au-dessus, numéro du jour en dessous à la verticale)
         if (idx === 0) {
           const tdJour = document.createElement("td");
-          tdJour.className = "td-jour-group";
+          tdJour.className = `td-jour-group ${dayClass}`;
           tdJour.rowSpan = group.slots.length;
           tdJour.innerHTML = `<div class="td-jour-content"><span class="td-jour-name">${group.dayName}</span><span class="td-jour-num">${group.dayNum}</span></div>`;
           tr.appendChild(tdJour);
         }
 
-        // Colonne Heure
+        // Colonne Heure (fond du jour actif)
         const tdHeure = document.createElement("td");
-        tdHeure.className = "td-heure";
+        tdHeure.className = `td-heure ${dayClass}`;
         if (isCurrent) {
           tdHeure.classList.add("td-heure-current");
         }
         tdHeure.textContent = s.timeStr;
         tr.appendChild(tdHeure);
 
-        // Colonne Température (avec code couleur Météociel)
+        // Colonne Température (avec code couleur Screen 1)
         const tdTemp = document.createElement("td");
         tdTemp.className = `td-temp ${getMeteocielTempClass(s.temp)}`;
         tdTemp.textContent = `${Math.round(s.temp)} °C`;
         tr.appendChild(tdTemp);
 
-        // Colonnes Vent (dir, moy, raf) - Même charte couleur pour la flèche et la vitesse
+        // Colonnes Vent (dir, moy, raf) - Même charte couleur Screen 1 pour la flèche et la vitesse
         const windClass = getMeteocielWindClass(s.windSpeed);
         const gustClass = getMeteocielWindClass(s.windGust);
 
@@ -5054,15 +5148,15 @@
         tdVentRaf.textContent = s.windGust;
         tr.appendChild(tdVentRaf);
 
-        // Colonne Pluie sur 3h (Codes couleurs bleu ciel, teal, bleu royal)
+        // Colonne Pluie sur 3h (Screen 1 : '--' couleur jour, <1mm cyan, 1-2mm teal clair, >2mm teal foncé)
         const tdPluie = document.createElement("td");
         if (s.rain3h === 0) {
-          tdPluie.className = "td-pluie-none";
+          tdPluie.className = `td-pluie-none ${dayClass}`;
           tdPluie.textContent = "--";
-        } else if (s.rain3h <= 1.0) {
+        } else if (s.rain3h < 1.0) {
           tdPluie.className = "td-pluie-light";
           tdPluie.textContent = `${s.rain3h.toFixed(1)} mm`;
-        } else if (s.rain3h <= 5.0) {
+        } else if (s.rain3h <= 2.0) {
           tdPluie.className = "td-pluie-medium";
           tdPluie.textContent = `${s.rain3h.toFixed(1)} mm`;
         } else {
@@ -5071,16 +5165,21 @@
         }
         tr.appendChild(tdPluie);
 
-        // Colonne Humidité (Dégradé violet/gris)
+        // Colonne Humidité (Screen 1 : échelle taupe/gris)
         const tdHumi = document.createElement("td");
-        tdHumi.className = "td-humi";
-        tdHumi.style.cssText = getMeteocielHumidityStyle(s.humidity);
+        tdHumi.className = `td-humi ${getMeteocielHumidityClass(s.humidity)}`;
         tdHumi.textContent = `${s.humidity} %`;
         tr.appendChild(tdHumi);
 
-        // Colonne Temps (Icône Météo)
+        // Colonne Pression (Screen 1 : couleur du jour, ex: 1024 hPa)
+        const tdPression = document.createElement("td");
+        tdPression.className = `td-pression ${dayClass}`;
+        tdPression.textContent = `${s.pressure} hPa`;
+        tr.appendChild(tdPression);
+
+        // Colonne Temps (Screen 1 : couleur du jour + icône)
         const tdTemps = document.createElement("td");
-        tdTemps.className = "td-temps";
+        tdTemps.className = `td-temps ${dayClass}`;
         tdTemps.textContent = getMeteocielWeatherIcon(s.weatherCode, s.isNight);
         tr.appendChild(tdTemps);
 
@@ -5093,7 +5192,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.65").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.70").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

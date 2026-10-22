@@ -115,98 +115,78 @@
     }
 
     // ========================================================
-    // RÉORGANISATION FLUIDE & ANTI-COLLISION DES ONGLETS (120 FPS)
-    // Calcul exact par permutation et cumul des largeurs réelles
+    // RÉORGANISATION FLUIDE & ANTI-COLLISION DES ONGLETS (FLIP DOM SWAP)
+    // Zéro risque de superposition ou d'onglet bloqué
     // ========================================================
     let longPressTimer = null;
     let draggedBtn = null;
-    let isDraggingTab = false;
-    let dragStartX = 0;
-    let dragStartY = 0;
-    let suppressNextClick = false;
-    let allTabs = [];
-    let initialLefts = [];
-    let initialWidths = [];
-    let initialCenters = [];
-    let startIndex = -1;
-    let currentTargetIndex = -1;
-    let currentPermutation = [];
-    const TAB_GAP = 8;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let suppressClick = false;
 
     function initTabDragAndDrop() {
       if (!tabsNav) return;
 
       // Empêcher tout drag d'image natif du navigateur
-      tabsNav.querySelectorAll(".tab-nav-btn").forEach(btn => {
-        btn.addEventListener("dragstart", (e) => e.preventDefault());
+      tabsNav.querySelectorAll("img").forEach(img => {
+        img.setAttribute("draggable", "false");
+        img.addEventListener("dragstart", (e) => e.preventDefault());
       });
 
-      tabsNav.addEventListener("pointerdown", (e) => {
+      tabsNav.querySelectorAll(".tab-nav-btn").forEach(btn => {
+        btn.setAttribute("draggable", "false");
+        btn.addEventListener("dragstart", (e) => e.preventDefault());
+        btn.addEventListener("pointerdown", onPointerDown);
+      });
+
+      function onPointerDown(e) {
         const btn = e.target.closest(".tab-nav-btn");
         if (!btn || (e.button !== 0 && e.pointerType === "mouse")) return;
 
         draggedBtn = btn;
-        dragStartX = e.clientX;
-        dragStartY = e.clientY;
-        isDraggingTab = false;
-        suppressNextClick = false;
+        startX = e.clientX;
+        startY = e.clientY;
+        isDragging = false;
+        suppressClick = false;
+
+        window.addEventListener("pointermove", onPointerMove, { passive: false });
+        window.addEventListener("pointerup", onPointerUp);
+        window.addEventListener("pointercancel", onPointerUp);
 
         clearTimeout(longPressTimer);
-        // Déclenchement réactif (140ms) pour une réactivité instantanée
+        // Déclenchement réactif à 140ms
         longPressTimer = setTimeout(() => {
-          startDragging(e, btn);
+          startDrag();
         }, 140);
-      });
+      }
 
-      function startDragging(e, btn) {
-        if (!draggedBtn || draggedBtn !== btn) return;
-        isDraggingTab = true;
-        suppressNextClick = true;
+      function startDrag() {
+        if (!draggedBtn) return;
+        isDragging = true;
+        suppressClick = true;
 
         if (navigator.vibrate) {
           try { navigator.vibrate(25); } catch (_) {}
         }
 
-        try {
-          btn.setPointerCapture(e.pointerId);
-        } catch (_) {}
-
-        allTabs = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
-        startIndex = allTabs.indexOf(btn);
-        currentTargetIndex = startIndex;
-        currentPermutation = [...allTabs];
-
-        // Mesure exacte des positions géométriques réelles de chaque onglet
-        const containerLeft = tabsNav.getBoundingClientRect().left + tabsNav.scrollLeft;
-        initialLefts = allTabs.map(t => t.getBoundingClientRect().left + tabsNav.scrollLeft - containerLeft);
-        initialWidths = allTabs.map(t => t.offsetWidth);
-        initialCenters = initialLefts.map((l, i) => l + initialWidths[i] / 2);
-
-        btn.classList.add("tab-dragging");
-        btn.style.position = "relative";
-        btn.style.zIndex = "100";
-        btn.style.transform = "translate3d(0, 0, 0) scale(1.06)";
-
-        allTabs.forEach((t, i) => {
-          if (i !== startIndex) {
-            t.style.transition = "transform 0.22s cubic-bezier(0.2, 0, 0, 1)";
-          }
-        });
+        draggedBtn.classList.add("tab-dragging");
       }
 
-      tabsNav.addEventListener("pointermove", (e) => {
+      function onPointerMove(e) {
         if (!draggedBtn) return;
 
-        const dx = e.clientX - dragStartX;
-        const dy = e.clientY - dragStartY;
+        const dx = e.clientX - startX;
+        const dy = e.clientY - startY;
 
-        if (!isDraggingTab) {
-          // Détection d'un glissement horizontal net avant le timeout
-          if (Math.abs(dx) > 10 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (!isDragging) {
+          // Si déplacement horizontal net, démarrer le drag immédiatement
+          if (Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) {
             clearTimeout(longPressTimer);
-            startDragging(e, draggedBtn);
-          } else if (Math.abs(dy) > 12) {
-            clearTimeout(longPressTimer);
+            startDrag();
+          } else if (Math.abs(dy) > 10) {
+            // Défilement vertical de la page -> annuler
+            cancelDrag();
             return;
           } else {
             return;
@@ -215,116 +195,84 @@
 
         e.preventDefault();
 
-        // 1. L'onglet dragué suit le doigt en direct à 120 FPS
-        draggedBtn.style.transform = `translate3d(${dx}px, 0, 0) scale(1.06)`;
-
-        // 2. Trouver l'index de destination en testant le chevauchement avec les centres
-        const draggedVisualCenter = initialCenters[startIndex] + dx;
-        let newTargetIndex = startIndex;
-
-        if (dx > 0) {
-          // Déplacement vers la droite
-          for (let i = startIndex + 1; i < allTabs.length; i++) {
-            if (draggedVisualCenter > initialCenters[i] - initialWidths[i] * 0.25) {
-              newTargetIndex = i;
-            }
-          }
-        } else if (dx < 0) {
-          // Déplacement vers la gauche
-          for (let i = startIndex - 1; i >= 0; i--) {
-            if (draggedVisualCenter < initialCenters[i] + initialWidths[i] * 0.25) {
-              newTargetIndex = i;
-            }
-          }
-        }
-
-        newTargetIndex = Math.max(0, Math.min(allTabs.length - 1, newTargetIndex));
-        currentTargetIndex = newTargetIndex;
-
-        // 3. Calculer la permutation exacte pour éliminer tout risque de chevauchement visuel
-        const permutation = [...allTabs];
-        permutation.splice(startIndex, 1);
-        permutation.splice(currentTargetIndex, 0, draggedBtn);
-        currentPermutation = permutation;
-
-        // 4. Déterminer l'abscisse slotX réelle de chaque élément dans la nouvelle permutation
-        let slotX = initialLefts[0];
-        permutation.forEach((tab) => {
-          const tabOrigIdx = allTabs.indexOf(tab);
-          const origLeft = initialLefts[tabOrigIdx];
-          const targetOffset = slotX - origLeft;
-
-          if (tab !== draggedBtn) {
-            tab.style.transform = targetOffset !== 0 ? `translate3d(${targetOffset}px, 0, 0)` : "";
-          }
-
-          slotX += initialWidths[tabOrigIdx] + TAB_GAP;
+        // Trouver le bouton sous le curseur
+        const allBtns = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
+        const targetBtn = allBtns.find(b => {
+          if (b === draggedBtn) return false;
+          const rect = b.getBoundingClientRect();
+          return e.clientX >= rect.left && e.clientX <= rect.right;
         });
-      });
 
-      const finishDrag = (e) => {
-        clearTimeout(longPressTimer);
+        if (targetBtn) {
+          // FLIP DOM Swap instantané sans aucune collision
+          const rectsBefore = allBtns.map(b => b.getBoundingClientRect());
 
-        if (!draggedBtn) return;
-        const activeBtn = draggedBtn;
-        const wasDragging = isDraggingTab;
+          const draggedIdx = allBtns.indexOf(draggedBtn);
+          const targetIdx = allBtns.indexOf(targetBtn);
 
-        if (wasDragging) {
-          try {
-            if (e && e.pointerId) activeBtn.releasePointerCapture(e.pointerId);
-          } catch (_) {}
-
-          // Calcul de la position finale exacte du slot d'arrivée
-          let finalSlotX = initialLefts[0];
-          for (let i = 0; i < currentPermutation.length; i++) {
-            const tab = currentPermutation[i];
-            const tabOrigIdx = allTabs.indexOf(tab);
-            if (tab === activeBtn) break;
-            finalSlotX += initialWidths[tabOrigIdx] + TAB_GAP;
+          if (draggedIdx < targetIdx) {
+            tabsNav.insertBefore(draggedBtn, targetBtn.nextSibling);
+          } else {
+            tabsNav.insertBefore(draggedBtn, targetBtn);
           }
 
-          const finalOffset = finalSlotX - initialLefts[startIndex];
+          const allBtnsAfter = Array.from(tabsNav.querySelectorAll(".tab-nav-btn"));
+          const rectsAfter = allBtnsAfter.map(b => b.getBoundingClientRect());
 
-          activeBtn.classList.remove("tab-dragging");
-          activeBtn.classList.add("tab-dropping");
-          activeBtn.style.transform = `translate3d(${finalOffset}px, 0, 0) scale(1)`;
-
-          setTimeout(() => {
-            // Réorganisation DOM propre selon l'ordre exact de la permutation
-            currentPermutation.forEach(tab => {
-              tabsNav.appendChild(tab);
-            });
-
-            // Réinitialisation intégrale des styles inline
-            allTabs.forEach(t => {
-              t.style.transform = "";
-              t.style.transition = "";
-              t.style.position = "";
-              t.style.zIndex = "";
-            });
-            activeBtn.classList.remove("tab-dropping");
-
-            saveTabsOrder();
-
-            setTimeout(() => {
-              suppressNextClick = false;
-              isDraggingTab = false;
-              draggedBtn = null;
-            }, 80);
-          }, 180);
-        } else {
-          draggedBtn = null;
+          // Transition FLIP fluide sur les frères déplacés
+          allBtnsAfter.forEach((b, idx) => {
+            if (b === draggedBtn) return;
+            const prevIdx = allBtns.indexOf(b);
+            if (prevIdx === -1) return;
+            const diffX = rectsBefore[prevIdx].left - rectsAfter[idx].left;
+            if (diffX !== 0) {
+              b.style.transform = `translateX(${diffX}px)`;
+              b.style.transition = "none";
+              requestAnimationFrame(() => {
+                b.style.transition = "transform 0.2s cubic-bezier(0.2, 0, 0, 1)";
+                b.style.transform = "";
+              });
+            }
+          });
         }
-      };
+      }
 
-      tabsNav.addEventListener("pointerup", finishDrag);
-      tabsNav.addEventListener("pointercancel", finishDrag);
+      function onPointerUp(e) {
+        clearTimeout(longPressTimer);
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerUp);
+
+        if (isDragging && draggedBtn) {
+          draggedBtn.classList.remove("tab-dragging");
+          saveTabsOrder();
+          setTimeout(() => {
+            suppressClick = false;
+            isDragging = false;
+            draggedBtn = null;
+          }, 60);
+        } else {
+          cancelDrag();
+        }
+      }
+
+      function cancelDrag() {
+        clearTimeout(longPressTimer);
+        if (draggedBtn) {
+          draggedBtn.classList.remove("tab-dragging");
+        }
+        window.removeEventListener("pointermove", onPointerMove);
+        window.removeEventListener("pointerup", onPointerUp);
+        window.removeEventListener("pointercancel", onPointerUp);
+        isDragging = false;
+        draggedBtn = null;
+      }
 
       // Clic normal sur n'importe quelle partie du bouton (icône ou texte) pour changer d'onglet
       tabsNav.addEventListener("click", (e) => {
         const btn = e.target.closest(".tab-nav-btn");
         if (!btn) return;
-        if (suppressNextClick || isDraggingTab) {
+        if (suppressClick || isDragging) {
           e.preventDefault();
           e.stopPropagation();
           return;
