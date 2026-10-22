@@ -4,48 +4,41 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Ma météo</title>
-  <meta name="description" content="Dashboard météo haute précision : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
+  <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
-  <link rel="manifest" href="manifest.json?v=8.73">
-  <link rel="stylesheet" href="style.css?v=8.73">
-  <link rel="stylesheet" href="tabs.css?v=8.73">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.10">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.10">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.10">
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.10">
-  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.10">
-  <link rel="shortcut icon" href="favicon.ico?v=8.10">
-  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.10">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.10">
+  <link rel="manifest" href="manifest.json?v=8.74">
+  <link rel="stylesheet" href="style.css?v=8.74">
+  <link rel="stylesheet" href="tabs.css?v=8.74">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.74">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.74">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.74">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.74">
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.74">
+  <link rel="shortcut icon" href="favicon.ico?v=8.74">
+  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.74">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.74">
   <script>
     // Fail-safe global error watchdog
     window.addEventListener('error', function(e) {
       console.error("Erreur critique détectée:", e.error || e.message);
       var spinner = document.getElementById('yrCanvasLoading');
       if (spinner) spinner.style.display = 'none';
-      var badge = document.getElementById('heroLiveBadge');
-      if (badge && badge.textContent.includes('--:--')) {
-        badge.textContent = '⚠️ Erreur de chargement • Cliquez pour recharger';
-        badge.style.cursor = 'pointer';
-        badge.onclick = function() { location.reload(); };
-      }
     });
   </script>
-  <!-- Leaflet CSS & JS pour la carte radar native haute performance -->
+  <!-- Leaflet CSS & JS pour la carte radar native -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
-<body>
+<body class="tabs-view">
   <!-- Contenu Principal -->
   <main class="main-content">
 
-    <!-- 1. Bannière Hero Info & Métriques du Lieu Actuel (En-tête sur une seule ligne) -->
+    <!-- Bannière Hero Info & Métriques du Lieu Actuel (TOUT EN HAUT) -->
     <section class="summit-hero card" id="summitHeroSection">
+      <!-- En-tête STRICTEMENT sur une seule ligne : Flèche, Ville, Dépt italique, Altitude, Favori, Direct à gauche | Recherche & Actions à droite -->
       <div class="hero-header-single-row">
         <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
           <span class="accordion-arrow">▼</span>
-          <div class="hero-massif-tag" id="heroMassifTag" style="display:none;">Isère / Alpes</div>
           <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
           <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
           <span class="altitude-badge" id="heroAltitudeBadge">212 m</span>
@@ -75,6 +68,7 @@
             </button>
           </div>
 
+          <!-- Bouton étoile favoris -->
           <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
             <span class="star-icon">⭐</span>
           </button>
@@ -95,6 +89,11 @@
             <div class="fav-flyout-list" id="favFlyoutList"></div>
           </div>
         </div>
+      </div>
+
+      <!-- Barre masquée pour compatibilité interne -->
+      <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
+        <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
       </div>
 
       <!-- Quick Metrics Grid Enroulable -->
@@ -140,7 +139,7 @@
                 <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
               </div>
 
-              <!-- Info-bulle / Popover au survol et au clic -->
+              <!-- Info-bulle / Popover au survol -->
               <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
                 <div class="uv-tooltip-header">
                   <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
@@ -176,375 +175,399 @@
       </div>
     </section>
 
-    <!-- 2. BLOC MÉTÉOCIEL (Tableau officiel à codes couleurs Screen 1 + Éphéméride & Précipitations) -->
-    <section class="module-section card meteociel-city-card" id="meteocielCitySection">
-      <div class="accordion-header" id="meteocielAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Météociel" aria-expanded="true">
-        <div class="section-title-wrap" style="display: flex; align-items: center;">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
-          <span class="accordion-arrow" id="meteocielArrow">▼</span>
-          <h2 class="section-title" style="margin: 0;">Météociel</h2>
-        </div>
-        <div class="section-actions">
-          <a id="meteocielExtLink" href="https://www.meteociel.fr/previsions/13358/grenoble.htm" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Météociel">
-            <span>🌐 Fiche Météociel</span> ↗
-          </a>
-        </div>
-      </div>
+    <!-- BARRE D'ONGLETS HORIZONTAUX STICKY (RÉORGANISABLE PAR APPUI LONG) -->
+    <div class="tabs-nav-bar-wrap">
+      <nav class="horizontal-tabs-nav" id="horizontalTabsNav" aria-label="Modules météo">
+        <button type="button" class="tab-nav-btn active" data-tab="meteociel" aria-selected="true" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-meteociel.png" class="tab-icon-img" alt="Météociel" draggable="false">
+          <span>Météociel</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="ecmwf" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-yrno.png" class="tab-icon-img" alt="YR.NO" draggable="false">
+          <span>YR.NO</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="arome" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-meteofrance.png" class="tab-icon-img" alt="Météo France" draggable="false">
+          <span>Météo France</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="romma" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-romma.png" class="tab-icon-img" alt="ROMMA" draggable="false">
+          <span>ROMMA</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="meteoblue" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-meteoblue.png" class="tab-icon-img" alt="Météoblue" draggable="false">
+          <span>Météoblue</span>
+        </button>
+        <button type="button" class="tab-nav-btn" data-tab="safety" aria-selected="false" title="Maintenez appuyé pour réorganiser">
+          <img src="icon-bera.png" class="tab-icon-img" alt="Sécurité & BERA" draggable="false">
+          <span>Sécurité & BERA</span>
+        </button>
+      </nav>
+    </div>
 
-      <div id="meteocielContent" class="accordion-body">
-        <div class="meteociel-layout-grid">
-          <div class="meteociel-table-card">
-            <div class="meteociel-table-responsive">
-              <table class="meteociel-table" id="meteocielTable">
-                <thead>
-                  <tr class="tr-head-top">
-                    <th rowspan="2" class="th-col th-jour">Jour</th>
-                    <th rowspan="2" class="th-col th-heure">Heure</th>
-                    <th rowspan="2" class="th-col th-temp">Temp.</th>
-                    <th colspan="3" class="th-col th-vent">Vent km/h</th>
-                    <th rowspan="2" class="th-col th-pluie">Pluie<br><span class="th-sub">sur 3h</span></th>
-                    <th rowspan="2" class="th-col th-humi">Humidité</th>
-                    <th rowspan="2" class="th-col th-pression">Pression</th>
-                    <th rowspan="2" class="th-col th-temps">Temps</th>
-                  </tr>
-                  <tr class="tr-head-sub">
-                    <th class="th-sub-col th-vent-dir">dir.</th>
-                    <th class="th-sub-col th-vent-moy">moy.</th>
-                    <th class="th-sub-col th-vent-raf">raf.</th>
-                  </tr>
-                </thead>
-                <tbody id="meteocielTableBody">
-                  <tr>
-                    <td colspan="10" class="meteociel-loading-row">Chargement des prévisions Météociel...</td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+    <!-- CONTENEUR DES PANNEAUX D'ONGLETS HORIZONTAUX -->
+    <div class="tabs-panels-container">
+
+      <!-- ONGLET 1 : MÉTÉOCIEL -->
+      <section class="module-section card meteociel-city-card active-tab-panel" id="meteocielCitySection">
+        <div class="accordion-header" id="meteocielAccordionHeader" role="button" tabindex="0" aria-label="Météociel" aria-expanded="true">
+          <div class="section-title-wrap" style="display: flex; align-items: center;">
+            <span class="accordion-arrow" id="meteocielArrow" style="display:none;">▼</span>
+            <h2 class="section-title" style="margin: 0;">🔵 Météociel</h2>
           </div>
-
-          <div class="meteociel-side-col">
-            <div class="ephemeris-card" id="ephemerisCard">
-              <div class="ephem-header">
-                <div class="ephem-date" id="ephemDate">Chargement...</div>
-                <div class="ephem-saint" id="ephemSaint">--</div>
-              </div>
-              <div class="ephem-times-grid">
-                <span class="ephem-grid-icon">☀️</span>
-                <span class="ephem-grid-label">Lever :</span>
-                <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
-                <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
-                <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
-                <span class="ephem-grid-delta" id="ephemDelta"></span>
-
-                <div class="ephem-grid-divider"></div>
-
-                <span class="ephem-grid-icon">🌅</span>
-                <span class="ephem-grid-label">Aube :</span>
-                <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
-                <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
-                <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
-                <span class="ephem-grid-delta"></span>
-              </div>
-              <div class="ephem-moon-row">
-                <span class="ephem-moon-prefix">Phase de la lune :</span>
-                <span class="ephem-moon-icon" id="ephemMoonIcon">🌕</span>
-                <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
-              </div>
-            </div>
-
-            <div class="precip-diagram-card">
-              <div class="precip-diagram-header">
-                <h4 class="precip-diagram-title">Diagramme précipitations (mm) :</h4>
-              </div>
-              <div class="precip-canvas-wrapper">
-                <canvas id="meteocielPrecipCanvas" width="540" height="190"></canvas>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 3. BLOC YR.NO / ECMWF (Météogramme interactif) -->
-    <section class="module-section card yrno-section-card" id="ecmwfSection">
-      <div class="section-header accordion-header" id="yrnoAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier YR.NO" aria-expanded="true">
-        <div class="section-title-wrap">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
-          <span class="accordion-arrow">▼</span>
-          <h3 class="section-title">YR.NO</h3>
-        </div>
-        <div class="section-actions">
-          <a id="yrLink" href="https://www.yr.no/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur YR.NO">
-            <span>🇳🇴 Fiche YR.NO</span> ↗
-          </a>
-        </div>
-      </div>
-      <div class="accordion-body">
-        <div class="yrno-meteogram-box">
-          <div class="yrno-canvas-loading" id="yrCanvasLoading" style="display:none;">
-            <div class="yrno-spinner-icon">⏳</div>
-            <div>Calcul du météogramme YR.NO en cours...</div>
-          </div>
-          <div class="yrno-scroll-wrapper" id="yrnoScrollWrapper">
-            <canvas id="yrnoCanvas" width="980" height="320"></canvas>
-            <div class="yrno-guideline" id="yrnoGuideline"></div>
-            <div class="yrno-tooltip" id="yrnoTooltip" role="tooltip">
-              <div class="yrno-tt-header" id="yrnoTtHeader">--</div>
-              <div class="yrno-tt-row">
-                <span class="yrno-tt-label">Température :</span>
-                <span class="yrno-tt-val yrno-tt-val-temp" id="yrnoTtTemp">--</span>
-              </div>
-              <div class="yrno-tt-row">
-                <span class="yrno-tt-label">Précipitations :</span>
-                <span class="yrno-tt-val yrno-tt-val-rain" id="yrnoTtRain">--</span>
-              </div>
-              <div class="yrno-tt-row">
-                <span class="yrno-tt-label">Vent :</span>
-                <span class="yrno-tt-val yrno-tt-val-wind" id="yrnoTtWind">--</span>
-              </div>
-            </div>
-          </div>
-          <div class="yrno-legend-bar">
-            <div class="yrno-legend-item">
-              <span class="yrno-legend-swatch yrno-swatch-temp"></span>
-              <span>Température °C</span>
-            </div>
-            <div class="yrno-legend-item">
-              <span class="yrno-legend-swatch yrno-swatch-rain"></span>
-              <span>Précipitations mm</span>
-            </div>
-            <div class="yrno-legend-item">
-              <span class="yrno-legend-swatch yrno-swatch-wind"></span>
-              <span>Vent (<span id="yrLegendUnitLabel">km/h</span>)</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 4. BLOC MÉTÉO FRANCE (Design Officiel 15 Jours Screen 3) -->
-    <section class="module-section card" id="aromeSection">
-      <div class="section-header accordion-header" id="aromeAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Météo-France" aria-expanded="true">
-        <div class="section-title-wrap">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
-          <span class="accordion-arrow">▼</span>
-          <h3 class="section-title" id="aromeLocationTitle">Météo France</h3>
-        </div>
-        <div class="section-actions">
-          <a id="meteofranceLink" href="https://meteofrance.com/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter les prévisions officielles sur Météo-France">
-            <span>🇫🇷 Fiche Météo-France</span> ↗
-          </a>
-        </div>
-      </div>
-      <div class="accordion-body">
-        <div id="aromeTimelineView" class="arome-timeline-container">
-          <!-- DESIGN OFFICIEL MÉTÉO FRANCE (Screen 3) -->
-          <div class="mf-official-container" id="mfOfficialContainer">
-            <!-- 1. Carte Détail du Jour Sélectionné (4 périodes : Matin, Après-midi, Soirée, Nuit) -->
-            <div class="mf-day-detail-card" id="mfDayDetailCard">
-              <div class="mf-day-detail-header" id="mfDayDetailTitle">Chargement...</div>
-              <div class="mf-periods-grid">
-                <!-- MATIN -->
-                <div class="mf-period-col" id="mfPeriodMatin">
-                  <span class="mf-period-name">MATIN</span>
-                  <span class="mf-period-desc" id="mfDescMatin">--</span>
-                  <div class="mf-period-icon" id="mfIconMatin">☀️</div>
-                  <div class="mf-period-temp" id="mfTempMatin">--°</div>
-                  <div class="mf-period-wind" id="mfWindMatin">
-                    <span class="mf-wind-arrow" id="mfWindArrowMatin">▲</span>
-                    <span id="mfWindSpeedMatin">-- km/h</span>
-                  </div>
-                  <div class="mf-confidence-badge" id="mfConfMatin">Indice de confiance: 4/5</div>
-                </div>
-                <!-- APRÈS-MIDI -->
-                <div class="mf-period-col" id="mfPeriodApresMidi">
-                  <span class="mf-period-name">APRÈS-MIDI</span>
-                  <span class="mf-period-desc" id="mfDescApresMidi">--</span>
-                  <div class="mf-period-icon" id="mfIconApresMidi">☀️</div>
-                  <div class="mf-period-temp" id="mfTempApresMidi">--°</div>
-                  <div class="mf-period-wind" id="mfWindApresMidi">
-                    <span class="mf-wind-arrow" id="mfWindArrowApresMidi">▲</span>
-                    <span id="mfWindSpeedApresMidi">-- km/h</span>
-                  </div>
-                  <div class="mf-confidence-badge" id="mfConfApresMidi">Indice de confiance: 4/5</div>
-                </div>
-                <!-- SOIRÉE -->
-                <div class="mf-period-col" id="mfPeriodSoiree">
-                  <span class="mf-period-name">SOIRÉE</span>
-                  <span class="mf-period-desc" id="mfDescSoiree">--</span>
-                  <div class="mf-period-icon" id="mfIconSoiree">🌙</div>
-                  <div class="mf-period-temp" id="mfTempSoiree">--°</div>
-                  <div class="mf-period-wind" id="mfWindSoiree">
-                    <span class="mf-wind-arrow" id="mfWindArrowSoiree">▲</span>
-                    <span id="mfWindSpeedSoiree">-- km/h</span>
-                  </div>
-                  <div class="mf-confidence-badge" id="mfConfSoiree">Indice de confiance: 4/5</div>
-                </div>
-                <!-- NUIT -->
-                <div class="mf-period-col" id="mfPeriodNuit">
-                  <span class="mf-period-name">NUIT</span>
-                  <span class="mf-period-desc" id="mfDescNuit">--</span>
-                  <div class="mf-period-icon" id="mfIconNuit">🌙</div>
-                  <div class="mf-period-temp" id="mfTempNuit">--°</div>
-                  <div class="mf-period-wind" id="mfWindNuit">
-                    <span class="mf-wind-arrow" id="mfWindArrowNuit">▲</span>
-                    <span id="mfWindSpeedNuit">-- km/h</span>
-                  </div>
-                  <div class="mf-confidence-badge" id="mfConfNuit">Indice de confiance: 4/5</div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 2. Barre de Sélection des Jours (Style officiel Météo France - 15 jours) -->
-            <div class="mf-days-scroll-wrapper">
-              <div class="mf-days-selector-bar" id="mfDaysSelectorBar">
-                <div class="loading-state">Calcul des tendances Météo France sur 15 jours...</div>
-              </div>
-            </div>
-          </div>
-          <!-- Conteneur alternatif conservé pour compatibilité interne -->
-          <div class="hourly-scroll" id="aromeHourlyScroll" style="display:none;"></div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 5. BLOC ROMMA (Carte des stations réelles) -->
-    <section class="module-section card" id="rommaSection">
-      <div class="section-header accordion-header" id="rommaAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier ROMMA" aria-expanded="true">
-        <div class="section-title-wrap">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
-          <span class="accordion-arrow">▼</span>
-          <h3 class="section-title">Réseau ROMMA</h3>
-        </div>
-        <div class="section-actions">
-          <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
-            <span>🎯 Recentrer</span>
-          </button>
-          <a href="https://www.romma.fr/#10.8/45.05/5.84" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
-            <span>🗺️ ROMMA</span> ↗
-          </a>
-        </div>
-      </div>
-      <div class="accordion-body" style="padding-top: 10px;">
-        <div class="romma-map-container" style="margin-top: 0;">
-          <iframe 
-            id="rommaMapIframe" 
-            class="romma-map-iframe" 
-            src="https://www.romma.fr/map/carte.php#10.8/45.05/5.84" 
-            allowfullscreen="true" 
-            loading="lazy"
-            title="Carte interactive officielle du réseau ROMMA">
-          </iframe>
-        </div>
-      </div>
-    </section>
-
-    <!-- 6. BLOC RADAR MÉTÉOBLUE -->
-    <section class="module-section card" id="meteoblueSection">
-      <div class="section-header accordion-header" id="meteoblueAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Météoblue" aria-expanded="true">
-        <div class="section-title-wrap">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
-          <span class="accordion-arrow">▼</span>
-          <h3 class="section-title">Radar Météoblue</h3>
-        </div>
-        <div class="section-actions">
-          <a id="meteoblueExtLink" href="https://www.meteoblue.com/en/weather/today/grenoble_france_3014728" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Météoblue">
-            <span>🗺️ Fiche Météoblue</span> ↗
-          </a>
-        </div>
-      </div>
-      <div class="accordion-body" style="padding-top: 10px;">
-        <div class="radar-card-container">
-          <div id="meteoblueRadarMap" class="radar-map-view"></div>
-
-          <div class="radar-overlay-bottom">
-            <div class="radar-scrubber-bar">
-              <div class="radar-timeline-scroll" id="radarTimelineScroll"></div>
-              <div class="radar-scrubber-nav">
-                <button type="button" class="radar-step-btn" id="radarPrevBtn" title="Précédent" aria-label="Précédent">&lt;</button>
-                <button type="button" class="radar-step-btn" id="radarNextBtn" title="Suivant" aria-label="Suivant">&gt;</button>
-                <button type="button" class="radar-play-action-btn" id="radarPlayBtn" title="Lecture / Pause" aria-label="Lecture ou pause">▶</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="radar-legend-bar-continuous">
-            <div class="radar-legend-segment segment-bruine">Bruine</div>
-            <div class="radar-legend-segment segment-legere">Légère</div>
-            <div class="radar-legend-segment segment-modere">Modéré</div>
-            <div class="radar-legend-segment segment-fort">Fort</div>
-            <div class="radar-legend-segment segment-tres-fort">Très fort</div>
-            <div class="radar-legend-segment segment-grele">Grêle</div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 7. BLOC SÉCURITÉ & BERA -->
-    <section class="module-section card" id="safetySection">
-      <div class="section-header accordion-header" id="safetyAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier Sécurité & BERA" aria-expanded="true">
-        <div class="section-title-wrap">
-          <button type="button" class="block-drag-handle" title="Maintenir et glisser pour déplacer ce bloc" aria-label="Déplacer ce bloc">☰</button>
-          <span class="accordion-arrow">▼</span>
-          <span class="model-badge safety-badge">BERA</span>
-          <h3 class="section-title">Sécurité & Risque Avalanche</h3>
-        </div>
-      </div>
-      <div class="accordion-body">
-        <p class="section-desc">
-          Consultez impérativement le Bulletin d'Estimation du Risque d'Avalanche (BERA) en saison hivernale / printanière, émis chaque jour à 16h par Météo-France.
-        </p>
-
-        <div class="bera-cards-grid">
-          <div class="bera-card">
-            <div class="bera-header">
-              <h4>Belledonne</h4>
-              <span class="bera-dept">Isère / Savoie</span>
-            </div>
-            <p class="bera-note">Haut sommet 2977m • Risque plaques à vent & corniches sur les crêtes exposées.</p>
-            <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/belledonne/" target="_blank" rel="noopener noreferrer" class="btn-bera">
-              <span>📄 BERA Belledonne Direct</span> ↗
-            </a>
-          </div>
-
-          <div class="bera-card">
-            <div class="bera-header">
-              <h4>Chartreuse</h4>
-              <span class="bera-dept">Isère / Savoie</span>
-            </div>
-            <p class="bera-note">Falaises calcaires & plateaux • Attention aux purges sous les barres rocheuses.</p>
-            <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/chartreuse/" target="_blank" rel="noopener noreferrer" class="btn-bera">
-              <span>📄 BERA Chartreuse Direct</span> ↗
-            </a>
-          </div>
-
-          <div class="bera-card">
-            <div class="bera-header">
-              <h4>Vercors</h4>
-              <span class="bera-dept">Isère / Drôme</span>
-            </div>
-            <p class="bera-note">Hauts plateaux & Grand Veymont • Pente sous les pas (Pas de la Ville, Pas des Bachassons).</p>
-            <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/vercors/" target="_blank" rel="noopener noreferrer" class="btn-bera">
-              <span>📄 BERA Vercors Direct</span> ↗
-            </a>
-          </div>
-
-          <div class="bera-card">
-            <div class="bera-header">
-              <h4>Oisans / Romanche</h4>
-              <span class="bera-dept">Isère / Hautes-Alpes</span>
-            </div>
-            <p class="bera-note">Haute montagne alpine > 3500m • Avalanches de fond, rimayes et séracs.</p>
-            <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/oisans/" target="_blank" rel="noopener noreferrer" class="btn-bera">
-              <span>📄 BERA Oisans Direct</span> ↗
+          <div class="section-actions">
+            <a id="meteocielExtLink" href="https://www.meteociel.fr/previsions/13358/grenoble.htm" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Météociel">
+              <span>🌐 Fiche Météociel</span> ↗
             </a>
           </div>
         </div>
-      </div>
-    </section>
 
+        <div id="meteocielContent" class="accordion-body">
+          <div class="meteociel-layout-grid">
+            <div class="meteociel-table-card">
+              <div class="meteociel-table-responsive">
+                <table class="meteociel-table" id="meteocielTable">
+                  <thead>
+                    <tr class="tr-head-top">
+                      <th rowspan="2" class="th-col th-jour">Jour</th>
+                      <th rowspan="2" class="th-col th-heure">Heure</th>
+                      <th rowspan="2" class="th-col th-temp">Temp.</th>
+                      <th colspan="3" class="th-col th-vent">Vent km/h</th>
+                      <th rowspan="2" class="th-col th-pluie">Pluie<br><span class="th-sub">sur 3h</span></th>
+                      <th rowspan="2" class="th-col th-humi">Humidité</th>
+                      <th rowspan="2" class="th-col th-pression">Pression</th>
+                      <th rowspan="2" class="th-col th-temps">Temps</th>
+                    </tr>
+                    <tr class="tr-head-sub">
+                      <th class="th-sub-col th-vent-dir">dir.</th>
+                      <th class="th-sub-col th-vent-moy">moy.</th>
+                      <th class="th-sub-col th-vent-raf">raf.</th>
+                    </tr>
+                  </thead>
+                  <tbody id="meteocielTableBody">
+                    <tr>
+                      <td colspan="10" class="meteociel-loading-row">Chargement des prévisions Météociel...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="meteociel-side-col">
+              <div class="ephemeris-card" id="ephemerisCard">
+                <div class="ephem-header">
+                  <div class="ephem-date" id="ephemDate">Chargement...</div>
+                  <div class="ephem-saint" id="ephemSaint">--</div>
+                </div>
+                <div class="ephem-times-grid">
+                  <span class="ephem-grid-icon">☀️</span>
+                  <span class="ephem-grid-label">Lever :</span>
+                  <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
+                  <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
+                  <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
+                  <span class="ephem-grid-delta" id="ephemDelta"></span>
+
+                  <div class="ephem-grid-divider"></div>
+
+                  <span class="ephem-grid-icon">🌅</span>
+                  <span class="ephem-grid-label">Aube :</span>
+                  <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
+                  <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
+                  <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
+                  <span class="ephem-grid-delta"></span>
+                </div>
+                <div class="ephem-moon-row">
+                  <span class="ephem-moon-prefix">Phase de la lune :</span>
+                  <span class="ephem-moon-icon" id="ephemMoonIcon">🌕</span>
+                  <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
+                </div>
+              </div>
+
+              <div class="precip-diagram-card">
+                <div class="precip-diagram-header">
+                  <h4 class="precip-diagram-title">Diagramme précipitations (mm) :</h4>
+                </div>
+                <div class="precip-canvas-wrapper">
+                  <canvas id="meteocielPrecipCanvas" width="540" height="190"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 2 : YR.NO -->
+      <section class="module-section card yrno-section-card" id="ecmwfSection">
+        <div class="section-header accordion-header" id="yrnoAccordionHeader" role="button" tabindex="0" aria-label="YR.NO" aria-expanded="true">
+          <div class="section-title-wrap">
+            <h3 class="section-title" style="margin: 0;">📈 YR.NO</h3>
+          </div>
+          <div class="section-actions">
+            <a id="yrLink" href="https://www.yr.no/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur YR.NO">
+              <span>🇳🇴 Fiche YR.NO</span> ↗
+            </a>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div class="yrno-meteogram-box">
+            <div class="yrno-canvas-loading" id="yrCanvasLoading" style="display:none;">
+              <div class="yrno-spinner-icon">⏳</div>
+              <div>Calcul du météogramme YR.NO en cours...</div>
+            </div>
+            <div class="yrno-scroll-wrapper" id="yrnoScrollWrapper">
+              <canvas id="yrnoCanvas" width="980" height="320"></canvas>
+              <div class="yrno-guideline" id="yrnoGuideline"></div>
+              <div class="yrno-tooltip" id="yrnoTooltip" role="tooltip">
+                <div class="yrno-tt-header" id="yrnoTtHeader">--</div>
+                <div class="yrno-tt-row">
+                  <span class="yrno-tt-label">Température :</span>
+                  <span class="yrno-tt-val yrno-tt-val-temp" id="yrnoTtTemp">--</span>
+                </div>
+                <div class="yrno-tt-row">
+                  <span class="yrno-tt-label">Précipitations :</span>
+                  <span class="yrno-tt-val yrno-tt-val-rain" id="yrnoTtRain">--</span>
+                </div>
+                <div class="yrno-tt-row">
+                  <span class="yrno-tt-label">Vent :</span>
+                  <span class="yrno-tt-val yrno-tt-val-wind" id="yrnoTtWind">--</span>
+                </div>
+              </div>
+            </div>
+            <div class="yrno-legend-bar">
+              <div class="yrno-legend-item">
+                <span class="yrno-legend-swatch yrno-swatch-temp"></span>
+                <span>Température °C</span>
+              </div>
+              <div class="yrno-legend-item">
+                <span class="yrno-legend-swatch yrno-swatch-rain"></span>
+                <span>Précipitations mm</span>
+              </div>
+              <div class="yrno-legend-item">
+                <span class="yrno-legend-swatch yrno-swatch-wind"></span>
+                <span>Vent (<span id="yrLegendUnitLabel">km/h</span>)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 3 : MÉTÉO FRANCE (AROME 1.3km) -->
+      <section class="module-section card" id="aromeSection">
+        <div class="section-header accordion-header" id="aromeAccordionHeader" role="button" tabindex="0" aria-label="Météo France" aria-expanded="true">
+          <div class="section-title-wrap">
+            <h3 class="section-title" id="aromeLocationTitle" style="margin: 0;">🇫🇷 Météo France</h3>
+          </div>
+          <div class="section-actions">
+            <a id="meteofranceLink" href="https://meteofrance.com/" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter les prévisions officielles sur Météo-France">
+              <span>🇫🇷 Fiche Météo-France</span> ↗
+            </a>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <div id="aromeTimelineView" class="arome-timeline-container">
+            <!-- DESIGN OFFICIEL MÉTÉO FRANCE (Screen 3) -->
+            <div class="mf-official-container" id="mfOfficialContainer">
+              <!-- 1. Carte Détail du Jour Sélectionné (4 périodes : Matin, Après-midi, Soirée, Nuit) -->
+              <div class="mf-day-detail-card" id="mfDayDetailCard">
+                <div class="mf-day-detail-header" id="mfDayDetailTitle">Chargement...</div>
+                <div class="mf-periods-grid">
+                  <!-- MATIN -->
+                  <div class="mf-period-col" id="mfPeriodMatin">
+                    <span class="mf-period-name">MATIN</span>
+                    <span class="mf-period-desc" id="mfDescMatin">--</span>
+                    <div class="mf-period-icon" id="mfIconMatin">☀️</div>
+                    <div class="mf-period-temp" id="mfTempMatin">--°</div>
+                    <div class="mf-period-wind" id="mfWindMatin">
+                      <span class="mf-wind-arrow" id="mfWindArrowMatin">▲</span>
+                      <span id="mfWindSpeedMatin">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfMatin">Indice de confiance: 4/5</div>
+                  </div>
+                  <!-- APRÈS-MIDI -->
+                  <div class="mf-period-col" id="mfPeriodApresMidi">
+                    <span class="mf-period-name">APRÈS-MIDI</span>
+                    <span class="mf-period-desc" id="mfDescApresMidi">--</span>
+                    <div class="mf-period-icon" id="mfIconApresMidi">☀️</div>
+                    <div class="mf-period-temp" id="mfTempApresMidi">--°</div>
+                    <div class="mf-period-wind" id="mfWindApresMidi">
+                      <span class="mf-wind-arrow" id="mfWindArrowApresMidi">▲</span>
+                      <span id="mfWindSpeedApresMidi">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfApresMidi">Indice de confiance: 4/5</div>
+                  </div>
+                  <!-- SOIRÉE -->
+                  <div class="mf-period-col" id="mfPeriodSoiree">
+                    <span class="mf-period-name">SOIRÉE</span>
+                    <span class="mf-period-desc" id="mfDescSoiree">--</span>
+                    <div class="mf-period-icon" id="mfIconSoiree">🌙</div>
+                    <div class="mf-period-temp" id="mfTempSoiree">--°</div>
+                    <div class="mf-period-wind" id="mfWindSoiree">
+                      <span class="mf-wind-arrow" id="mfWindArrowSoiree">▲</span>
+                      <span id="mfWindSpeedSoiree">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfSoiree">Indice de confiance: 4/5</div>
+                  </div>
+                  <!-- NUIT -->
+                  <div class="mf-period-col" id="mfPeriodNuit">
+                    <span class="mf-period-name">NUIT</span>
+                    <span class="mf-period-desc" id="mfDescNuit">--</span>
+                    <div class="mf-period-icon" id="mfIconNuit">🌙</div>
+                    <div class="mf-period-temp" id="mfTempNuit">--°</div>
+                    <div class="mf-period-wind" id="mfWindNuit">
+                      <span class="mf-wind-arrow" id="mfWindArrowNuit">▲</span>
+                      <span id="mfWindSpeedNuit">-- km/h</span>
+                    </div>
+                    <div class="mf-confidence-badge" id="mfConfNuit">Indice de confiance: 4/5</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 2. Barre de Sélection des Jours (Style officiel Météo France - 15 jours) -->
+              <div class="mf-days-scroll-wrapper">
+                <div class="mf-days-selector-bar" id="mfDaysSelectorBar">
+                  <div class="loading-state">Calcul des tendances Météo France sur 15 jours...</div>
+                </div>
+              </div>
+            </div>
+            <!-- Conteneur alternatif conservé pour compatibilité interne -->
+            <div class="hourly-scroll" id="aromeHourlyScroll" style="display:none;"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 4 : ROMMA -->
+      <section class="module-section card" id="rommaSection">
+        <div class="section-header accordion-header" id="rommaAccordionHeader" role="button" tabindex="0" aria-label="ROMMA" aria-expanded="true">
+          <div class="section-title-wrap">
+            <h3 class="section-title" style="margin: 0;">🗺️ Réseau ROMMA</h3>
+          </div>
+          <div class="section-actions">
+            <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
+              <span>🎯 Recentrer</span>
+            </button>
+            <a href="https://www.romma.fr/#10.8/45.05/5.84" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
+              <span>🗺️ ROMMA</span> ↗
+            </a>
+          </div>
+        </div>
+        <div class="accordion-body" style="padding-top: 10px;">
+          <div class="romma-map-container" style="margin-top: 0;">
+            <iframe 
+              id="rommaMapIframe" 
+              class="romma-map-iframe" 
+              src="https://www.romma.fr/map/carte.php#10.8/45.05/5.84" 
+              allowfullscreen="true" 
+              loading="lazy"
+              title="Carte interactive officielle du réseau ROMMA">
+            </iframe>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 5 : MÉTÉOBLUE RADAR -->
+      <section class="module-section card" id="meteoblueSection">
+        <div class="section-header accordion-header" id="meteoblueAccordionHeader" role="button" tabindex="0" aria-label="Météoblue" aria-expanded="true">
+          <div class="section-title-wrap">
+            <h3 class="section-title" style="margin: 0;">📡 Radar Météoblue</h3>
+          </div>
+          <div class="section-actions">
+            <a id="meteoblueExtLink" href="https://www.meteoblue.com/en/weather/today/grenoble_france_3014728" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Consulter la fiche officielle sur Météoblue">
+              <span>🗺️ Fiche Météoblue</span> ↗
+            </a>
+          </div>
+        </div>
+        <div class="accordion-body" style="padding-top: 10px;">
+          <div class="radar-card-container">
+            <div id="meteoblueRadarMap" class="radar-map-view"></div>
+
+            <div class="radar-overlay-bottom">
+              <div class="radar-scrubber-bar">
+                <div class="radar-timeline-scroll" id="radarTimelineScroll"></div>
+                <div class="radar-scrubber-nav">
+                  <button type="button" class="radar-step-btn" id="radarPrevBtn" title="Précédent" aria-label="Précédent">&lt;</button>
+                  <button type="button" class="radar-step-btn" id="radarNextBtn" title="Suivant" aria-label="Suivant">&gt;</button>
+                  <button type="button" class="radar-play-action-btn" id="radarPlayBtn" title="Lecture / Pause" aria-label="Lecture ou pause">▶</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="radar-legend-bar-continuous">
+              <div class="radar-legend-segment segment-bruine">Bruine</div>
+              <div class="radar-legend-segment segment-legere">Légère</div>
+              <div class="radar-legend-segment segment-modere">Modéré</div>
+              <div class="radar-legend-segment segment-fort">Fort</div>
+              <div class="radar-legend-segment segment-tres-fort">Très fort</div>
+              <div class="radar-legend-segment segment-grele">Grêle</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ONGLET 6 : SÉCURITÉ & BERA -->
+      <section class="module-section card" id="safetySection">
+        <div class="section-header accordion-header" id="safetyAccordionHeader" role="button" tabindex="0" aria-label="Sécurité & BERA" aria-expanded="true">
+          <div class="section-title-wrap">
+            <span class="model-badge safety-badge">BERA</span>
+            <h3 class="section-title" style="margin: 0;">⚠️ Sécurité & Risque Avalanche</h3>
+          </div>
+        </div>
+        <div class="accordion-body">
+          <p class="section-desc">
+            Consultez impérativement le Bulletin d'Estimation du Risque d'Avalanche (BERA) en saison hivernale / printanière, émis chaque jour à 16h par Météo-France.
+          </p>
+
+          <div class="bera-cards-grid">
+            <div class="bera-card">
+              <div class="bera-header">
+                <h4>Belledonne</h4>
+                <span class="bera-dept">Isère / Savoie</span>
+              </div>
+              <p class="bera-note">Haut sommet 2977m • Risque plaques à vent & corniches sur les crêtes exposées.</p>
+              <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/belledonne/" target="_blank" rel="noopener noreferrer" class="btn-bera">
+                <span>📄 BERA Belledonne Direct</span> ↗
+              </a>
+            </div>
+
+            <div class="bera-card">
+              <div class="bera-header">
+                <h4>Chartreuse</h4>
+                <span class="bera-dept">Isère / Savoie</span>
+              </div>
+              <p class="bera-note">Falaises calcaires & plateaux • Attention aux purges sous les barres rocheuses.</p>
+              <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/chartreuse/" target="_blank" rel="noopener noreferrer" class="btn-bera">
+                <span>📄 BERA Chartreuse Direct</span> ↗
+              </a>
+            </div>
+
+            <div class="bera-card">
+              <div class="bera-header">
+                <h4>Vercors</h4>
+                <span class="bera-dept">Isère / Drôme</span>
+              </div>
+              <p class="bera-note">Hauts plateaux & Grand Veymont • Pente sous les pas (Pas de la Ville, Pas des Bachassons).</p>
+              <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/vercors/" target="_blank" rel="noopener noreferrer" class="btn-bera">
+                <span>📄 BERA Vercors Direct</span> ↗
+              </a>
+            </div>
+
+            <div class="bera-card">
+              <div class="bera-header">
+                <h4>Oisans / Romanche</h4>
+                <span class="bera-dept">Isère / Hautes-Alpes</span>
+              </div>
+              <p class="bera-note">Haute montagne alpine > 3500m • Avalanches de fond, rimayes et séracs.</p>
+              <a href="https://meteofrance.com/meteo-montagne/alpes-du-nord/enneigement/bulletin-avalanche/oisans/" target="_blank" rel="noopener noreferrer" class="btn-bera">
+                <span>📄 BERA Oisans Direct</span> ↗
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
   </main>
 
-  <script src="app.js?v=8.73"></script>
+  <script src="app.js?v=8.74"></script>
+  <script src="tabs.js?v=8.74"></script>
 </body>
 </html>

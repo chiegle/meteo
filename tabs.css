@@ -121,8 +121,6 @@ body.tabs-view {
    EN-TÊTE STRICTEMENT SUR UNE SEULE LIGNE (Screen 1 & 2)
    Lieu, Dépt, Direct à gauche | Recherche & Actions à droite
    ======================================================== */
-.summit-hero,
-.summit-hero.card,
 .tabs-view .summit-hero,
 .tabs-view .summit-hero.card {
   overflow: visible !important;
@@ -313,14 +311,11 @@ body.tabs-view {
 }
 
 /* Quand le bloc hero est replié (enroulé), l'en-tête reste 100% visible et le dropdown reste accessible (Screen 2) */
-.summit-hero.collapsed,
-.summit-hero.card.collapsed,
 .tabs-view .summit-hero.collapsed,
 .tabs-view .summit-hero.card.collapsed {
   overflow: visible !important;
 }
 
-.summit-hero.collapsed .hero-header-single-row,
 .tabs-view .summit-hero.collapsed .hero-header-single-row {
   border-bottom: none !important;
   margin-bottom: 0 !important;
