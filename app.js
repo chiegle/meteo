@@ -1258,7 +1258,7 @@
                                  nameLower.startsWith("aiguille ");
 
                 if (isLake || isHut) {
-                  cleanName = cleanName.replace(/\s*[-–(]?\s*parking\s*\)?$/i, "").trim();
+                  cleanName = cleanName.replace(new RegExp("\\s*[-–(]?\\s*parking\\s*\\)?$", "i"), "").trim();
                 }
 
                 const adminParts = [
@@ -1337,7 +1337,7 @@
 
                   let cleanName = (item.name || item.display_name.split(",")[0]).trim();
                   if (isLake || isHut) {
-                    cleanName = cleanName.replace(/\s*[-–(]?\s*parking\s*\)?$/i, "").trim();
+                    cleanName = cleanName.replace(new RegExp("\\s*[-–(]?\\s*parking\\s*\\)?$", "i"), "").trim();
                   }
 
                   remoteResults.push({
@@ -1563,7 +1563,7 @@
     function normalizePlaceName(s) {
       if (!s) return "";
       let str = s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-      str = str.replace(/[-_'",.]/g, " ");
+      str = str.replace(new RegExp("[-_'\",.]", "g"), " ");
       str = str.replace(/\b(st|ste|mt)\b/g, m => ({ st: "saint", ste: "sainte", mt: "mont" }[m] || m));
       str = str.replace(/\b\d{4,5}\b/g, " ");
       str = str.replace(/\b(mo|ca|ny|tx)\b/g, " ");
@@ -5191,7 +5191,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.71").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.72").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
