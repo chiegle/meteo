@@ -17,6 +17,13 @@
       safety: document.getElementById("safetySection")
     };
 
+    function refreshComponents() {
+      if (typeof window.refreshMeteoComponents === "function") {
+        window.refreshMeteoComponents();
+      }
+      window.dispatchEvent(new Event("resize"));
+    }
+
     function switchTab(tabKey, userInitiated = false) {
       if (!panels[tabKey]) tabKey = "meteociel";
 
@@ -26,7 +33,9 @@
         btn.classList.toggle("active", isActive);
         btn.setAttribute("aria-selected", isActive ? "true" : "false");
         if (isActive && userInitiated) {
-          btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          try {
+            btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+          } catch (_) {}
         }
       });
 
@@ -37,8 +46,12 @@
         if (isActive) {
           panel.classList.add("active-tab-panel");
           panel.classList.remove("collapsed");
+          panel.style.display = "block";
           const body = panel.querySelector(".accordion-body");
-          if (body) body.classList.remove("collapsed");
+          if (body) {
+            body.classList.remove("collapsed");
+            body.style.display = "block";
+          }
           const header = panel.querySelector(".accordion-header");
           if (header) {
             header.classList.remove("collapsed");
@@ -46,13 +59,14 @@
           }
         } else {
           panel.classList.remove("active-tab-panel");
+          panel.style.display = "none";
         }
       });
 
       // 3. Forcer le redimensionnement immédiat des graphiques et cartes interactives (Leaflet, Canvas)
-      setTimeout(() => {
-        window.dispatchEvent(new Event("resize"));
-      }, 60);
+      refreshComponents();
+      setTimeout(refreshComponents, 80);
+      setTimeout(refreshComponents, 250);
 
       // 4. Mémorisation de l'onglet actif
       try {
@@ -67,6 +81,14 @@
       });
     });
 
+    // Empêcher le clic sur les en-têtes d'accords dans la vue par onglet de replier le contenu
+    document.querySelectorAll(".tabs-view .module-section .accordion-header").forEach(h => {
+      h.addEventListener("click", (e) => {
+        if (e.target.closest("a") || e.target.closest("button")) return;
+        e.stopImmediatePropagation();
+      }, true);
+    });
+
     // Chargement de l'onglet par défaut (ou dernier mémorisé)
     let initialTab = "meteociel";
     try {
@@ -74,9 +96,10 @@
       if (saved && panels[saved]) initialTab = saved;
     } catch (_) {}
 
-    // Initialisation après léger délai pour laisser app.js instancier les composants
+    // Initialisation immédiate et après léger délai pour synchronisation avec app.js
+    switchTab(initialTab, false);
     setTimeout(() => {
       switchTab(initialTab, false);
-    }, 120);
+    }, 150);
   });
 })();

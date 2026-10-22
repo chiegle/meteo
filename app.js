@@ -2503,21 +2503,24 @@
       yrCanvas.addEventListener("touchend", hideYrnoTooltip);
     }
 
+    function refreshAllComponents() {
+      if (aromeChartView && aromeChartView.style.display !== "none" && aromeDataCache) {
+        drawAromeChart(aromeDataCache);
+      }
+      renderSelectedMeteocielModel();
+      if (yrnoDataCache || weatherDataCache) {
+        drawYrnoMeteogram(yrnoDataCache || weatherDataCache);
+      }
+      if (radarMap) {
+        radarMap.invalidateSize();
+      }
+    }
+    window.refreshMeteoComponents = refreshAllComponents;
+
     let resizeTimer = null;
     window.addEventListener("resize", () => {
       clearTimeout(resizeTimer);
-      resizeTimer = setTimeout(() => {
-        if (aromeChartView && aromeChartView.style.display !== "none" && aromeDataCache) {
-          drawAromeChart(aromeDataCache);
-        }
-        renderSelectedMeteocielModel();
-        if (yrnoDataCache || weatherDataCache) {
-          drawYrnoMeteogram(yrnoDataCache || weatherDataCache);
-        }
-        if (radarMap) {
-          radarMap.invalidateSize();
-        }
-      }, 120);
+      resizeTimer = setTimeout(refreshAllComponents, 120);
     }, { passive: true });
   }
 
@@ -2846,7 +2849,6 @@
 
       aromeHourlyScroll.appendChild(card);
     });
-  }
   }
 
   // ========================================================
@@ -4881,7 +4883,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.63").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.65").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

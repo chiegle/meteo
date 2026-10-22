@@ -125,11 +125,15 @@
 }
 
 /* Dans la vue par onglet, le panneau actif est toujours déplié proprement */
+.tabs-view .module-section .accordion-header {
+  cursor: default !important;
+}
+
 .tabs-view .module-section.active-tab-panel .accordion-body {
   display: block !important;
 }
 
-.tabs-view .module-section.active-tab-panel .accordion-arrow {
+.tabs-view .module-section .accordion-arrow {
   display: none !important;
 }
 
