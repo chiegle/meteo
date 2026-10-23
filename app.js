@@ -464,6 +464,7 @@
 
   let weatherDataCache = null;
   let aromeDataCache = null;
+  let mfDataCache = null;
   let geocodeTimeout = null;
   let currentMeteocielModel = "gfs"; // Modèle GFS NOAA (conforme capture d'écran Météociel)
   let gfsDataCache = null;
@@ -978,7 +979,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.79') {
+          if (k !== 'meteo-grenoble-v8.80') {
             caches.delete(k);
           }
         });
@@ -2112,12 +2113,13 @@
     if (!forceFresh && cachedEntry && (nowTs - cachedEntry.timestamp < CACHE_TTL_MS)) {
       weatherDataCache = cachedEntry.data;
       aromeDataCache = cachedEntry.arome;
+      mfDataCache = cachedEntry.mf || cachedEntry.arome;
       gfsDataCache = cachedEntry.gfs;
       yrnoDataCache = cachedEntry.yrno;
       renderCurrentMetrics(cachedEntry.data);
       renderEphemeris(cachedEntry.data, location);
       renderSelectedMeteocielModel();
-      renderAromeTimeline(aromeDataCache);
+      renderAromeTimeline(mfDataCache || aromeDataCache);
       drawYrnoMeteogram(yrnoDataCache);
       renderEcmwfDaily(cachedEntry.ecmwf || cachedEntry.data);
       renderRommaStations(location);
@@ -2139,19 +2141,24 @@
       // a) Modèle de Base Haute Résolution Étendu 16 jours (T°, Isotherme, Lever/Coucher, WMO codes, Indice UV & Ciel clair)
       const baseUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,uv_index,uv_index_clear_sky&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,uv_index_clear_sky_max&timezone=Europe%2FParis&forecast_days=16`;
 
-      // b) Modèle AROME HD 1.3km Météo-France (Spécifique Météociel Haute Résolution)
+      // b) Modèle officiel Météo-France Étendu 16 jours (AROME HD 1.3km pour 0-42h + ARPEGE pour 42-96h via meteofrance_seamless)
       const inFrance = location.lat >= 41 && location.lat <= 52 && location.lon >= -5 && location.lon <= 10;
+      const mfUrl = inFrance
+        ? `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=meteofrance_seamless&timezone=Europe%2FParis&forecast_days=16`
+        : baseUrl;
+
+      // c) Modèle AROME HD 1.3km Météo-France (Spécifique Météociel Haute Résolution)
       const aromeUrl = inFrance
         ? `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&models=meteofrance_arome_france_hd&timezone=Europe%2FParis`
         : baseUrl;
 
-      // c) Modèle GFS 0.25° NOAA (Météociel Classique 3 jours)
+      // d) Modèle GFS 0.25° NOAA (Météociel Classique 3 jours)
       const gfsUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&models=gfs_seamless&timezone=Europe%2FParis`;
 
-      // d) Modèle ECMWF IFS 0.25° (Centre Européen / Base de Yr.no pour l'Europe)
-      const ecmwfUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=ecmwf_ifs025&timezone=Europe%2FParis&forecast_days=7`;
+      // e) Modèle ECMWF IFS 0.25° (Centre Européen / Base de Yr.no et tendances 15 jours Météo-France)
+      const ecmwfUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=ecmwf_ifs025&timezone=Europe%2FParis&forecast_days=16`;
 
-      // e) API officielle MET Norway (Yr.no) en direct
+      // f) API officielle MET Norway (Yr.no) en direct
       const metNoPromise = fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${location.lat.toFixed(4)}&lon=${location.lon.toFixed(4)}`, fetchOpts)
         .then(r => r.ok ? r.json() : null)
         .catch(errMet => {
@@ -2160,8 +2167,9 @@
         });
 
       // Lancement simultané des requêtes
-      const [baseRes, aromeRes, gfsRes, ecmwfRes, metNoData] = await Promise.all([
+      const [baseRes, mfRes, aromeRes, gfsRes, ecmwfRes, metNoData] = await Promise.all([
         fetch(baseUrl, fetchOpts).catch(() => null),
+        fetch(mfUrl, fetchOpts).catch(() => null),
         fetch(aromeUrl, fetchOpts).catch(() => null),
         fetch(gfsUrl, fetchOpts).catch(() => null),
         fetch(ecmwfUrl, fetchOpts).catch(() => null),
@@ -2169,9 +2177,62 @@
       ]);
 
       const baseData = (baseRes && baseRes.ok) ? await baseRes.json() : null;
+      const mfRawData = (mfRes && mfRes.ok) ? await mfRes.json() : null;
       const aromeData = (aromeRes && aromeRes.ok) ? await aromeRes.json() : null;
       const gfsData = (gfsRes && gfsRes.ok) ? await gfsRes.json() : null;
       const ecmwfData = (ecmwfRes && ecmwfRes.ok) ? await ecmwfRes.json() : null;
+
+      // Fusion intelligente pour Météo-France :
+      // 1. Modèle officiel Météo-France (AROME 1.3km + ARPEGE via meteofrance_seamless) pour les 4-5 premiers jours
+      // 2. Continuité sur ECMWF IFS 0.25° pour les jours suivants (J+5 à J+15), exactement comme Météo-France officiel
+      let mfMergedData = null;
+      if (mfRawData && mfRawData.hourly && mfRawData.hourly.time) {
+        mfMergedData = JSON.parse(JSON.stringify(mfRawData));
+        const ecmwfH = (ecmwfData && ecmwfData.hourly) ? ecmwfData.hourly : (baseData ? baseData.hourly : null);
+        const ecmwfD = (ecmwfData && ecmwfData.daily) ? ecmwfData.daily : (baseData ? baseData.daily : null);
+
+        // Compléter hourly quand meteofrance_seamless est null (au-delà de J+4)
+        if (ecmwfH && ecmwfH.time) {
+          const ecmwfTimes = ecmwfH.time;
+          const hourlyKeys = Object.keys(mfMergedData.hourly);
+          hourlyKeys.forEach(k => {
+            if (k === 'time' || !Array.isArray(mfMergedData.hourly[k])) return;
+            const arr = mfMergedData.hourly[k];
+            const fallbackArr = ecmwfH[k];
+            if (!fallbackArr) return;
+            for (let i = 0; i < arr.length; i++) {
+              if (arr[i] === null || arr[i] === undefined) {
+                const tStr = mfMergedData.hourly.time[i];
+                const fbIdx = ecmwfTimes.indexOf(tStr);
+                if (fbIdx !== -1 && fallbackArr[fbIdx] != null) {
+                  arr[i] = fallbackArr[fbIdx];
+                }
+              }
+            }
+          });
+        }
+
+        // Compléter daily quand meteofrance_seamless est null
+        if (mfMergedData.daily && ecmwfD && ecmwfD.time) {
+          const ecmwfDTimes = ecmwfD.time;
+          const dailyKeys = Object.keys(mfMergedData.daily);
+          dailyKeys.forEach(k => {
+            if (k === 'time' || !Array.isArray(mfMergedData.daily[k])) return;
+            const dArr = mfMergedData.daily[k];
+            const fallbackDArr = ecmwfD[k];
+            if (!fallbackDArr) return;
+            for (let i = 0; i < dArr.length; i++) {
+              if (dArr[i] === null || dArr[i] === undefined) {
+                const dStr = mfMergedData.daily.time[i];
+                const fbDIdx = ecmwfDTimes.indexOf(dStr);
+                if (fbDIdx !== -1 && fallbackDArr[fbDIdx] != null) {
+                  dArr[i] = fallbackDArr[fbDIdx];
+                }
+              }
+            }
+          });
+        }
+      }
 
       // Enrichissement d'AROME HD avec les données de base pour les champs non fournis par le modèle brut
       if (aromeData && aromeData.hourly && baseData && baseData.hourly) {
@@ -2201,6 +2262,7 @@
 
       weatherDataCache = primaryData;
       aromeDataCache = aromeData || primaryData;
+      mfDataCache = mfMergedData || aromeData || primaryData;
       gfsDataCache = gfsData || primaryData;
 
       // Traitement Yr.no officiel
@@ -2228,8 +2290,8 @@
       // Rendu Météociel selon le modèle choisi (AROME HD ou GFS)
       renderSelectedMeteocielModel();
 
-      // Rendu AROME
-      renderAromeTimeline(aromeDataCache);
+      // Rendu Météo-France (alimenté par le modèle officiel Météo-France AROME + ARPEGE étendu)
+      renderAromeTimeline(mfDataCache || aromeDataCache);
       if (tabAromeChart && tabAromeChart.classList.contains("active")) {
         drawAromeChart(aromeDataCache);
       }
@@ -2250,6 +2312,7 @@
           updatedAt: timeStr,
           data: primaryData,
           arome: aromeData,
+          mf: mfDataCache,
           gfs: gfsData,
           yrno: yrnoDataCache,
           ecmwf: ecmwfData
@@ -3042,9 +3105,9 @@
   }
 
   function renderAromeTimeline(data) {
-    const masterData = (weatherDataCache && weatherDataCache.hourly && weatherDataCache.hourly.time && weatherDataCache.hourly.time.length >= 120)
-      ? weatherDataCache
-      : (data || aromeDataCache || weatherDataCache);
+    const masterData = (mfDataCache && mfDataCache.hourly && mfDataCache.hourly.time && mfDataCache.hourly.time.length >= 24)
+      ? mfDataCache
+      : ((data && data.hourly && data.hourly.time) ? data : (aromeDataCache || weatherDataCache));
 
     if (!masterData || !masterData.hourly || !masterData.hourly.time) return;
     const hourly = masterData.hourly;
@@ -3069,9 +3132,10 @@
         daysMap.set(dateKey, []);
       }
 
-      // Chercher si ce créneau existe dans le modèle AROME 1.3km
+      // Priorité absolue aux prévisions officielles Météo-France (Seamless AROME+ARPEGE ou AROME HD)
+      const hasMasterVal = hourly.temperature_2m && hourly.temperature_2m[i] != null;
       const aromeIdx = aromeTimes.indexOf(timeStr);
-      const useArome = aromeIdx !== -1 && aromeH.temperature_2m && aromeH.temperature_2m[aromeIdx] != null;
+      const useArome = !hasMasterVal && aromeIdx !== -1 && aromeH.temperature_2m && aromeH.temperature_2m[aromeIdx] != null;
       const srcHourly = useArome ? aromeH : hourly;
       const srcIdx = useArome ? aromeIdx : i;
 
