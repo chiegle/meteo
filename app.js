@@ -503,6 +503,8 @@
   const currentGusts = document.getElementById("currentGusts");
   const currentIsoZero = document.getElementById("currentIsoZero");
   const currentIsoStatus = document.getElementById("currentIsoStatus");
+  const currentCloudBase = document.getElementById("currentCloudBase");
+  const currentCloudStatus = document.getElementById("currentCloudStatus");
   const currentPrecip = document.getElementById("currentPrecip");
   const currentSnow = document.getElementById("currentSnow");
   const currentUv = document.getElementById("currentUv");
@@ -979,7 +981,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.80') {
+          if (k !== 'meteo-grenoble-v8.81') {
             caches.delete(k);
           }
         });
@@ -1985,16 +1987,39 @@
 
   function updateMeteofranceHeaders(location) {
     if (!meteofranceLink || !location) return;
-    const cityName = location.nearestCity || location.name;
-    const slug = getCleanLocationSlug(cityName);
+    const targetCity = location.nearestCity || location.name;
+    const slug = getCleanLocationSlug(targetCity);
     const rawPc = location.postcode ? String(location.postcode).replace(/[^0-9]/g, "").slice(0, 5) : "";
     if (rawPc.length === 5 && slug) {
       meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${slug}/${rawPc}`;
     } else {
-      meteofranceLink.href = `https://meteofrance.com/recherche?q=${encodeURIComponent(cityName)}`;
+      meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${slug || "grenoble"}/${rawPc || "38000"}`;
     }
     const targetName = location.nearestCity ? `${location.name} (${location.nearestCity})` : location.name;
     meteofranceLink.title = `Consulter directement les prévisions de ${targetName} sur Météo-France`;
+
+    // Résolution immédiate de la commune officielle la plus proche si non connue ou si sommet
+    if ((!rawPc || rawPc.length !== 5 || !location.nearestCity) && typeof location.lat === "number" && typeof location.lon === "number") {
+      fetch(`https://geo.api.gouv.fr/communes?lat=${location.lat}&lon=${location.lon}&fields=nom,codesPostaux`)
+        .then(r => r.ok ? r.json() : null)
+        .then(list => {
+          if (Array.isArray(list) && list.length > 0) {
+            const com = list[0];
+            const cName = com.nom || "";
+            const cPc = Array.isArray(com.codesPostaux) && com.codesPostaux.length > 0 ? com.codesPostaux[0] : "";
+            if (cName && cPc) {
+              location.nearestCity = cName;
+              location.postcode = cPc;
+              const newSlug = getCleanLocationSlug(cName);
+              meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${newSlug}/${cPc}`;
+              if (meteocielExtLink) {
+                meteocielExtLink.href = `https://www.meteociel.fr/prevville.php?action=getville&ville=${encodeURIComponent(cPc)}`;
+              }
+            }
+          }
+        })
+        .catch(() => {});
+    }
   }
 
   function updateMeteoblueHeaders(location) {
@@ -2078,28 +2103,24 @@
     updateMeteoblueHeaders(location);
     updateWebcamsSection(location);
 
-    // Résolution automatique immédiate de la commune la plus proche si le code postal n'est pas encore connu
-    if (!location.postcode && typeof location.lat === "number" && typeof location.lon === "number") {
-      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${location.lat}&lon=${location.lon}&format=json&zoom=12`, {
-        headers: { "Accept-Language": "fr" }
-      })
-      .then(res => res.json())
-      .then(data => {
-        if (data && data.address) {
-          const addr = data.address;
-          const city = addr.village || addr.town || addr.municipality || addr.city || "";
-          const pc = addr.postcode ? String(addr.postcode).replace(/[^0-9]/g, "").slice(0, 5) : "";
-          if (pc && pc.length === 5) {
-            location.postcode = pc;
+    // Résolution automatique immédiate de la commune officielle la plus proche
+    if ((!location.postcode || !location.nearestCity) && typeof location.lat === "number" && typeof location.lon === "number") {
+      fetch(`https://geo.api.gouv.fr/communes?lat=${location.lat}&lon=${location.lon}&fields=nom,codesPostaux`)
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (Array.isArray(data) && data.length > 0) {
+            const com = data[0];
+            const city = com.nom || "";
+            const pc = (Array.isArray(com.codesPostaux) && com.codesPostaux.length > 0) ? com.codesPostaux[0] : "";
             if (city) location.nearestCity = city;
+            if (pc && pc.length === 5) location.postcode = pc;
             updateMeteocielHeaders(location);
             updateMeteofranceHeaders(location);
             updateMeteoblueHeaders(location);
             updateWebcamsSection(location);
           }
-        }
-      })
-      .catch(() => {});
+        })
+        .catch(() => {});
     }
 
     if (yrCurrentLocationName) yrCurrentLocationName.textContent = location.name;
@@ -2139,12 +2160,12 @@
       const fetchOpts = { cache: "no-store" };
 
       // a) Modèle de Base Haute Résolution Étendu 16 jours (T°, Isotherme, Lever/Coucher, WMO codes, Indice UV & Ciel clair)
-      const baseUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,uv_index,uv_index_clear_sky&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,uv_index_clear_sky_max&timezone=Europe%2FParis&forecast_days=16`;
+      const baseUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,cloud_cover,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,uv_index,uv_index_clear_sky&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,uv_index_max,uv_index_clear_sky_max&timezone=Europe%2FParis&forecast_days=16`;
 
       // b) Modèle officiel Météo-France Étendu 16 jours (AROME HD 1.3km pour 0-42h + ARPEGE pour 42-96h via meteofrance_seamless)
       const inFrance = location.lat >= 41 && location.lat <= 52 && location.lon >= -5 && location.lon <= 10;
       const mfUrl = inFrance
-        ? `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=meteofrance_seamless&timezone=Europe%2FParis&forecast_days=16`
+        ? `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,dew_point_2m,cloud_cover,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=meteofrance_seamless&timezone=Europe%2FParis&forecast_days=16`
         : baseUrl;
 
       // c) Modèle AROME HD 1.3km Météo-France (Spécifique Météociel Haute Résolution)
@@ -2236,7 +2257,7 @@
 
       // Enrichissement d'AROME HD avec les données de base pour les champs non fournis par le modèle brut
       if (aromeData && aromeData.hourly && baseData && baseData.hourly) {
-        const fieldsToBackfill = ['weather_code', 'freezing_level_height', 'snowfall', 'surface_pressure'];
+        const fieldsToBackfill = ['weather_code', 'freezing_level_height', 'snowfall', 'surface_pressure', 'dew_point_2m', 'cloud_cover'];
         const aromeTimes = aromeData.hourly.time || [];
         const baseTimes = baseData.hourly.time || [];
 
@@ -2944,6 +2965,38 @@
       currentIsoStatus.textContent = "";
     }
 
+    // Base & Plafond des nuages (Formule aérologique de Lawrence / LCL + Couverture nuageuse)
+    if (currentCloudBase && currentCloudStatus) {
+      const dew = (hourly.dew_point_2m && hourly.dew_point_2m[idx] != null) ? hourly.dew_point_2m[idx] : null;
+      const cov = (hourly.cloud_cover && hourly.cloud_cover[idx] != null) ? hourly.cloud_cover[idx] : 0;
+      const altLoc = Math.round(currentLocation && typeof currentLocation.alt === "number" ? currentLocation.alt : 212);
+
+      if (t != null && dew != null) {
+        const spread = Math.max(0, t - dew);
+        const lclMeters = Math.round(125 * spread);
+        const cloudBaseAlt = altLoc + lclMeters;
+
+        if (cov < 20) {
+          currentCloudBase.textContent = "Dégagé";
+          currentCloudStatus.textContent = "Pas de nuage bas";
+          currentCloudStatus.style.color = "";
+        } else {
+          currentCloudBase.textContent = `${cloudBaseAlt} m`;
+          if (altLoc >= cloudBaseAlt - 40) {
+            currentCloudStatus.textContent = "⚠️ Dans le nuage / brouillard";
+            currentCloudStatus.style.color = "#f43f5e";
+          } else {
+            currentCloudStatus.textContent = `+${lclMeters} m sol (${cov}% couv.)`;
+            currentCloudStatus.style.color = "";
+          }
+        }
+      } else {
+        currentCloudBase.textContent = "-- m";
+        currentCloudStatus.textContent = "Non mesuré";
+        currentCloudStatus.style.color = "";
+      }
+    }
+
     // Précipitations (si élément présent dans le DOM)
     if (currentPrecip) currentPrecip.textContent = `${p24.toFixed(1)} mm`;
     if (currentSnow) currentSnow.textContent = s24 > 0 ? `Neige : +${Math.round(s24)} cm` : "Pas de neige annoncée";
@@ -3093,14 +3146,12 @@
       const tempEl = document.getElementById(`mfTemp${p.key}`);
       const windSpeedEl = document.getElementById(`mfWindSpeed${p.key}`);
       const windArrowEl = document.getElementById(`mfWindArrow${p.key}`);
-      const confEl = document.getElementById(`mfConf${p.key}`);
 
       if (descEl) descEl.textContent = p.data.desc;
       if (iconEl) iconEl.innerHTML = p.data.icon;
       if (tempEl) tempEl.textContent = `${p.data.temp}°`;
       if (windSpeedEl) windSpeedEl.textContent = `${p.data.wind} km/h`;
       if (windArrowEl) windArrowEl.textContent = p.data.windArrow;
-      if (confEl) confEl.textContent = `Indice de confiance: ${day.confidence}`;
     });
   }
 
@@ -4227,7 +4278,7 @@
     const useLoc = loc && isNearAlps(loc.lat, loc.lon) && !isNearGieres(loc.lat, loc.lon);
     const target = useLoc ? { lat: loc.lat, lon: loc.lon } : ROMMA_DEFAULT_CENTER;
     const extHash = `${ROMMA_ZOOM}/${target.lat.toFixed(4)}/${target.lon.toFixed(4)}`;
-    if (rommaExtLink) rommaExtLink.href = `https://www.romma.fr/#${extHash}`;
+    if (rommaExtLink) rommaExtLink.href = "https://www.romma.fr/#10.799999999999999/45.1245/5.7227";
 
     // Clé stable (lieu) : on ne recharge l'iframe que si le lieu change ou sur demande explicite,
     // pour te laisser déplacer librement la carte

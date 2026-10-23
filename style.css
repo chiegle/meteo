@@ -945,13 +945,13 @@ body.is-reordering-blocks .radar-map-view {
 
 @media (max-width: 639px) {
   .metric-card-uv {
-    grid-column: span 1;
+    grid-column: span 2;
   }
 }
 
 @media (min-width: 640px) and (max-width: 1023px) {
   .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
   }
   .metric-card-uv {
     grid-column: span 1;
@@ -960,7 +960,7 @@ body.is-reordering-blocks .radar-map-view {
 
 @media (min-width: 1024px) {
   .metrics-grid {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 

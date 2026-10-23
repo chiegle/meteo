@@ -11,7 +11,7 @@ Cette application est **100% autonome** et ne nécessite **aucune installation c
 ### Option A — Ouverture directe (Le plus simple)
 Double-cliquez simplement sur le fichier :
 ```text
-C:\Users\romai\.gemini\antigravity\scratch\meteo-grenoble\dashboard\index.html
+index.html
 ```
 Il s'ouvre instantanément dans votre navigateur habituel (Chrome, Edge, Firefox, Safari).
 

@@ -321,6 +321,15 @@
                   </div>
                 </div>
 
+                <div class="metric-card" id="metricCardCloudBase">
+                  <span class="metric-icon">☁️</span>
+                  <div class="metric-data">
+                    <span class="metric-label">Base nuages</span>
+                    <span class="metric-value" id="currentCloudBase">-- m</span>
+                    <span class="metric-sub" id="currentCloudStatus">Plafond estimé</span>
+                  </div>
+                </div>
+
                 <div class="metric-card metric-card-uv" id="metricCardUv">
                   <span class="metric-icon" id="currentUvIcon">☀️</span>
                   <div class="metric-data">
@@ -387,7 +396,6 @@
                       <span class="mf-wind-arrow" id="mfWindArrowMatin">▲</span>
                       <span id="mfWindSpeedMatin">-- km/h</span>
                     </div>
-                    <div class="mf-confidence-badge" id="mfConfMatin">Indice de confiance: 4/5</div>
                   </div>
                   <!-- APRÈS-MIDI -->
                   <div class="mf-period-col" id="mfPeriodApresMidi">
@@ -399,7 +407,6 @@
                       <span class="mf-wind-arrow" id="mfWindArrowApresMidi">▲</span>
                       <span id="mfWindSpeedApresMidi">-- km/h</span>
                     </div>
-                    <div class="mf-confidence-badge" id="mfConfApresMidi">Indice de confiance: 4/5</div>
                   </div>
                   <!-- SOIRÉE -->
                   <div class="mf-period-col" id="mfPeriodSoiree">
@@ -411,7 +418,6 @@
                       <span class="mf-wind-arrow" id="mfWindArrowSoiree">▲</span>
                       <span id="mfWindSpeedSoiree">-- km/h</span>
                     </div>
-                    <div class="mf-confidence-badge" id="mfConfSoiree">Indice de confiance: 4/5</div>
                   </div>
                   <!-- NUIT -->
                   <div class="mf-period-col" id="mfPeriodNuit">
@@ -423,7 +429,6 @@
                       <span class="mf-wind-arrow" id="mfWindArrowNuit">▲</span>
                       <span id="mfWindSpeedNuit">-- km/h</span>
                     </div>
-                    <div class="mf-confidence-badge" id="mfConfNuit">Indice de confiance: 4/5</div>
                   </div>
                 </div>
               </div>
@@ -451,7 +456,7 @@
             <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
               <span>🎯 Recentrer</span>
             </button>
-            <a href="https://www.romma.fr/#11.4/45.1667/5.7653" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
+            <a href="https://www.romma.fr/#10.799999999999999/45.1245/5.7227" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
               <span>🗺️ ROMMA</span> ↗
             </a>
           </div>
@@ -594,7 +599,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.80"></script>
-  <script src="tabs.js?v=8.80"></script>
+  <script src="app.js?v=8.81"></script>
+  <script src="tabs.js?v=8.81"></script>
 </body>
 </html>
