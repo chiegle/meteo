@@ -927,3 +927,152 @@ body.tabs-view {
   display: block;
   object-fit: contain;
 }
+
+/* ========================================================
+   AMÉLIORATIONS v8.77 :
+   1. Zoom global légèrement réduit sauf icônes & menu du haut
+   2. Recherche : bouton loupe style onglet par défaut
+   3. Météo-France : étoile seule & heure seule
+   4. Mobile : pleine largeur & suppression de l'encart noir externe
+   5. Météoblue : transition radar ultra-fluide comme sur le site officiel
+   ======================================================== */
+
+/* 1. Réduction légère du zoom global du contenu (hors barre d'onglets du haut) */
+.tabs-view .tabs-panels-container {
+  zoom: 0.93;
+}
+
+/* Conserver la taille pleine des icônes dans le contenu */
+.tabs-view .tabs-panels-container .metric-icon {
+  zoom: 1.075;
+}
+
+/* 2. Recherche : uniquement la loupe (comme un onglet) par défaut ;
+   le champ + icône GPS + étoile favoris ne s'affichent qu'au clic */
+.search-toggle-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 13px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all var(--transition-fast);
+}
+
+.search-toggle-tab-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-highlight);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.hero-search-inline-wrap:not(.search-open) .global-search-input-box,
+.hero-search-inline-wrap:not(.search-open) #openFavoritesBtn {
+  display: none !important;
+}
+
+.hero-search-inline-wrap.search-open .search-toggle-tab-btn {
+  display: none !important;
+}
+
+.hero-search-inline-wrap.search-open .global-search-input-box {
+  display: flex !important;
+  flex: 1 1 250px;
+  min-width: 195px;
+  max-width: 340px;
+  border-color: var(--accent-cyan);
+  background: #000000;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.35);
+}
+
+.hero-search-inline-wrap.search-open #openFavoritesBtn {
+  display: inline-flex !important;
+  width: 36px;
+  height: 36px;
+  font-size: 1.05rem;
+}
+
+/* 3. En-tête Météo-France épuré : étoile seule & heure seule */
+.hero-header-single-row .hero-fav-btn {
+  padding: 2px 7px !important;
+  font-size: 0.92rem !important;
+  line-height: 1;
+}
+
+.hero-header-single-row .hero-fav-text {
+  display: none !important;
+}
+
+/* 4. Fluidité officielle Météoblue (fondu doux entre deux pas de 15 min) */
+.radar-tile-layer {
+  transition: opacity 0.42s linear !important;
+  will-change: opacity;
+}
+
+/* 5. Mobile : pleine largeur de la page + suppression du gros encart noir inutile */
+@media (max-width: 700px) {
+  .search-toggle-tab-btn {
+    padding: 7px 10px;
+    font-size: 0.95rem;
+  }
+
+  .hero-search-inline-wrap.search-open .global-search-input-box {
+    flex: 1 1 180px;
+    min-width: 155px;
+    max-width: 64vw;
+  }
+
+  .tabs-view .main-content {
+    padding: 0 0 18px 0 !important;
+    gap: 0 !important;
+  }
+
+  .tabs-view .tabs-panels-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 4px 2px !important;
+    margin: 0 !important;
+    box-sizing: border-box;
+  }
+
+  /* Suppression de l'encart noir externe (.module-section.card) sur mobile */
+  .tabs-view .tabs-panels-container > .module-section.card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .tabs-view .tabs-panels-container > .module-section > .accordion-body {
+    padding: 0 !important;
+  }
+
+  /* Suppression de l'encart noir autour des données actuelles dans Météo-France */
+  .tabs-view #aromeSection .summit-hero,
+  .tabs-view #aromeSection .summit-hero.card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 2px 4px 8px 4px !important;
+    margin: 0 0 6px 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .tabs-view #aromeSection .mf-official-container,
+  .tabs-view #aromeSection .mf-day-detail-card,
+  .tabs-view .romma-map-container,
+  .tabs-view .radar-card-container {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 10px !important;
+  }
+}

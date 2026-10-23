@@ -6,17 +6,17 @@
   <title>Ma météo</title>
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
-  <link rel="manifest" href="manifest.json?v=8.76">
-  <link rel="stylesheet" href="style.css?v=8.76">
-  <link rel="stylesheet" href="tabs.css?v=8.76">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.76">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.76">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.76">
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.76">
-  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.76">
-  <link rel="shortcut icon" href="favicon.ico?v=8.76">
-  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.76">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.76">
+  <link rel="manifest" href="manifest.json?v=8.77">
+  <link rel="stylesheet" href="style.css?v=8.77">
+  <link rel="stylesheet" href="tabs.css?v=8.77">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.77">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.77">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.77">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.77">
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.77">
+  <link rel="shortcut icon" href="favicon.ico?v=8.77">
+  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.77">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.77">
   <script>
     // Fail-safe global error watchdog
     window.addEventListener('error', function(e) {
@@ -66,9 +66,13 @@
         </button>
       </nav>
 
-      <!-- Recherche + favoris tout à droite des onglets -->
-      <div class="hero-search-inline-wrap">
-        <div class="global-search-input-box expandable-search">
+      <!-- Recherche (loupe style onglet par défaut) + GPS & favoris visibles à l'ouverture -->
+      <div class="hero-search-inline-wrap" id="heroSearchWrap">
+        <button type="button" id="searchToggleTabBtn" class="search-toggle-tab-btn" title="Rechercher un lieu" aria-label="Rechercher un lieu" aria-expanded="false">
+          <span class="search-tab-lens">🔍</span>
+        </button>
+
+        <div class="global-search-input-box expandable-search" id="globalSearchBox">
           <span class="search-lens-icon">🔍</span>
           <input type="text" id="globalSearchInput" class="global-search-input" placeholder="Rechercher..." autocomplete="off">
           <button id="globalSearchClearBtn" class="search-clear-btn" style="display:none;" title="Effacer la recherche" aria-label="Effacer">✕</button>
@@ -85,7 +89,7 @@
           </button>
         </div>
 
-        <!-- Bouton étoile favoris -->
+        <!-- Bouton étoile favoris (visible à l'ouverture de la recherche) -->
         <button id="openFavoritesBtn" class="btn-star-top" title="Voir mes favoris" aria-label="Mes favoris">
           <span class="star-icon">⭐</span>
         </button>
@@ -275,11 +279,10 @@
                 <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
                 <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
                 <span class="altitude-badge" id="heroAltitudeBadge">212 m</span>
-                <button id="heroFavBtn" class="hero-fav-btn" title="Ajouter / Retirer des favoris">
+                <button id="heroFavBtn" class="hero-fav-btn" title="Ajouter / Retirer des favoris" aria-label="Favori">
                   <span class="hero-fav-star">☆</span>
-                  <span class="hero-fav-text" id="heroFavLabel">Favori</span>
                 </button>
-                <span class="hero-live-badge" id="heroLiveBadge">● En direct • Actualisé à --:--</span>
+                <span class="hero-live-badge" id="heroLiveBadge">● --:--</span>
               </div>
 
             </div>
@@ -448,7 +451,7 @@
             <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
               <span>🎯 Recentrer</span>
             </button>
-            <a href="https://www.romma.fr/#11/45.1833/5.7917" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
+            <a href="https://www.romma.fr/#11.6/45.1833/5.7950" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
               <span>🗺️ ROMMA</span> ↗
             </a>
           </div>
@@ -459,7 +462,7 @@
               id="rommaMapIframe" 
               class="romma-map-iframe" 
               src="about:blank" 
-              data-pending-src="https://www.romma.fr/map/carte.php#11/45.1833/5.7917" 
+              data-pending-src="https://www.romma.fr/map/carte.php#11.6/45.1833/5.7950" 
               scrolling="no" 
               allowfullscreen="true" 
               title="Carte interactive officielle du réseau ROMMA">
@@ -595,7 +598,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.76"></script>
-  <script src="tabs.js?v=8.76"></script>
+  <script src="app.js?v=8.77"></script>
+  <script src="tabs.js?v=8.77"></script>
 </body>
 </html>

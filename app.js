@@ -403,15 +403,17 @@
   }
 
   // Pictogrammes officiels Météo-France (icons/mf/*.svg) à partir du code WMO
+  // En journée (j), on utilise les pictogrammes officiels avec soleil + nuage + pluie/neige/orage
+  // (p12j, p14bisj, p16bisj, p17j, p19j) comme sur meteofrance.com
   const MF_PICTO_BY_WMO = {
     0: "p1", 1: "p2", 2: "p3", 3: "p3bis",
     45: "p6", 48: "p8",
-    51: "p9", 53: "p9", 55: "p9", 56: "p11", 57: "p11",
-    61: "p13", 63: "p14", 65: "p15", 66: "p11", 67: "p11",
-    71: "p18", 73: "p22", 75: "p23", 77: "p18",
+    51: "p12", 53: "p12", 55: "p9", 56: "p11", 57: "p11",
+    61: "p12", 63: "p14bis", 65: "p15", 66: "p11", 67: "p11",
+    71: "p17", 73: "p19", 75: "p23", 77: "p17",
     80: "p12", 81: "p14bis", 82: "p15",
     85: "p17", 86: "p21",
-    95: "p16", 96: "p24", 99: "p24"
+    95: "p16bis", 96: "p24", 99: "p24"
   };
 
   function getMfPictoHtml(code, isNight = false, alt = "") {
@@ -568,7 +570,7 @@
   const meteoblueResetBtn = document.getElementById("meteoblueResetBtn");
   const rommaCenterLocationBtn = document.getElementById("rommaCenterLocationBtn");
   const rommaCurrentViewLabel = document.getElementById("rommaCurrentViewLabel");
-  const DEFAULT_ROMMA_HASH = "11/45.1833/5.7917"; // Gières par défaut
+  const DEFAULT_ROMMA_HASH = "11.6/45.1833/5.7950"; // Gières par défaut (zoom 11.6 centré sur Gières)
 
   // ========================================================
   // GESTION DES FAVORIS (LOCALSTORAGE & DRAG & DROP)
@@ -679,14 +681,12 @@
       openFavoritesBtn.title = isFav ? "⭐ Favoris (Ce lieu est dans vos favoris)" : "⭐ Mes favoris";
     }
 
-    // 2. Bouton favori dans le Hero Banner
+    // 2. Bouton favori dans le Hero Banner (étoile uniquement)
     if (heroFavBtn) {
       heroFavBtn.classList.toggle("active", isFav);
       heroFavBtn.title = isFav ? "Retirer ce lieu des favoris" : "Ajouter aux favoris";
       const heroStar = heroFavBtn.querySelector(".hero-fav-star");
-      const heroText = heroFavBtn.querySelector(".hero-fav-text");
       if (heroStar) heroStar.textContent = isFav ? "★" : "☆";
-      if (heroText) heroText.textContent = isFav ? "En favori" : "Favori";
     }
 
     // 3. Décompte dans le panneau déroulant
@@ -976,7 +976,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.38') {
+          if (k !== 'meteo-grenoble-v8.77') {
             caches.delete(k);
           }
         });
@@ -1014,8 +1014,43 @@
   // ========================================================
   // RECHERCHE GLOBALE VILLES, COMMUNES ET MONTAGNE
   // ========================================================
+  function closeSearchBar() {
+    const searchWrap = document.getElementById("heroSearchWrap") || document.querySelector(".hero-search-inline-wrap");
+    const toggleBtn = document.getElementById("searchToggleTabBtn");
+    const inputBox = globalSearchInput ? globalSearchInput.closest(".global-search-input-box") : null;
+    if (searchWrap) searchWrap.classList.remove("search-open");
+    if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "false");
+    if (inputBox) inputBox.classList.remove("search-expanded");
+    if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
+    closeFavoritesFlyout();
+  }
+
+  function openSearchBar() {
+    const searchWrap = document.getElementById("heroSearchWrap") || document.querySelector(".hero-search-inline-wrap");
+    const toggleBtn = document.getElementById("searchToggleTabBtn");
+    const inputBox = globalSearchInput ? globalSearchInput.closest(".global-search-input-box") : null;
+    if (searchWrap) searchWrap.classList.add("search-open");
+    if (toggleBtn) toggleBtn.setAttribute("aria-expanded", "true");
+    if (inputBox) inputBox.classList.add("search-expanded");
+    if (globalSearchInput) {
+      globalSearchInput.value = "";
+      if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
+      setTimeout(() => {
+        globalSearchInput.focus();
+      }, 20);
+    }
+  }
+
   function setupGlobalSearch() {
     if (!globalSearchInput) return;
+
+    const searchToggleTabBtn = document.getElementById("searchToggleTabBtn");
+    if (searchToggleTabBtn) {
+      searchToggleTabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openSearchBar();
+      });
+    }
 
     // Le champ reste vide par défaut avec son placeholder "Rechercher..."
     globalSearchInput.value = "";
@@ -1024,6 +1059,8 @@
     // et suppression automatique du texte pour taper directement sans devoir effacer
     const inputBox = globalSearchInput.closest(".global-search-input-box");
     globalSearchInput.addEventListener("focus", () => {
+      const searchWrap = document.getElementById("heroSearchWrap") || document.querySelector(".hero-search-inline-wrap");
+      if (searchWrap) searchWrap.classList.add("search-open");
       if (inputBox) inputBox.classList.add("search-expanded");
       globalSearchInput.value = "";
       if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
@@ -1070,6 +1107,7 @@
         globalSearchDropdown.style.display = "none";
         globalSearchInput.value = "";
         globalSearchInput.blur();
+        closeSearchBar();
       }
     });
 
@@ -1556,6 +1594,7 @@
     if (globalSearchInput) globalSearchInput.value = "";
     if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
     if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
+    closeSearchBar();
 
     // Synchroniser l'état actif des favoris (étoiles, chips, flyout)
     updateFavoritesUI();
@@ -2082,7 +2121,7 @@
       renderRommaStations(location);
       updateMeteoblueMap(location);
       if (heroLiveBadge) {
-        heroLiveBadge.textContent = `● En direct • Actualisé à ${cachedEntry.updatedAt}`;
+        heroLiveBadge.textContent = `● ${cachedEntry.updatedAt}`;
       }
       return;
     }
@@ -2177,7 +2216,7 @@
       const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
       lastSuccessfulFetchTime = Date.now();
       if (heroLiveBadge) {
-        heroLiveBadge.textContent = `● En direct • Actualisé à ${timeStr}`;
+        heroLiveBadge.textContent = `● ${timeStr}`;
       }
 
       // 3. Rendu de tous les modules de l'application
@@ -2198,6 +2237,9 @@
       renderEcmwfDaily(ecmwfData || primaryData);
       renderRommaStations(location);
       updateMeteoblueMap(location);
+      if (radarMap) {
+        loadRadarData();
+      }
 
       // Enregistrement dans le cache mémoire vive (RAM uniquement, sans stockage disque)
       try {
@@ -2537,14 +2579,15 @@
 
     // Fermeture automatique au clic n'importe où ailleurs (Recherche, Info-bulle UV, Favoris)
     document.addEventListener("click", (e) => {
-      // 1. Fermer le menu déroulant de recherche et replier la barre de recherche
+      // 1. Fermer le menu déroulant de recherche et replier la barre de recherche en loupe seule
       const searchBox = document.getElementById("globalSearchBox");
       const searchWrap = document.querySelector(".hero-search-inline-wrap") || searchBox;
       const searchDropdown = document.getElementById("globalSearchDropdown");
-      if (searchDropdown && searchWrap && !searchWrap.contains(e.target) && !searchDropdown.contains(e.target)) {
-        searchDropdown.style.display = "none";
+      if (searchWrap && !searchWrap.contains(e.target) && (!searchDropdown || !searchDropdown.contains(e.target))) {
+        if (searchDropdown) searchDropdown.style.display = "none";
         if (searchBox) searchBox.classList.remove("search-expanded");
-        const clearBtn = document.getElementById("globalSearchClear");
+        closeSearchBar();
+        const clearBtn = document.getElementById("globalSearchClearBtn") || document.getElementById("globalSearchClear");
         if (clearBtn && globalSearchInput && !globalSearchInput.value) {
           clearBtn.style.display = "none";
         }
@@ -2683,8 +2726,18 @@
       if (yrnoDataCache || weatherDataCache) {
         drawYrnoMeteogram(yrnoDataCache || weatherDataCache);
       }
+      const mbSection = document.getElementById("meteoblueSection");
       if (radarMap) {
-        radarMap.invalidateSize();
+        if (mbSection && mbSection.offsetParent !== null) {
+          radarMap.invalidateSize();
+          if (Date.now() - lastRadarLoadTime > 8 * 60 * 1000) {
+            loadRadarData();
+          } else {
+            syncRadarToCurrentTime();
+          }
+        } else {
+          stopRadarPlayback();
+        }
       }
       if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
         const pending = rommaMapIframe.dataset.pendingSrc || `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
@@ -2692,8 +2745,14 @@
           rommaMapIframe.dataset.loadedSrc = pending;
           rommaMapIframe.src = pending;
         }
+        enforceRommaCenterHash(pending);
       }
-      mountVisibleWebcamMedia();
+      const wcSection = document.getElementById("webcamsSection");
+      if (wcSection && wcSection.offsetParent !== null) {
+        mountVisibleWebcamMedia();
+      } else {
+        unmountAllWebcamMedia();
+      }
     }
     window.refreshMeteoComponents = refreshAllComponents;
 
@@ -2709,13 +2768,21 @@
     function checkAutoRefresh() {
       const elapsedMinutes = (Date.now() - lastSuccessfulFetchTime) / (60 * 1000);
       if (elapsedMinutes >= 10 && currentLocation) {
-        fetchWeatherData(currentLocation);
+        loadAllLocationData(currentLocation, true);
+      } else if (radarMap) {
+        if (Date.now() - lastRadarLoadTime > 8 * 60 * 1000) {
+          loadRadarData();
+        } else {
+          syncRadarToCurrentTime();
+        }
       }
     }
 
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
         checkAutoRefresh();
+      } else {
+        stopRadarPlayback();
       }
     });
 
@@ -4066,11 +4133,46 @@
     return Math.abs(lat - 45.1833) < 0.14 && Math.abs(lon - 5.7917) < 0.19;
   }
 
+  function enforceRommaCenterHash(baseUrl) {
+    if (!rommaMapIframe || !baseUrl) return;
+    // Sur mobile ou si un cookie mview de romma.fr centrait sur Voiron,
+    // déclencher un micro-changement de hash force L.Hash (onhashchange) à recentrer sur Gières
+    const parts = baseUrl.split("#");
+    if (parts.length < 2) return;
+    const base = parts[0];
+    const hash = parts[1];
+    const hParts = hash.split("/");
+    if (hParts.length < 3) return;
+    const z = hParts[0];
+    const latNum = parseFloat(hParts[1]);
+    const lon = hParts[2];
+    if (isNaN(latNum)) return;
+    const nudgedHash = `${z}/${(latNum + 0.0001).toFixed(4)}/${lon}`;
+
+    setTimeout(() => {
+      if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
+        rommaMapIframe.src = `${base}#${nudgedHash}`;
+      }
+    }, 350);
+    setTimeout(() => {
+      if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
+        rommaMapIframe.src = `${base}#${hash}`;
+      }
+    }, 650);
+  }
+
+  if (rommaMapIframe) {
+    rommaMapIframe.addEventListener("load", () => {
+      const pending = rommaMapIframe.dataset.pendingSrc || `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
+      enforceRommaCenterHash(pending);
+    });
+  }
+
   function updateRommaMap(loc, forceCenter = false) {
     if (!rommaMapIframe) return;
 
     const useLoc = loc && isNearAlps(loc.lat, loc.lon) && !isNearGieres(loc.lat, loc.lon);
-    const hash = useLoc ? `11/${loc.lat.toFixed(4)}/${loc.lon.toFixed(4)}` : DEFAULT_ROMMA_HASH;
+    const hash = useLoc ? `11.6/${loc.lat.toFixed(4)}/${loc.lon.toFixed(4)}` : DEFAULT_ROMMA_HASH;
     const targetSrc = `https://www.romma.fr/map/carte.php#${hash}`;
     const targetExt = `https://www.romma.fr/#${hash}`;
 
@@ -4082,6 +4184,7 @@
         rommaMapIframe.dataset.loadedSrc = targetSrc;
         rommaMapIframe.src = targetSrc;
       }
+      enforceRommaCenterHash(targetSrc);
     } else if (forceCenter) {
       delete rommaMapIframe.dataset.loadedSrc;
     }
@@ -4100,6 +4203,24 @@
   let currentRadarIndex = 0;
   let radarPlayInterval = null;
   let radarTimeRangeHours = 3; // 3h par défaut selon la demande utilisateur
+  let lastRadarLoadTime = 0;
+
+  function syncRadarToCurrentTime() {
+    if (!radarSlots || radarSlots.length === 0 || radarPlayInterval) return;
+    const nowSec = Math.floor(Date.now() / 1000);
+    let bestIdx = 0;
+    let minDiff = Infinity;
+    for (let i = 0; i < radarSlots.length; i++) {
+      const diff = Math.abs(radarSlots[i].time - nowSec);
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx !== currentRadarIndex) {
+      showRadarSlot(bestIdx, false);
+    }
+  }
 
   async function initRadarMap() {
     const mapEl = document.getElementById("meteoblueRadarMap");
@@ -4192,8 +4313,8 @@
     try {
       // API officielle Météoblue (Radar & Précipitations haute définition temps réel + nowcast)
       const apiKey = "1iw4Jq5NZK60Ig7O";
-      const timeUrl = `https://maps-api-cdn.meteoblue.com/v1/tiles/precipitation_global_internal/meteomapsTimeLast24h.json?lang=fr&apikey=${apiKey}`;
-      const res = await fetch(timeUrl);
+      const timeUrl = `https://maps-api-cdn.meteoblue.com/v1/tiles/precipitation_global_internal/meteomapsTimeLast24h.json?lang=fr&apikey=${apiKey}&_t=${Math.floor(Date.now() / 60000)}`;
+      const res = await fetch(timeUrl, { cache: "no-store" });
       if (!res.ok) {
         console.warn("Météoblue time API error:", res.status);
         return;
@@ -4202,8 +4323,23 @@
       const allTimesteps = data.timesteps || [];
       if (allTimesteps.length === 0) return;
 
-      const currentIdx = typeof data.current === "number" ? data.current : (allTimesteps.length - 1);
+      lastRadarLoadTime = Date.now();
       const isobs = data.isobservation || [];
+
+      // Déterminer le créneau de 15 min correspondant exactement à l'heure actuelle réelle (Date.now())
+      const nowMs = Date.now();
+      let currentIdx = typeof data.current === "number" ? data.current : (allTimesteps.length - 1);
+      let minTimeDiff = Infinity;
+      for (let i = 0; i < allTimesteps.length; i++) {
+        const tsMs = new Date(allTimesteps[i].timestep).getTime();
+        if (!isNaN(tsMs)) {
+          const diff = Math.abs(tsMs - nowMs);
+          if (diff < minTimeDiff) {
+            minTimeDiff = diff;
+            currentIdx = i;
+          }
+        }
+      }
 
       // Règle 1 : EXACTEMENT 1 plage horaire passée avant le créneau actuel (1 créneau de 15m)
       const pastSlotsCount = 1;
@@ -4384,18 +4520,22 @@
     const playBtn = document.getElementById("radarPlayBtn");
     if (playBtn) playBtn.textContent = "⏸";
 
+    // Vitesse officielle Météoblue (~580 ms par pas de 15 min + pause en fin de boucle)
+    const STEP_DELAY_MS = 580;
+    const END_PAUSE_MS = 1150;
+
     function tick() {
       let next = currentRadarIndex + 1;
-      let delay = 240;
+      let delay = STEP_DELAY_MS;
       if (next >= radarSlots.length) {
         next = 0;
-        delay = 600; // Pause naturelle en fin de boucle avant de relancer
+        delay = END_PAUSE_MS; // Pause naturelle en fin de boucle avant de relancer
       }
       showRadarSlot(next, true);
       radarPlayInterval = setTimeout(tick, delay);
     }
 
-    radarPlayInterval = setTimeout(tick, 240);
+    radarPlayInterval = setTimeout(tick, STEP_DELAY_MS);
   }
 
   function stopRadarPlayback() {
@@ -4601,6 +4741,7 @@
         { key: "all", label: "Tout Isère", url: "https://www.chamrousse.com/webcams.html" },
         { key: "chamrousse", label: "🏔️ Chamrousse", url: "https://www.chamrousse.com/webcams.html" },
         { key: "bastille", label: "🚡 La Bastille", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
+        { key: "chamechaude", label: "🌲 Chamechaude & Chartreuse", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
         { key: "7laux", label: "🎿 Les 7 Laux", url: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/" }
       ],
       items: [
@@ -4672,6 +4813,46 @@
           alt: "214 m",
           type: "iframe",
           src: "https://www.skaping.com/grenoble/hotel-de-ville",
+          officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
+        },
+        {
+          id: "chamechaude-coldeporte",
+          site: "chamechaude",
+          siteLabel: "Chamechaude",
+          title: "Col de Porte • Vue Sommet de Chamechaude",
+          alt: "1 326 m",
+          type: "iframe",
+          src: "https://www.skaping.com/grenoble/col-de-porte",
+          officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
+        },
+        {
+          id: "chamechaude-sappey",
+          site: "chamechaude",
+          siteLabel: "Chamechaude",
+          title: "Le Sappey-en-Chartreuse • Vue Chamechaude",
+          alt: "1 000 m",
+          type: "iframe",
+          src: "https://www.skaping.com/sappey-en-chartreuse",
+          officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
+        },
+        {
+          id: "chamechaude-alpin",
+          site: "chamechaude",
+          siteLabel: "Chamechaude",
+          title: "Col de Porte • Pistes de Chamechaude",
+          alt: "1 326 m",
+          type: "iframe",
+          src: "https://www.skaping.com/col-de-porte/ski-alpin",
+          officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
+        },
+        {
+          id: "chamechaude-biathlon",
+          site: "chamechaude",
+          siteLabel: "Chamechaude",
+          title: "Col de Porte • Stade de Biathlon",
+          alt: "1 326 m",
+          type: "iframe",
+          src: "https://www.skaping.com/col-de-porte/biathlon",
           officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
         },
         {
@@ -4824,15 +5005,32 @@
     return null;
   }
 
+  function unmountAllWebcamMedia() {
+    const section = document.getElementById("webcamsSection");
+    if (!section) return;
+    section.querySelectorAll(".webcam-media-box").forEach(box => {
+      if (box.dataset.mounted === "1") {
+        box.dataset.mounted = "0";
+        box.innerHTML = `<div class="webcam-media-placeholder">📷 En pause (économie batterie)...</div>`;
+      }
+    });
+  }
+
   function mountVisibleWebcamMedia(forceReload = false) {
     const section = document.getElementById("webcamsSection");
     if (!section || section.offsetParent === null) return;
     const ts = Date.now();
 
     section.querySelectorAll(".webcam-card").forEach(card => {
-      if (card.style.display === "none") return;
       const box = card.querySelector(".webcam-media-box");
       if (!box) return;
+      if (card.style.display === "none") {
+        if (box.dataset.mounted === "1") {
+          box.dataset.mounted = "0";
+          box.innerHTML = `<div class="webcam-media-placeholder">📷 En pause...</div>`;
+        }
+        return;
+      }
       if (box.dataset.mounted === "1" && !forceReload) return;
       box.dataset.mounted = "1";
 
@@ -5687,7 +5885,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.76").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.77").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
