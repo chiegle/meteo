@@ -6,17 +6,17 @@
   <title>Ma météo</title>
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
-  <link rel="manifest" href="manifest.json?v=8.77">
-  <link rel="stylesheet" href="style.css?v=8.77">
-  <link rel="stylesheet" href="tabs.css?v=8.77">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.77">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.77">
-  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.77">
-  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.77">
-  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.77">
-  <link rel="shortcut icon" href="favicon.ico?v=8.77">
-  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.77">
-  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.77">
+  <link rel="manifest" href="manifest.json?v=8.78">
+  <link rel="stylesheet" href="style.css?v=8.78">
+  <link rel="stylesheet" href="tabs.css?v=8.78">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.78">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.78">
+  <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.78">
+  <link rel="icon" type="image/png" sizes="192x192" href="favicon-192x192.png?v=8.78">
+  <link rel="icon" type="image/png" sizes="512x512" href="favicon.png?v=8.78">
+  <link rel="shortcut icon" href="favicon.ico?v=8.78">
+  <link rel="apple-touch-icon" sizes="192x192" href="favicon-192x192.png?v=8.78">
+  <link rel="icon" type="image/svg+xml" href="favicon.svg?v=8.78">
   <script>
     // Fail-safe global error watchdog
     window.addEventListener('error', function(e) {
@@ -451,7 +451,7 @@
             <button id="rommaResetBtn" type="button" class="ext-link-btn" title="Recentrer la carte" style="cursor:pointer; background:var(--bg-secondary); border:1px solid var(--border-color); color:var(--text-primary);">
               <span>🎯 Recentrer</span>
             </button>
-            <a href="https://www.romma.fr/#11.6/45.1833/5.7950" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
+            <a href="https://www.romma.fr/#11.4/45.1667/5.7653" id="rommaExtLink" target="_blank" rel="noopener noreferrer" class="ext-link-btn" title="Ouvrir la carte officielle ROMMA dans un nouvel onglet">
               <span>🗺️ ROMMA</span> ↗
             </a>
           </div>
@@ -462,7 +462,7 @@
               id="rommaMapIframe" 
               class="romma-map-iframe" 
               src="about:blank" 
-              data-pending-src="https://www.romma.fr/map/carte.php#11.6/45.1833/5.7950" 
+              data-pending-src="https://www.romma.fr/map/carte.php#11.4/45.1667/5.7653" 
               scrolling="no" 
               allowfullscreen="true" 
               title="Carte interactive officielle du réseau ROMMA">
@@ -587,9 +587,6 @@
           <div class="webcams-toolbar" id="webcamsToolbar">
             <div class="webcams-region-badge" id="webcamsRegionBadge">🏔️ Isère (38)</div>
             <div class="webcams-filters-bar" id="webcamsFiltersBar" role="tablist" aria-label="Filtrer par site"></div>
-            <button type="button" class="webcams-refresh-btn" id="webcamsRefreshBtn" title="Actualiser les flux webcams">
-              <span>🔄 Actualiser</span>
-            </button>
           </div>
           <div class="webcams-grid" id="webcamsGrid"></div>
         </div>
@@ -598,7 +595,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.77"></script>
-  <script src="tabs.js?v=8.77"></script>
+  <script src="app.js?v=8.78"></script>
+  <script src="tabs.js?v=8.78"></script>
 </body>
 </html>

@@ -715,25 +715,6 @@ body.tabs-view {
   background: rgba(255, 255, 255, 0.08);
 }
 
-.webcams-refresh-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  border-radius: var(--radius-pill, 9999px);
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-primary);
-  font-size: 0.78rem;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.webcams-refresh-btn:hover {
-  border-color: var(--accent-cyan);
-  color: var(--accent-cyan);
-}
-
 .webcams-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

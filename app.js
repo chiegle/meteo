@@ -570,7 +570,9 @@
   const meteoblueResetBtn = document.getElementById("meteoblueResetBtn");
   const rommaCenterLocationBtn = document.getElementById("rommaCenterLocationBtn");
   const rommaCurrentViewLabel = document.getElementById("rommaCurrentViewLabel");
-  const DEFAULT_ROMMA_HASH = "11.6/45.1833/5.7950"; // Gières par défaut (zoom 11.6 centré sur Gières)
+  const DEFAULT_ROMMA_HASH = "11.4/45.1667/5.7653"; // Saint-Martin-d'Hères par défaut
+  const ROMMA_DEFAULT_CENTER = { lat: 45.1667, lon: 5.7653 }; // Saint-Martin-d'Hères
+  const ROMMA_ZOOM = 11.4; // palier valide (zoomSnap 0.6 de romma.fr)
 
   // ========================================================
   // GESTION DES FAVORIS (LOCALSTORAGE & DRAG & DROP)
@@ -976,7 +978,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.77') {
+          if (k !== 'meteo-grenoble-v8.78') {
             caches.delete(k);
           }
         });
@@ -2740,12 +2742,10 @@
         }
       }
       if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
-        const pending = rommaMapIframe.dataset.pendingSrc || `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
-        if (rommaMapIframe.dataset.loadedSrc !== pending) {
-          rommaMapIframe.dataset.loadedSrc = pending;
-          rommaMapIframe.src = pending;
+        // Chargement initial uniquement (aucun recentrage forcé au resize : la carte reste déplaçable)
+        if (!rommaMapIframe.dataset.loadedKey || rommaMapIframe.dataset.loadedKey !== rommaMapIframe.dataset.pendingKey) {
+          updateRommaMap(currentLocation, false);
         }
-        enforceRommaCenterHash(pending);
       }
       const wcSection = document.getElementById("webcamsSection");
       if (wcSection && wcSection.offsetParent !== null) {
@@ -2776,6 +2776,7 @@
           syncRadarToCurrentTime();
         }
       }
+      checkAutoWebcamRefresh();
     }
 
     document.addEventListener("visibilitychange", () => {
@@ -4129,64 +4130,53 @@
   }
 
   function isNearGieres(lat, lon) {
-    // ~15 km autour de Gières (agglomération grenobloise) -> centrage par défaut sur Gières
-    return Math.abs(lat - 45.1833) < 0.14 && Math.abs(lon - 5.7917) < 0.19;
+    // ~15 km autour de Saint-Martin-d'Hères (agglomération grenobloise) -> centrage par défaut sur SMH
+    return Math.abs(lat - ROMMA_DEFAULT_CENTER.lat) < 0.14 && Math.abs(lon - ROMMA_DEFAULT_CENTER.lon) < 0.19;
   }
 
-  function enforceRommaCenterHash(baseUrl) {
-    if (!rommaMapIframe || !baseUrl) return;
-    // Sur mobile ou si un cookie mview de romma.fr centrait sur Voiron,
-    // déclencher un micro-changement de hash force L.Hash (onhashchange) à recentrer sur Gières
-    const parts = baseUrl.split("#");
-    if (parts.length < 2) return;
-    const base = parts[0];
-    const hash = parts[1];
-    const hParts = hash.split("/");
-    if (hParts.length < 3) return;
-    const z = hParts[0];
-    const latNum = parseFloat(hParts[1]);
-    const lon = hParts[2];
-    if (isNaN(latNum)) return;
-    const nudgedHash = `${z}/${(latNum + 0.0001).toFixed(4)}/${lon}`;
+  // La carte de romma.fr a une taille FIXE (930 x 1216 px, cf. maps_new.css) : Leaflet centre
+  // le lieu au milieu de cette zone, alors que l'iframe n'en montre que le coin haut-gauche.
+  // On décale donc le centre envoyé dans le hash pour que le lieu tombe au milieu de la partie visible.
+  const ROMMA_MAP_W = 930;
+  const ROMMA_MAP_H = 1216;
 
-    setTimeout(() => {
-      if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
-        rommaMapIframe.src = `${base}#${nudgedHash}`;
-      }
-    }, 350);
-    setTimeout(() => {
-      if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
-        rommaMapIframe.src = `${base}#${hash}`;
-      }
-    }, 650);
-  }
+  function buildRommaHash(lat, lon) {
+    const visW = Math.min(ROMMA_MAP_W, (rommaMapIframe && rommaMapIframe.clientWidth) || ROMMA_MAP_W);
+    const visH = Math.min(ROMMA_MAP_H, (rommaMapIframe && rommaMapIframe.clientHeight) || ROMMA_MAP_H);
+    const dx = ROMMA_MAP_W / 2 - visW / 2; // décalage vers l'est (px)
+    const dy = ROMMA_MAP_H / 2 - visH / 2; // décalage vers le sud (px)
 
-  if (rommaMapIframe) {
-    rommaMapIframe.addEventListener("load", () => {
-      const pending = rommaMapIframe.dataset.pendingSrc || `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
-      enforceRommaCenterHash(pending);
-    });
+    const scale = 256 * Math.pow(2, ROMMA_ZOOM);
+    const x = (lon + 180) / 360 * scale + dx;
+    const sinLat = Math.sin(lat * Math.PI / 180);
+    const y = (0.5 - Math.log((1 + sinLat) / (1 - sinLat)) / (4 * Math.PI)) * scale + dy;
+
+    const cLon = x / scale * 360 - 180;
+    const n = Math.PI - 2 * Math.PI * y / scale;
+    const cLat = 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    return `${ROMMA_ZOOM}/${cLat.toFixed(4)}/${cLon.toFixed(4)}`;
   }
 
   function updateRommaMap(loc, forceCenter = false) {
     if (!rommaMapIframe) return;
 
     const useLoc = loc && isNearAlps(loc.lat, loc.lon) && !isNearGieres(loc.lat, loc.lon);
-    const hash = useLoc ? `11.6/${loc.lat.toFixed(4)}/${loc.lon.toFixed(4)}` : DEFAULT_ROMMA_HASH;
-    const targetSrc = `https://www.romma.fr/map/carte.php#${hash}`;
-    const targetExt = `https://www.romma.fr/#${hash}`;
+    const target = useLoc ? { lat: loc.lat, lon: loc.lon } : ROMMA_DEFAULT_CENTER;
+    const extHash = `${ROMMA_ZOOM}/${target.lat.toFixed(4)}/${target.lon.toFixed(4)}`;
+    if (rommaExtLink) rommaExtLink.href = `https://www.romma.fr/#${extHash}`;
 
-    rommaMapIframe.dataset.pendingSrc = targetSrc;
-    if (rommaExtLink) rommaExtLink.href = targetExt;
+    // Clé stable (lieu) : on ne recharge l'iframe que si le lieu change ou sur demande explicite,
+    // pour te laisser déplacer librement la carte
+    const key = extHash;
+    rommaMapIframe.dataset.pendingKey = key;
 
     if (rommaMapIframe.offsetParent !== null) {
-      if (forceCenter || rommaMapIframe.dataset.loadedSrc !== targetSrc) {
-        rommaMapIframe.dataset.loadedSrc = targetSrc;
-        rommaMapIframe.src = targetSrc;
+      if (forceCenter || rommaMapIframe.dataset.loadedKey !== key) {
+        rommaMapIframe.dataset.loadedKey = key;
+        rommaMapIframe.src = `https://www.romma.fr/map/carte.php#${buildRommaHash(target.lat, target.lon)}`;
       }
-      enforceRommaCenterHash(targetSrc);
     } else if (forceCenter) {
-      delete rommaMapIframe.dataset.loadedSrc;
+      delete rommaMapIframe.dataset.loadedKey;
     }
   }
 
@@ -4724,8 +4714,7 @@
   // Événements pour recentrer la carte ROMMA
   if (rommaResetBtn) {
     rommaResetBtn.addEventListener("click", () => {
-      if (rommaMapIframe) rommaMapIframe.src = `https://www.romma.fr/map/carte.php#${DEFAULT_ROMMA_HASH}`;
-      if (rommaExtLink) rommaExtLink.href = `https://www.romma.fr/#${DEFAULT_ROMMA_HASH}`;
+      updateRommaMap(currentLocation, true);
     });
   }
 
@@ -4735,14 +4724,13 @@
   // ========================================================
   const WEBCAMS_BY_REGION = {
     "38": {
-      label: "🏔️ Isère (38)",
+      label: "Isère (38)",
       defaultUrl: "https://www.chamrousse.com/webcams.html",
       filters: [
-        { key: "all", label: "Tout Isère", url: "https://www.chamrousse.com/webcams.html" },
-        { key: "chamrousse", label: "🏔️ Chamrousse", url: "https://www.chamrousse.com/webcams.html" },
-        { key: "bastille", label: "🚡 La Bastille", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
-        { key: "chamechaude", label: "🌲 Chamechaude & Chartreuse", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
-        { key: "7laux", label: "🎿 Les 7 Laux", url: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/" }
+        { key: "chamrousse", label: "Chamrousse", url: "https://www.chamrousse.com/webcams.html" },
+        { key: "bastille", label: "La Bastille", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
+        { key: "chamechaude", label: "Chamechaude", url: "https://www.grenoble-tourisme.com/fr/webcam/" },
+        { key: "7laux", label: "Les 7 Laux", url: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/" }
       ],
       items: [
         {
@@ -4898,12 +4886,11 @@
       ]
     },
     "63": {
-      label: "🌋 Clermont & Puy-de-Dôme (63)",
+      label: "Clermont & Puy-de-Dôme (63)",
       defaultUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php",
       filters: [
-        { key: "all", label: "Tout 63", url: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php" },
-        { key: "pdd", label: "🌋 Puy de Dôme (OPGC & Sommet)", url: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php" },
-        { key: "routes63", label: "🛣️ Département Puy-de-Dôme (Routes)", url: "https://www.puy-de-dome.fr/routes-deplacements/webcam.html" }
+        { key: "pdd", label: "Puy de Dôme (OPGC & Sommet)", url: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php" },
+        { key: "routes63", label: "Département Puy-de-Dôme (Routes)", url: "https://www.puy-de-dome.fr/routes-deplacements/webcam.html" }
       ],
       items: [
         {
@@ -5141,29 +5128,35 @@
   }
 
   function applyWebcamFilter(filterKey) {
-    activeWebcamFilter = filterKey;
+    // Si on reclique sur la catégorie active, on la désélectionne (filtre = null -> tout s'affiche)
+    if (activeWebcamFilter === filterKey) {
+      activeWebcamFilter = null;
+    } else {
+      activeWebcamFilter = filterKey;
+    }
+
     const cfg = WEBCAMS_BY_REGION[activeWebcamRegion];
     if (!cfg) return;
 
     const filtersBar = document.getElementById("webcamsFiltersBar");
     if (filtersBar) {
       filtersBar.querySelectorAll(".webcam-filter-pill").forEach(btn => {
-        const active = btn.dataset.filter === filterKey;
+        const active = activeWebcamFilter !== null && btn.dataset.filter === activeWebcamFilter;
         btn.classList.toggle("active", active);
         btn.setAttribute("aria-selected", active ? "true" : "false");
       });
     }
 
-    const activeFilterObj = cfg.filters.find(f => f.key === filterKey) || cfg.filters[0];
+    const activeFilterObj = cfg.filters.find(f => f.key === activeWebcamFilter);
     const extLink = document.getElementById("webcamsExtLink");
-    if (extLink && activeFilterObj) {
-      extLink.href = activeFilterObj.url;
+    if (extLink) {
+      extLink.href = activeFilterObj ? activeFilterObj.url : cfg.defaultUrl;
     }
 
     const grid = document.getElementById("webcamsGrid");
     if (grid) {
       grid.querySelectorAll(".webcam-card").forEach(card => {
-        const show = filterKey === "all" || card.dataset.site === filterKey;
+        const show = activeWebcamFilter === null || card.dataset.site === activeWebcamFilter;
         card.style.display = show ? "" : "none";
       });
     }
@@ -5181,12 +5174,12 @@
 
     if (!region || !WEBCAMS_BY_REGION[region]) {
       activeWebcamRegion = null;
-      if (badge) badge.textContent = "📷 Hors secteur 38 / 63";
+      if (badge) badge.textContent = "Hors secteur 38 / 63";
       filtersBar.innerHTML = "";
       grid.innerHTML = `
         <div class="webcams-empty-state">
           Aucune webcam configurée pour cette commune.<br>
-          <span>Les webcams d'Isère (Chamrousse, La Bastille, Les 7 Laux) s'affichent automatiquement pour les villes du <strong>38</strong>, et celles de Clermont / Puy-de-Dôme pour les villes du <strong>63</strong>.</span>
+          <span>Les webcams d'Isère (Chamrousse, La Bastille, Chamechaude, Les 7 Laux) s'affichent automatiquement pour les villes du <strong>38</strong>, et celles de Clermont / Puy-de-Dôme pour les villes du <strong>63</strong>.</span>
         </div>
       `;
       return;
@@ -5198,7 +5191,7 @@
     }
 
     activeWebcamRegion = region;
-    activeWebcamFilter = "all";
+    activeWebcamFilter = null; // Par défaut, aucun filtre actif : toutes les webcams sont visibles
     const cfg = WEBCAMS_BY_REGION[region];
 
     if (badge) badge.textContent = cfg.label;
@@ -5206,16 +5199,29 @@
 
     filtersBar.innerHTML = "";
     cfg.filters.forEach(f => {
-      const count = f.key === "all" ? cfg.items.length : cfg.items.filter(it => it.site === f.key).length;
+      const count = cfg.items.filter(it => it.site === f.key).length;
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "webcam-filter-pill" + (f.key === "all" ? " active" : "");
+      btn.className = "webcam-filter-pill";
       btn.dataset.filter = f.key;
       btn.innerHTML = `<span>${f.label}</span><span class="webcam-filter-count">${count}</span>`;
       btn.addEventListener("click", () => applyWebcamFilter(f.key));
+
+      // Gestion du double-clic sur l'onglet de catégorie webcam -> ouvre le site officiel
+      let lastClick = 0;
+      btn.addEventListener("pointerdown", () => {
+        const now = Date.now();
+        if (now - lastClick < 350) {
+          lastClick = 0;
+          window.open(f.url, "_blank", "noopener,noreferrer");
+        } else {
+          lastClick = now;
+        }
+      });
       btn.addEventListener("dblclick", () => {
         window.open(f.url, "_blank", "noopener,noreferrer");
       });
+
       filtersBar.appendChild(btn);
     });
 
@@ -5250,11 +5256,17 @@
     mountVisibleWebcamMedia(false);
   }
 
-  const webcamsRefreshBtn = document.getElementById("webcamsRefreshBtn");
-  if (webcamsRefreshBtn) {
-    webcamsRefreshBtn.addEventListener("click", () => {
+  let lastWebcamRefreshTime = Date.now();
+
+  function checkAutoWebcamRefresh() {
+    const wcSection = document.getElementById("webcamsSection");
+    if (!wcSection || wcSection.offsetParent === null) return;
+    const elapsedMinutes = (Date.now() - lastWebcamRefreshTime) / (60 * 1000);
+    // Rafraîchissement intelligent sans surconsommation : toutes les 10 min quand l'onglet est actif
+    if (elapsedMinutes >= 10) {
+      lastWebcamRefreshTime = Date.now();
       mountVisibleWebcamMedia(true);
-    });
+    }
   }
 
   // ========================================================
@@ -5885,7 +5897,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.77").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.78").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
