@@ -978,7 +978,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.78') {
+          if (k !== 'meteo-grenoble-v8.79') {
             caches.delete(k);
           }
         });
@@ -5174,7 +5174,7 @@
 
     if (!region || !WEBCAMS_BY_REGION[region]) {
       activeWebcamRegion = null;
-      if (badge) badge.textContent = "Hors secteur 38 / 63";
+      if (badge) badge.style.display = "none";
       filtersBar.innerHTML = "";
       grid.innerHTML = `
         <div class="webcams-empty-state">
@@ -5194,7 +5194,7 @@
     activeWebcamFilter = null; // Par défaut, aucun filtre actif : toutes les webcams sont visibles
     const cfg = WEBCAMS_BY_REGION[region];
 
-    if (badge) badge.textContent = cfg.label;
+    if (badge) badge.style.display = "none";
     if (extLink) extLink.href = cfg.defaultUrl;
 
     filtersBar.innerHTML = "";
@@ -5897,7 +5897,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.78").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.79").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

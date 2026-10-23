@@ -654,17 +654,7 @@ body.tabs-view {
 }
 
 .webcams-region-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border-radius: var(--radius-pill, 9999px);
-  background: rgba(56, 189, 248, 0.14);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  color: var(--accent-cyan);
-  font-size: 0.8rem;
-  font-weight: 800;
-  white-space: nowrap;
+  display: none !important;
 }
 
 .webcams-filters-bar {
