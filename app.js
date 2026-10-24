@@ -1080,7 +1080,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.82') {
+          if (k !== 'meteo-grenoble-v8.83') {
             caches.delete(k);
           }
         });
@@ -5450,23 +5450,31 @@
       card.className = "webcam-card";
       card.dataset.site = item.site;
       card.innerHTML = `
-        <div class="webcam-card-header">
+        <div class="webcam-card-header" title="Double-clic pour ouvrir le site officiel">
           <div class="webcam-card-title-group">
             <span class="webcam-site-tag">${item.siteLabel}</span>
             <h4 class="webcam-card-title">${item.title}</h4>
           </div>
           <div class="webcam-card-actions">
             <span class="altitude-badge">${item.alt}</span>
-            <button type="button" class="webcam-Action-btn webcam-expand-btn" title="Agrandir en plein écran" aria-label="Plein écran">⛶</button>
-            <a href="${item.officialUrl}" target="_blank" rel="noopener noreferrer" class="webcam-Action-btn" title="Ouvrir la page officielle">↗</a>
           </div>
         </div>
         <div class="webcam-media-box" data-type="${item.type}" data-src="${item.src}" data-fallback-video="${item.fallbackVideo || ""}" data-title="${item.title}">
           <div class="webcam-media-placeholder">📷 Chargement du direct...</div>
         </div>
       `;
-      card.querySelector(".webcam-expand-btn").addEventListener("click", () => openWebcamLightbox(item));
-      card.querySelector(".webcam-card-header").addEventListener("dblclick", () => {
+      const header = card.querySelector(".webcam-card-header");
+      let lastTap = 0;
+      header.addEventListener("click", () => {
+        const now = Date.now();
+        if (now - lastTap < 350) {
+          lastTap = 0;
+          window.open(item.officialUrl, "_blank", "noopener,noreferrer");
+          return;
+        }
+        lastTap = now;
+      });
+      header.addEventListener("dblclick", () => {
         window.open(item.officialUrl, "_blank", "noopener,noreferrer");
       });
       grid.appendChild(card);
