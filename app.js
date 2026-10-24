@@ -618,6 +618,105 @@
     }
   }
 
+  // ========================================================
+  // HISTORIQUE DE RECHERCHE RÉCENT (5 DERNIERS LIEUX)
+  // ========================================================
+  const SEARCH_HISTORY_KEY = "meteo_search_history";
+  let searchHistoryList = [];
+
+  function loadSearchHistory() {
+    try {
+      const stored = localStorage.getItem(SEARCH_HISTORY_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          searchHistoryList = parsed.slice(0, 5);
+          return;
+        }
+      }
+    } catch (e) {
+      console.warn("Erreur lecture historique recherche:", e);
+    }
+    searchHistoryList = [];
+  }
+
+  function saveSearchHistory() {
+    try {
+      localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(searchHistoryList));
+    } catch (e) {
+      console.warn("Erreur sauvegarde historique recherche:", e);
+    }
+  }
+
+  function addToSearchHistory(loc) {
+    if (!loc || !loc.name || typeof loc.lat !== "number" || typeof loc.lon !== "number") return;
+    const cleanItem = {
+      name: loc.name,
+      alt: typeof loc.alt === "number" ? Math.round(loc.alt) : 250,
+      lat: loc.lat,
+      lon: loc.lon,
+      admin1: loc.admin1 || "",
+      postcode: loc.postcode || "",
+      nearestCity: loc.nearestCity || loc.name,
+      countryCode: loc.countryCode || "FR",
+      isSummit: !!loc.isSummit,
+      isLake: !!loc.isLake,
+      isHut: !!loc.isHut,
+      massif: loc.massif
+    };
+    searchHistoryList = searchHistoryList.filter(item => !isSameLocation(item, cleanItem));
+    searchHistoryList.unshift(cleanItem);
+    if (searchHistoryList.length > 5) {
+      searchHistoryList = searchHistoryList.slice(0, 5);
+    }
+    saveSearchHistory();
+  }
+
+  function renderSearchHistoryDropdown() {
+    loadSearchHistory();
+    if (!globalSearchDropdown) return;
+    globalSearchDropdown.innerHTML = "";
+
+    if (!Array.isArray(searchHistoryList) || searchHistoryList.length === 0) {
+      globalSearchDropdown.style.display = "none";
+      return;
+    }
+
+    const header = document.createElement("div");
+    header.className = "search-history-header";
+    header.innerHTML = `<span>Recherches récentes</span>`;
+    globalSearchDropdown.appendChild(header);
+
+    searchHistoryList.slice(0, 5).forEach((item, index) => {
+      const div = document.createElement("div");
+      div.className = "search-dropdown-item global-search-dropdown-item search-history-item";
+      div.dataset.index = index;
+
+      let icon = "📍";
+      if (item.isSummit) icon = "⛰️";
+      else if (item.isLake) icon = "💧";
+      else if (item.isHut) icon = "🛖";
+
+      const altMeta = item.alt != null ? `${Math.round(item.alt)} m` : "";
+      const subtitle = [altMeta, item.admin1 || item.nearestCity || ""].filter(Boolean).join(" • ");
+
+      div.innerHTML = `
+        <div class="search-item-info">
+          <div class="search-item-name">${icon} ${item.name}</div>
+          <div class="search-item-meta">${subtitle}</div>
+        </div>
+      `;
+
+      div.addEventListener("click", () => {
+        selectLocation(item);
+      });
+
+      globalSearchDropdown.appendChild(div);
+    });
+
+    globalSearchDropdown.style.display = "block";
+  }
+
   function isSameLocation(locA, locB) {
     if (!locA || !locB) return false;
     const hasCoordsA = typeof locA.lat === "number" && typeof locA.lon === "number";
@@ -981,7 +1080,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.81') {
+          if (k !== 'meteo-grenoble-v8.82') {
             caches.delete(k);
           }
         });
@@ -990,6 +1089,7 @@
 
     initTheme();
     loadFavorites();
+    loadSearchHistory();
     setupGlobalSearch();
     setupFavoritesListeners();
     setupEventListeners();
@@ -1040,6 +1140,7 @@
     if (globalSearchInput) {
       globalSearchInput.value = "";
       if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
+      renderSearchHistoryDropdown();
       setTimeout(() => {
         globalSearchInput.focus();
       }, 20);
@@ -1061,14 +1162,16 @@
     globalSearchInput.value = "";
 
     // Agrandissement dynamique de la barre de recherche au clic / focus
-    // et suppression automatique du texte pour taper directement sans devoir effacer
+    // et affichage automatique de l'historique des 5 dernières recherches
     const inputBox = globalSearchInput.closest(".global-search-input-box");
     globalSearchInput.addEventListener("focus", () => {
       const searchWrap = document.getElementById("heroSearchWrap") || document.querySelector(".hero-search-inline-wrap");
       if (searchWrap) searchWrap.classList.add("search-open");
       if (inputBox) inputBox.classList.add("search-expanded");
-      globalSearchInput.value = "";
-      if (globalSearchClearBtn) globalSearchClearBtn.style.display = "none";
+      if (!globalSearchInput.value.trim()) {
+        renderSearchHistoryDropdown();
+      }
+      if (globalSearchClearBtn) globalSearchClearBtn.style.display = globalSearchInput.value ? "block" : "none";
     });
 
     globalSearchInput.addEventListener("blur", () => {
@@ -1125,8 +1228,8 @@
       if (geocodeTimeout) clearTimeout(geocodeTimeout);
 
       if (query.length < 2) {
-        if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
         if (globalSearchSpinner) globalSearchSpinner.style.display = "none";
+        renderSearchHistoryDropdown();
         return;
       }
 
@@ -1441,7 +1544,7 @@
       globalSearchClearBtn.addEventListener("click", () => {
         globalSearchInput.value = "";
         globalSearchClearBtn.style.display = "none";
-        if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
+        renderSearchHistoryDropdown();
         globalSearchInput.focus();
       });
     }
@@ -1592,6 +1695,7 @@
 
   function selectLocation(loc) {
     currentLocation = loc;
+    addToSearchHistory(loc);
     try {
       localStorage.setItem("meteo_current_location", JSON.stringify(loc));
     } catch (e) {}

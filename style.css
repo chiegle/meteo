@@ -362,6 +362,21 @@ button {
   text-align: center;
 }
 
+.search-history-header {
+  padding: 8px 16px 6px 16px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+[data-theme="light"] .search-history-header {
+  background: rgba(15, 23, 42, 0.03);
+}
+
 /* ========================================================
    BARRE DES FAVORIS (MASQUÉE SOUS LA RECHERCHE SELON DEMANDE)
    Les favoris sont maintenant exclusivement accessibles dans le bouton étoile ⭐
