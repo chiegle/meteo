@@ -402,11 +402,11 @@
     return item;
   }
 
-  // Pictogrammes officiels Météo-France (icons/mf/*.svg) à partir du code WMO
+  // Pictogrammes officiels Météo-France (icons/mf/*.svg) à partir du code WMO ou code officiel MF
   // En journée (j), on utilise les pictogrammes officiels avec soleil + nuage + pluie/neige/orage
   // (p12j, p14bisj, p16bisj, p17j, p19j) comme sur meteofrance.com
   const MF_PICTO_BY_WMO = {
-    0: "p1", 1: "p2", 2: "p3", 3: "p3bis",
+    0: "p1", 1: "p1bis", 2: "p2", 3: "p3",
     45: "p6", 48: "p8",
     51: "p12", 53: "p12", 55: "p9", 56: "p11", 57: "p11",
     61: "p12", 63: "p14bis", 65: "p15", 66: "p11", 67: "p11",
@@ -416,10 +416,24 @@
     95: "p16bis", 96: "p24", 99: "p24"
   };
 
-  function getMfPictoHtml(code, isNight = false, alt = "") {
-    const base = MF_PICTO_BY_WMO[code] || "p3";
-    const safeAlt = String(alt).replace(/\x22/g, "&quot;");
-    return `<img class="mf-picto" src="icons/mf/${base}${isNight ? "n" : "j"}.svg" alt="${safeAlt}" draggable="false">`;
+  function getMfPictoHtml(codeOrName, isNight = false, alt = "") {
+    let pictoName = "";
+    if (typeof codeOrName === "string" && codeOrName.trim()) {
+      let trimmed = codeOrName.trim();
+      if (trimmed.startsWith("i")) {
+        trimmed = trimmed.replace(/^i0/, "p1").replace(/^i/, "p");
+      }
+      if (trimmed.endsWith("j") || trimmed.endsWith("n")) {
+        pictoName = trimmed;
+      } else {
+        pictoName = `${trimmed}${isNight ? "n" : "j"}`;
+      }
+    } else {
+      const base = MF_PICTO_BY_WMO[codeOrName] || "p2";
+      pictoName = `${base}${isNight ? "n" : "j"}`;
+    }
+    const safeAlt = String(alt || pictoName).replace(/\x22/g, "&quot;");
+    return `<img class="mf-picto" src="icons/mf/${pictoName}.svg" alt="${safeAlt}" draggable="false" onerror="this.onerror=null;this.src='icons/mf/p1j.svg';">`;
   }
 
   // ========================================================
@@ -465,6 +479,7 @@
   let weatherDataCache = null;
   let aromeDataCache = null;
   let mfDataCache = null;
+  let mfOfficialDataCache = null;
   let geocodeTimeout = null;
   let currentMeteocielModel = "gfs"; // Modèle GFS NOAA (conforme capture d'écran Météociel)
   let gfsDataCache = null;
@@ -2239,6 +2254,7 @@
       weatherDataCache = cachedEntry.data;
       aromeDataCache = cachedEntry.arome;
       mfDataCache = cachedEntry.mf || cachedEntry.arome;
+      mfOfficialDataCache = cachedEntry.mfOfficial || null;
       gfsDataCache = cachedEntry.gfs;
       yrnoDataCache = cachedEntry.yrno;
       renderCurrentMetrics(cachedEntry.data);
@@ -2291,14 +2307,28 @@
           return null;
         });
 
+      // g) API officielle Météo-France en direct (prévisions expertisées et pictos natifs MF)
+      const mfOfficialUrl = inFrance
+        ? `https://webservice.meteofrance.com/forecast?token=__Wj7dVSTjV9YGu1guveLyDq0g7S7TfTjaHBTPTpO0kj8__&lat=${location.lat}&lon=${location.lon}`
+        : null;
+      const mfOfficialPromise = mfOfficialUrl
+        ? fetch(mfOfficialUrl, fetchOpts)
+            .then(r => r.ok ? r.json() : null)
+            .catch(err => {
+              console.warn("API Météo-France webservice inaccessible, repli sur modèle seamless:", err);
+              return null;
+            })
+        : Promise.resolve(null);
+
       // Lancement simultané des requêtes
-      const [baseRes, mfRes, aromeRes, gfsRes, ecmwfRes, metNoData] = await Promise.all([
+      const [baseRes, mfRes, aromeRes, gfsRes, ecmwfRes, metNoData, mfOfficialData] = await Promise.all([
         fetch(baseUrl, fetchOpts).catch(() => null),
         fetch(mfUrl, fetchOpts).catch(() => null),
         fetch(aromeUrl, fetchOpts).catch(() => null),
         fetch(gfsUrl, fetchOpts).catch(() => null),
         fetch(ecmwfUrl, fetchOpts).catch(() => null),
-        metNoPromise
+        metNoPromise,
+        mfOfficialPromise
       ]);
 
       const baseData = (baseRes && baseRes.ok) ? await baseRes.json() : null;
@@ -2388,6 +2418,7 @@
       weatherDataCache = primaryData;
       aromeDataCache = aromeData || primaryData;
       mfDataCache = mfMergedData || aromeData || primaryData;
+      mfOfficialDataCache = mfOfficialData;
       gfsDataCache = gfsData || primaryData;
 
       // Traitement Yr.no officiel
@@ -2438,6 +2469,7 @@
           data: primaryData,
           arome: aromeData,
           mf: mfDataCache,
+          mfOfficial: mfOfficialDataCache,
           gfs: gfsData,
           yrno: yrnoDataCache,
           ecmwf: ecmwfData
@@ -3059,9 +3091,16 @@
       currentGusts.style.color = "";
     }
 
-    // Isotherme 0°C
-    if (iso !== null && iso !== undefined) {
-      currentIsoZero.textContent = `${Math.round(iso)} m`;
+    // Isotherme 0°C (Priorité aux données officielles Météo-France si disponibles)
+    let finalIso = iso;
+    if (mfOfficialDataCache && Array.isArray(mfOfficialDataCache.forecast) && mfOfficialDataCache.forecast.length > 0) {
+      const mfCurrentSlot = mfOfficialDataCache.forecast[0];
+      if (mfCurrentSlot && mfCurrentSlot.iso0 != null) {
+        finalIso = mfCurrentSlot.iso0;
+      }
+    }
+    if (finalIso !== null && finalIso !== undefined) {
+      currentIsoZero.textContent = `${Math.round(finalIso)} m`;
     } else {
       currentIsoZero.textContent = "-- m";
     }
@@ -3259,7 +3298,144 @@
     });
   }
 
+  function renderOfficialMfTimeline(officialData) {
+    const daysSelectorBar = document.getElementById("mfDaysSelectorBar");
+    if (!daysSelectorBar) return;
+    daysSelectorBar.innerHTML = "";
+
+    const dailyList = Array.isArray(officialData.daily_forecast) ? officialData.daily_forecast : [];
+    const hourlyList = Array.isArray(officialData.forecast) ? officialData.forecast : [];
+    if (dailyList.length === 0) return;
+
+    // Grouper les créneaux horaires par jour (YYYY-MM-DD en heure locale)
+    const hourlyByDay = new Map();
+    hourlyList.forEach(slot => {
+      const d = new Date(slot.dt * 1000);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!hourlyByDay.has(key)) hourlyByDay.set(key, []);
+      hourlyByDay.get(key).push({ d, slot });
+    });
+
+    mfDaysForecastData = [];
+
+    dailyList.slice(0, 15).forEach((dItem, dayIdx) => {
+      const firstDate = new Date(dItem.dt * 1000);
+      const dayNameShort = firstDate.toLocaleDateString("fr-FR", { weekday: "short" }).replace(/\./g, "").toUpperCase().slice(0, 3) + ".";
+      const dayNum = firstDate.getDate();
+      const fullDateStr = firstDate.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+      const dateKey = `${firstDate.getFullYear()}-${String(firstDate.getMonth() + 1).padStart(2, '0')}-${String(firstDate.getDate()).padStart(2, '0')}`;
+
+      const slots = hourlyByDay.get(dateKey) || [];
+
+      // Températures Min et Max officielles
+      const tMin = (dItem.T && dItem.T.min != null) ? Math.round(dItem.T.min) : 0;
+      const tMax = (dItem.T && dItem.T.max != null) ? Math.round(dItem.T.max) : 0;
+
+      // Picto et description officiels
+      const w12 = dItem.weather12H || {};
+      const dayIconRaw = w12.icon || "p1j";
+      const dayDesc = w12.desc || "Ensoleillé";
+      const dayIcon = getMfPictoHtml(dayIconRaw, false, dayDesc);
+
+      // Calcul vent représentatif et rafales maximales
+      let maxWind = 0;
+      let maxGust = 0;
+      slots.forEach(({ slot }) => {
+        const w = slot.wind ? Math.round((slot.wind.speed || 0) * 3.6) : 0;
+        const g = slot.wind ? Math.round((slot.wind.gust || 0) * 3.6) : 0;
+        if (w > maxWind) maxWind = w;
+        if (g > maxGust) maxGust = g;
+      });
+
+      const dayWind = maxWind < 8 ? 5 : (maxWind < 13 ? 10 : (maxWind || 10));
+      const dayGustBadge = maxGust >= 40 ? `<span class="mf-day-pill-gust" title="Rafales maximales : ${maxGust} km/h">${maxGust}</span>` : "";
+
+      // 4 Périodes : Matin (8h), Après-midi (14h), Soirée (20h), Nuit (2h)
+      function getPeriodData(targetHour, isNight) {
+        if (!slots || slots.length === 0) {
+          return {
+            desc: dayDesc,
+            icon: getMfPictoHtml(dayIconRaw, isNight, dayDesc),
+            temp: isNight ? tMin : tMax,
+            wind: dayWind,
+            windArrow: "▲"
+          };
+        }
+        let closest = slots[0];
+        let minDiff = 999;
+        slots.forEach(item => {
+          const diff = Math.abs(item.d.getHours() - targetHour);
+          if (diff < minDiff) {
+            minDiff = diff;
+            closest = item;
+          }
+        });
+        const s = closest.slot;
+        const sDesc = (s.weather && s.weather.desc) ? s.weather.desc : dayDesc;
+        const sIconRaw = (s.weather && s.weather.icon) ? s.weather.icon : dayIconRaw;
+        const sTemp = (s.T && s.T.value != null) ? Math.round(s.T.value) : (isNight ? tMin : tMax);
+        const sWind = s.wind ? Math.round((s.wind.speed || 0) * 3.6) : dayWind;
+        const sDir = s.wind ? (s.wind.direction || 0) : 0;
+        return {
+          desc: sDesc,
+          icon: getMfPictoHtml(sIconRaw, isNight, sDesc),
+          temp: sTemp,
+          wind: sWind,
+          windArrow: getMeteocielWindArrow(sDir)
+        };
+      }
+
+      const dayItem = {
+        dayIdx,
+        fullDateStr,
+        dayNameShort,
+        dayNum,
+        tMin,
+        tMax,
+        dayIcon,
+        dayWind,
+        dayGustBadge,
+        matin: getPeriodData(8, false),
+        apresMidi: getPeriodData(14, false),
+        soiree: getPeriodData(20, true),
+        nuit: getPeriodData(2, true)
+      };
+
+      mfDaysForecastData.push(dayItem);
+
+      const pill = document.createElement("button");
+      pill.type = "button";
+      pill.className = `mf-day-pill ${dayIdx === 0 ? "active" : ""}`;
+      pill.dataset.dayIndex = dayIdx;
+      pill.innerHTML = `
+        <span class="mf-day-pill-name">${dayItem.dayNameShort} ${dayItem.dayNum}</span>
+        <span class="mf-day-pill-icon">${dayItem.dayIcon}</span>
+        <div class="mf-day-pill-temps">
+          <span class="mf-day-tmin">${dayItem.tMin}°</span>
+          <span class="mf-day-tmax">${dayItem.tMax}°</span>
+        </div>
+        <span class="mf-day-pill-wind">${dayItem.dayWind} km/h${dayItem.dayGustBadge}</span>
+      `;
+
+      pill.addEventListener("click", () => {
+        daysSelectorBar.querySelectorAll(".mf-day-pill").forEach(p => p.classList.remove("active"));
+        pill.classList.add("active");
+        showMfDayDetail(dayIdx);
+      });
+
+      daysSelectorBar.appendChild(pill);
+    });
+
+    if (mfDaysForecastData.length > 0) {
+      showMfDayDetail(0);
+    }
+  }
+
   function renderAromeTimeline(data) {
+    if (mfOfficialDataCache && Array.isArray(mfOfficialDataCache.daily_forecast) && mfOfficialDataCache.daily_forecast.length > 0) {
+      renderOfficialMfTimeline(mfOfficialDataCache);
+      return;
+    }
     const masterData = (mfDataCache && mfDataCache.hourly && mfDataCache.hourly.time && mfDataCache.hourly.time.length >= 24)
       ? mfDataCache
       : ((data && data.hourly && data.hourly.time) ? data : (aromeDataCache || weatherDataCache));
