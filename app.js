@@ -382,8 +382,6 @@
   const currentGusts = document.getElementById("currentGusts");
   const currentIsoZero = document.getElementById("currentIsoZero");
   const currentIsoStatus = document.getElementById("currentIsoStatus");
-  const currentCloudBase = document.getElementById("currentCloudBase");
-  const currentCloudStatus = document.getElementById("currentCloudStatus");
   const currentPrecip = document.getElementById("currentPrecip");
   const currentSnow = document.getElementById("currentSnow");
   const currentUv = document.getElementById("currentUv");
@@ -959,7 +957,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.85') {
+          if (k !== 'meteo-grenoble-v8.86') {
             caches.delete(k);
           }
         });
@@ -3086,38 +3084,6 @@
     }
     if (currentIsoStatus) {
       currentIsoStatus.textContent = "";
-    }
-
-    // Base & Plafond des nuages (Formule aérologique de Lawrence / LCL + Couverture nuageuse)
-    if (currentCloudBase && currentCloudStatus) {
-      const dew = (hourly.dew_point_2m && hourly.dew_point_2m[idx] != null) ? hourly.dew_point_2m[idx] : null;
-      const cov = (hourly.cloud_cover && hourly.cloud_cover[idx] != null) ? hourly.cloud_cover[idx] : 0;
-      const altLoc = Math.round(currentLocation && typeof currentLocation.alt === "number" ? currentLocation.alt : 212);
-
-      if (t != null && dew != null) {
-        const spread = Math.max(0, t - dew);
-        const lclMeters = Math.round(125 * spread);
-        const cloudBaseAlt = altLoc + lclMeters;
-
-        if (cov < 20) {
-          currentCloudBase.textContent = "Dégagé";
-          currentCloudStatus.textContent = "Pas de nuage bas";
-          currentCloudStatus.style.color = "";
-        } else {
-          currentCloudBase.textContent = `${cloudBaseAlt} m`;
-          if (altLoc >= cloudBaseAlt - 40) {
-            currentCloudStatus.textContent = "⚠️ Dans le nuage / brouillard";
-            currentCloudStatus.style.color = "#f43f5e";
-          } else {
-            currentCloudStatus.textContent = `+${lclMeters} m sol (${cov}% couv.)`;
-            currentCloudStatus.style.color = "";
-          }
-        }
-      } else {
-        currentCloudBase.textContent = "-- m";
-        currentCloudStatus.textContent = "Non mesuré";
-        currentCloudStatus.style.color = "";
-      }
     }
 
     // Précipitations (si élément présent dans le DOM)
