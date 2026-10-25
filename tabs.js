@@ -133,12 +133,38 @@
 
     function getTabExternalUrl(tabKey) {
       if (tabKey === "safety") return SAFETY_URL;
+      if (tabKey === "arome") {
+        const link = document.getElementById("meteofranceLink");
+        if (link && link.href && link.href.includes("meteofrance.com")) {
+          return link.href;
+        }
+        return "https://meteofrance.com/";
+      }
       const link = document.getElementById(TAB_LINK_IDS[tabKey]);
       return link && link.href ? link.href : null;
     }
 
+    async function openExternalTab(tabKey) {
+      if (!tabKey) return;
+      if (tabKey === "arome") {
+        if (typeof window.getMeteofranceTargetUrlAsync === "function") {
+          try {
+            const url = await window.getMeteofranceTargetUrlAsync();
+            if (url) {
+              window.open(url, "_blank");
+              return;
+            }
+          } catch (_) {}
+        }
+      }
+      const url = getTabExternalUrl(tabKey);
+      if (url) {
+        window.open(url, "_blank");
+      }
+    }
+
     const LONG_PRESS_MS = 500;
-    const DOUBLE_TAP_MS = 350;
+    const DOUBLE_TAP_MS = 500;
     let longPressTimer = null;
     let pressStartX = 0;
     let pressStartY = 0;
@@ -210,13 +236,23 @@
         if (lastTapKey === key && now - lastTapTime < DOUBLE_TAP_MS) {
           lastTapKey = null;
           lastTapTime = 0;
-          const url = getTabExternalUrl(key);
-          if (url) window.open(url, "_blank", "noopener,noreferrer");
+          openExternalTab(key);
           return;
         }
         lastTapKey = key;
         lastTapTime = now;
         switchTab(key, true);
+      });
+
+      // Double-clic direct à la souris sur PC
+      tabsNav.addEventListener("dblclick", (e) => {
+        const btn = e.target.closest(".tab-nav-btn");
+        if (!btn) return;
+        e.preventDefault();
+        e.stopPropagation();
+        lastTapKey = null;
+        lastTapTime = 0;
+        openExternalTab(btn.dataset.tab);
       });
     }
 

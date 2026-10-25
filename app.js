@@ -32,145 +32,6 @@
     }
   };
 
-  const SUMMITS = [
-    // BELLEDONNE
-    {
-      id: "croix-belledonne",
-      name: "Croix de Belledonne",
-      massif: "belledonne",
-      alt: 2926,
-      lat: 45.1633,
-      lon: 5.9867,
-      meteocielQuery: "Croix de Belledonne",
-      yrQuery: "Croix_de_Belledonne"
-    },
-    {
-      id: "grand-colon",
-      name: "Le Grand Colon",
-      massif: "belledonne",
-      alt: 2394,
-      lat: 45.1611,
-      lon: 5.9189,
-      meteocielQuery: "Grand Colon",
-      yrQuery: "Grand_Colon"
-    },
-    {
-      id: "chamrousse-croix",
-      name: "Croix de Chamrousse",
-      massif: "belledonne",
-      alt: 2250,
-      lat: 45.1264,
-      lon: 5.9080,
-      meteocielQuery: "Chamrousse",
-      yrQuery: "Chamrousse"
-    },
-    {
-      id: "chamrousse-recoin",
-      name: "Chamrousse (Recoin / 1780m)",
-      massif: "belledonne",
-      alt: 1780,
-      lat: 45.1278,
-      lon: 5.8820,
-      meteocielQuery: "Chamrousse",
-      yrQuery: "Chamrousse"
-    },
-
-    // CHARTREUSE
-    {
-      id: "chamechaude",
-      name: "Chamechaude",
-      massif: "chartreuse",
-      alt: 2082,
-      lat: 45.2872,
-      lon: 5.7892,
-      meteocielQuery: "Chamechaude",
-      yrQuery: "Chamechaude"
-    },
-    {
-      id: "dent-de-crolles",
-      name: "Dent de Crolles",
-      massif: "chartreuse",
-      alt: 2062,
-      lat: 45.3028,
-      lon: 5.8542,
-      meteocielQuery: "Dent de Crolles",
-      yrQuery: "Dent_de_Crolles"
-    },
-    {
-      id: "col-de-porte",
-      name: "Col de Porte",
-      massif: "chartreuse",
-      alt: 1325,
-      lat: 45.2897,
-      lon: 5.7667,
-      meteocielQuery: "Col de Porte",
-      yrQuery: "Col_de_Porte"
-    },
-
-    // VERCORS
-    {
-      id: "grand-veymont",
-      name: "Grand Veymont",
-      massif: "vercors",
-      alt: 2341,
-      lat: 44.8706,
-      lon: 5.5250,
-      meteocielQuery: "Grand Veymont",
-      yrQuery: "Grand_Veymont"
-    },
-    {
-      id: "pic-saint-michel",
-      name: "Pic Saint-Michel",
-      massif: "vercors",
-      alt: 1966,
-      lat: 45.1189,
-      lon: 5.6178,
-      meteocielQuery: "Lans en Vercors",
-      yrQuery: "Pic_Saint-Michel"
-    },
-    {
-      id: "moucherotte",
-      name: "Le Moucherotte",
-      massif: "vercors",
-      alt: 1901,
-      lat: 45.1472,
-      lon: 5.6375,
-      meteocielQuery: "Moucherotte",
-      yrQuery: "Moucherotte"
-    },
-
-    // TAILLEFER / OISANS
-    {
-      id: "taillefer",
-      name: "Le Taillefer",
-      massif: "oisans",
-      alt: 2857,
-      lat: 45.0378,
-      lon: 5.9228,
-      meteocielQuery: "Taillefer",
-      yrQuery: "Taillefer"
-    },
-    {
-      id: "la-meije",
-      name: "La Meije (Grand Pic)",
-      massif: "oisans",
-      alt: 3984,
-      lat: 45.0061,
-      lon: 6.3125,
-      meteocielQuery: "La Meije",
-      yrQuery: "Meije"
-    },
-    {
-      id: "la-grave",
-      name: "La Grave (Village / 1500m)",
-      massif: "oisans",
-      alt: 1500,
-      lat: 45.0456,
-      lon: 6.3056,
-      meteocielQuery: "La Grave",
-      yrQuery: "La_Grave"
-    }
-  ];
 
   const ROMMA_STATIONS = [
     // Belledonne
@@ -445,8 +306,11 @@
     lat: 45.1885,
     lon: 5.7245,
     postcode: "38000",
+    communePostcode: "38000",
     nearestCity: "Grenoble",
+    communeName: "Grenoble",
     admin1: "Isère / Alpes",
+    isCommune: true,
     isSummit: false
   };
 
@@ -1095,7 +959,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.83') {
+          if (k !== 'meteo-grenoble-v8.85') {
             caches.delete(k);
           }
         });
@@ -1252,21 +1116,7 @@
 
       geocodeTimeout = setTimeout(async () => {
         try {
-          // 1. Recherche instantanée dans les sommets locaux prédéfinis
-          const qNorm = query.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          const localMatches = SUMMITS.filter(s => {
-            const sNorm = s.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const mNorm = (s.massif || "").toLowerCase();
-            return sNorm.includes(qNorm) || mNorm.includes(qNorm);
-          }).map(s => ({
-            name: s.name,
-            elevation: s.alt,
-            latitude: s.lat,
-            longitude: s.lon,
-            admin1: MASSIFS[s.massif]?.name || "Alpes",
-            isSummit: true,
-            massif: s.massif
-          }));
+          // Recherche multi-sources dynamique et universelle (aucune commune ou sommet codé en dur)
 
           // 2. Recherche multi-sources intelligente :
           // - Si code postal (ex: 63000, 38000) : API officielle France geo.api.gouv.fr en priorité absolue
@@ -1392,49 +1242,75 @@
             });
           }
 
-          // Traitement des résultats Photon (OSM : Lacs, étangs, refuges, sommets, etc.)
+          // Traitement des résultats Photon (OSM : Lacs, étangs, refuges, sommets, villages)
           if (photonData && Array.isArray(photonData.features)) {
             try {
+              const rejectedOsmKeys = new Set([
+                "amenity", "railway", "highway", "aerialway", "information", "building",
+                "landuse", "boundary", "leisure", "shop", "office", "commercial",
+                "craft", "historic", "emergency", "aeroway", "man_made", "power", "telecom"
+              ]);
+              const urbanBlacklist = [
+                "mairie", "hôtel de ville", "hotel de ville", "gare", "arrêt", "arret",
+                "tram", "bus", "parking", "poste", "école", "ecole", "collège", "lycée",
+                "centre commercial", "salle des fêtes", "gendarmerie", "police", "cimetière",
+                "stade", "gymnase"
+              ];
+
               photonData.features.forEach(feat => {
                 const p = feat.properties || {};
                 const coords = feat.geometry && feat.geometry.coordinates ? feat.geometry.coordinates : null;
                 if (!p.name || !coords || coords.length < 2) return;
 
-                const osmVal = (p.osm_value || "").toLowerCase();
                 const osmKey = (p.osm_key || "").toLowerCase();
+                const osmVal = (p.osm_value || "").toLowerCase();
 
-                // Filtrer les tronçons routiers, arrêts de bus ou chemins résidentiels
-                if (osmKey === "highway" || osmVal === "residential" || osmVal === "service" || osmVal === "track" || osmVal === "footway" || osmVal === "bus_stop") {
-                  return;
-                }
+                // Rejeter d'office toutes les infrastructures urbaines, commerces, transports ou services
+                if (rejectedOsmKeys.has(osmKey)) return;
 
                 let cleanName = p.name.trim();
-                const nearestCity = p.city || p.town || p.village || p.municipality || p.hamlet || "";
+                const nameLower = cleanName.toLowerCase();
 
-                // Si Photon renvoie un code postal brut comme nom (ex: "63000"), le remplacer par la ville
+                // Rejeter les bâtiments administratifs, arrêts de transport et structures urbaines
+                if (urbanBlacklist.some(u => nameLower.includes(u))) return;
+
+                const nearestCity = p.city || p.town || p.village || p.municipality || p.hamlet || "";
                 if (/^\d+$/.test(cleanName) && nearestCity) {
                   cleanName = nearestCity;
                 }
 
-                const nameLower = cleanName.toLowerCase();
+                // Sommets, crêtes, cols
+                const isSummit = (osmKey === "natural" && (osmVal === "peak" || osmVal === "volcano" || osmVal === "ridge" || osmVal === "cliff")) ||
+                                 osmVal === "peak" || osmKey === "mountain_pass" || osmVal === "saddle" ||
+                                 nameLower.startsWith("pic ") || nameLower.startsWith("mont ") ||
+                                 nameLower.startsWith("croix de ") || nameLower.startsWith("dent de ") ||
+                                 nameLower.startsWith("aiguille ") || nameLower.startsWith("cime ") ||
+                                 nameLower.startsWith("dôme ") || nameLower.startsWith("dome ") ||
+                                 nameLower.startsWith("roche ") || nameLower.startsWith("pointe ") ||
+                                 nameLower.startsWith("col de ") || nameLower.startsWith("col du ") ||
+                                 nameLower.startsWith("sommet ");
 
-                const isLake = osmVal === "lake" || osmVal === "water" || osmKey === "water" ||
+                // Lacs, étangs, plans d'eau naturels
+                const isLake = osmVal === "lake" || osmVal === "water" || (osmKey === "water" && osmVal === "lake") ||
                                osmVal === "reservoir" || osmVal === "pond" ||
-                               nameLower.startsWith("lac ") || nameLower.includes(" lac ") ||
-                               nameLower.startsWith("lac-") || nameLower.startsWith("lacs ") ||
-                               nameLower.startsWith("étang") || nameLower.startsWith("etang") ||
+                               nameLower.startsWith("lac ") || nameLower.startsWith("lac-") || nameLower.startsWith("lacs ") ||
+                               nameLower.includes(" lac ") || nameLower.startsWith("étang") || nameLower.startsWith("etang") ||
                                nameLower.includes(" étang") || nameLower.includes(" etang") ||
                                nameLower.startsWith("plan d'eau");
 
-                const isHut = osmVal === "alpine_hut" || osmVal === "wilderness_hut" || osmVal === "shelter" ||
-                              nameLower.startsWith("refuge") || nameLower.includes(" refuge") ||
-                              nameLower.startsWith("cabane") || nameLower.includes(" cabane") ||
-                              nameLower.startsWith("gîte") || nameLower.startsWith("gite");
+                // Vrais refuges de montagne et cabanes alpines (shelter urbain/abribus explicitement exclu)
+                const isHut = (osmKey === "tourism" && (osmVal === "alpine_hut" || osmVal === "wilderness_hut")) ||
+                              nameLower.startsWith("refuge ") || nameLower.startsWith("refuge-") ||
+                              nameLower.startsWith("cabane ") || nameLower.startsWith("gîte ") || nameLower.startsWith("gite ") ||
+                              nameLower.includes(" refuge ") || nameLower.includes(" cabane ");
 
-                const isSummit = osmVal === "peak" || osmVal === "volcano" || (osmKey === "natural" && osmVal === "peak") ||
-                                 nameLower.startsWith("pic ") || nameLower.startsWith("mont ") ||
-                                 nameLower.startsWith("croix de ") || nameLower.startsWith("dent de ") ||
-                                 nameLower.startsWith("aiguille ");
+                // Villages, hameaux, localités
+                const isPlace = osmKey === "place" && (
+                  osmVal === "village" || osmVal === "town" || osmVal === "city" ||
+                  osmVal === "hamlet" || osmVal === "locality" || osmVal === "isolated_dwelling"
+                );
+
+                if (!isLake && !isHut && !isSummit && !isPlace) return;
 
                 if (isLake || isHut) {
                   cleanName = cleanName.replace(new RegExp("\\s*[-–(]?\\s*parking\\s*\\)?$", "i"), "").trim();
@@ -1499,7 +1375,7 @@
           }
 
           // Fallback de secours Nominatim si aucun résultat trouvé
-          if (remoteResults.length === 0 && localMatches.length === 0) {
+          if (remoteResults.length === 0) {
             try {
               const nomUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=5`;
               const nomRes = await fetch(nomUrl, { headers: { "Accept-Language": "fr" } });
@@ -1540,9 +1416,8 @@
             }
           }
 
-          // Combiner résultats locaux en premier
-          const combined = [...localMatches, ...remoteResults];
-          renderGlobalSearchResults(combined, query);
+          // Affichage direct des résultats dynamiques
+          renderGlobalSearchResults(remoteResults, query);
         } catch (errGeo) {
           console.error("Erreur recherche globale géocodage:", errGeo);
           if (globalSearchDropdown) {
@@ -1573,23 +1448,9 @@
   }
 
   // ========================================================
-  // GÉOLOCALISATION GPS HAUTE PRÉCISION (CAMPAGNE & MONTAGNE)
+  // GÉOLOCALISATION GPS HAUTE PRÉCISION (100% UNIVERSELLE DYNAMIQUE)
+  // Aucun lieu codé en dur : fonctionne partout en France et dans le monde
   // ========================================================
-  function findClosestSummit(lat, lon, maxDistKm) {
-    let closest = null;
-    let minDist = Infinity;
-    SUMMITS.forEach(s => {
-      const dLat = (s.lat - lat) * 111;
-      const dLon = (s.lon - lon) * 111 * Math.cos(lat * Math.PI / 180);
-      const dist = Math.sqrt(dLat * dLat + dLon * dLon);
-      if (dist < minDist && dist <= maxDistKm) {
-        minDist = dist;
-        closest = s;
-      }
-    });
-    return closest;
-  }
-
   function handleGeolocation() {
     if (!navigator.geolocation) {
       alert("La géolocalisation n'est pas supportée par votre navigateur.");
@@ -1622,21 +1483,35 @@
           }
           if (alt === null) alt = 250;
 
-          // 1. Vérifier si on est sur ou proche d'un sommet répertorié (< 2.5 km)
           let detectedName = "";
           let adminRegion = "";
           let detectedPostcode = "";
+          let isCommune = false;
           let isSummit = alt >= 1200;
-          let massif = null;
 
-          const closestSummit = findClosestSummit(lat, lon, 2.5);
-          if (closestSummit) {
-            detectedName = closestSummit.name;
-            adminRegion = MASSIFS[closestSummit.massif]?.name || "Massif Alpin";
-            isSummit = true;
-            massif = closestSummit.massif;
-          } else {
-            // 2. Reverse geocoding via OpenStreetMap Nominatim ou BigDataCloud
+          const inFrance = (lat >= 41.0 && lat <= 51.5 && lon >= -5.5 && lon <= 10.0);
+          if (inFrance) {
+            try {
+              const gouvRes = await fetch(`https://geo.api.gouv.fr/communes?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}&fields=nom,codesPostaux,departement,region`);
+              if (gouvRes.ok) {
+                const list = await gouvRes.json();
+                if (Array.isArray(list) && list.length > 0) {
+                  const com = list[0];
+                  detectedName = com.nom;
+                  detectedPostcode = (Array.isArray(com.codesPostaux) && com.codesPostaux.length > 0) ? String(com.codesPostaux[0]).slice(0, 5) : "";
+                  const dept = com.departement ? `${com.departement.code} - ${com.departement.nom}` : "";
+                  const reg = com.region ? com.region.nom : "";
+                  adminRegion = [dept, reg].filter(Boolean).join(", ") || "France";
+                  isCommune = true;
+                }
+              }
+            } catch (eGouv) {
+              console.warn("Erreur gouv reverse:", eGouv);
+            }
+          }
+
+          if (!detectedName) {
+            // Reverse geocoding via OpenStreetMap Nominatim ou BigDataCloud
             try {
               const nomUrl = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&zoom=14`;
               const nomRes = await fetch(nomUrl, { headers: { "Accept-Language": "fr" } });
@@ -1645,7 +1520,7 @@
                 const addr = nomData.address || {};
                 detectedName = addr.natural || addr.mountain_pass || addr.peak || addr.village || addr.hamlet || addr.town || addr.municipality || addr.city || "";
                 adminRegion = addr.county || addr.state || "";
-                detectedPostcode = addr.postcode || "";
+                detectedPostcode = addr.postcode ? String(addr.postcode).replace(/[^0-9]/g, "").slice(0, 5) : "";
               }
             } catch (eNom) {
               console.warn("Erreur Nominatim reverse:", eNom);
@@ -1670,7 +1545,7 @@
             detectedName = isSummit ? `Sommet (${alt}m)` : `Position GPS (${alt}m)`;
           }
           if (!adminRegion) {
-            adminRegion = isSummit ? "Massif Alpin" : "France";
+            adminRegion = inFrance ? "France" : "Position GPS";
           }
 
           selectLocation({
@@ -1680,8 +1555,12 @@
             lon: lon,
             admin1: adminRegion,
             postcode: detectedPostcode,
-            isSummit: isSummit,
-            massif: massif
+            communeName: isCommune ? detectedName : "",
+            communePostcode: isCommune ? detectedPostcode : "",
+            nearestCity: detectedName,
+            countryCode: inFrance ? "FR" : "OTHER",
+            isCommune: isCommune,
+            isSummit: isSummit
           });
         } catch (errGeo) {
           console.error("Erreur géolocalisation:", errGeo);
@@ -1837,7 +1716,7 @@
       if (inc.massif && !target.massif) target.massif = inc.massif;
     }
 
-    const deduped = [];
+    let deduped = [];
     results.forEach(item => {
       const existing = deduped.find(ex => isSamePlace(ex, item));
       if (existing) {
@@ -1912,6 +1791,12 @@
       }
 
       return score;
+    }
+
+    // Si la recherche renvoie des communes ou lieux en France, écarter les résultats étrangers hors sujet (ex: Turquie, USA)
+    const hasFrenchMatches = deduped.some(r => (r.countryCode || "FR") === "FR");
+    if (hasFrenchMatches) {
+      deduped = deduped.filter(r => (r.countryCode || "FR") === "FR");
     }
 
     deduped.sort((a, b) => scoreItem(b) - scoreItem(a));
@@ -1989,11 +1874,14 @@
           lon: item.longitude,
           admin1: item.admin1,
           postcode: item.postcode || "",
-          nearestCity: item.nearestCity || cleanDisplayName,
+          nearestCity: item.nearestCity || (item.isCommune ? cleanDisplayName : ""),
+          communeName: item.communeName || (item.isCommune ? cleanDisplayName : ""),
+          communePostcode: item.communePostcode || (item.isCommune ? (item.postcode || "") : ""),
           countryCode: item.countryCode || "FR",
-          isLake: item.isLake,
-          isHut: item.isHut,
-          isSummit: item.isSummit,
+          isCommune: !!item.isCommune,
+          isLake: !!item.isLake,
+          isHut: !!item.isHut,
+          isSummit: !!item.isSummit,
           massif: item.massif
         });
       });
@@ -2084,12 +1972,75 @@
       .replace(/^-+|-+$/g, "");
   }
 
+  async function resolveNearestCommune(location) {
+    if (!location || typeof location.lat !== "number" || typeof location.lon !== "number") return;
+
+    // Si déjà validé avec communeName et communePostcode
+    if (location.communeName && location.communePostcode && String(location.communePostcode).length === 5) {
+      updateMeteofranceHeaders(location);
+      updateMeteocielHeaders(location);
+      return;
+    }
+
+    // Si c'est explicitement une commune officielle française
+    if (location.isCommune && location.name && location.postcode && String(location.postcode).length === 5) {
+      location.communeName = location.name;
+      location.communePostcode = String(location.postcode).replace(/[^0-9]/g, "").slice(0, 5);
+      location.nearestCity = location.name;
+      updateMeteofranceHeaders(location);
+      updateMeteocielHeaders(location);
+      return;
+    }
+
+    // Vérifier si les coordonnées se trouvent en France
+    const isFrance = !location.countryCode || location.countryCode === "FR" || (
+      location.lat >= 41.0 && location.lat <= 51.5 && location.lon >= -5.5 && location.lon <= 10.0
+    );
+    if (!isFrance) {
+      updateMeteofranceHeaders(location);
+      updateMeteocielHeaders(location);
+      return;
+    }
+
+    try {
+      const res = await fetch(`https://geo.api.gouv.fr/communes?lat=${location.lat.toFixed(4)}&lon=${location.lon.toFixed(4)}&fields=nom,codesPostaux`);
+      if (res.ok) {
+        const list = await res.json();
+        if (Array.isArray(list) && list.length > 0) {
+          const com = list[0];
+          const cName = com.nom || "";
+          const cPc = (Array.isArray(com.codesPostaux) && com.codesPostaux.length > 0) ? String(com.codesPostaux[0]).slice(0, 5) : "";
+          if (cName && cPc) {
+            location.communeName = cName;
+            location.communePostcode = cPc;
+            location.nearestCity = cName;
+            if (!location.postcode) location.postcode = cPc;
+
+            if (currentLocation && currentLocation.lat === location.lat && currentLocation.lon === location.lon) {
+              try {
+                localStorage.setItem("meteo_current_location", JSON.stringify(currentLocation));
+              } catch (_) {}
+            }
+
+            updateMeteofranceHeaders(location);
+            updateMeteocielHeaders(location);
+            updateMeteoblueHeaders(location);
+            updateWebcamsSection(location);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("Erreur résolution commune officielle:", e);
+    }
+  }
+
   function updateMeteocielHeaders(location) {
     if (!meteocielExtLink || !location) return;
-    // Si code postal connu (ex. 20000 Ajaccio, 29200 Brest, 31000 Toulouse), Météociel redirige directement sur la page de prévision
-    const query = location.postcode || location.nearestCity || location.name;
+    // Si code postal officiel de commune connu, Météociel redirige directement sur la fiche météo de la ville
+    const query = location.communePostcode || (location.isCommune ? location.postcode : null) || location.communeName || location.nearestCity || location.postcode || location.name;
     meteocielExtLink.href = `https://www.meteociel.fr/prevville.php?action=getville&ville=${encodeURIComponent(query)}`;
-    const targetName = location.nearestCity ? `${location.name} (${location.nearestCity})` : location.name;
+    const displayCity = location.communeName || (location.nearestCity && location.nearestCity !== location.name ? location.nearestCity : "");
+    const targetName = (displayCity && displayCity !== location.name) ? `${location.name} (${displayCity})` : location.name;
     meteocielExtLink.title = `Consulter directement les prévisions de ${targetName} sur Météociel`;
   }
 
@@ -2106,40 +2057,84 @@
 
   function updateMeteofranceHeaders(location) {
     if (!meteofranceLink || !location) return;
-    const targetCity = location.nearestCity || location.name;
-    const slug = getCleanLocationSlug(targetCity);
-    const rawPc = location.postcode ? String(location.postcode).replace(/[^0-9]/g, "").slice(0, 5) : "";
-    if (rawPc.length === 5 && slug) {
-      meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${slug}/${rawPc}`;
-    } else {
-      meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${slug || "grenoble"}/${rawPc || "38000"}`;
-    }
-    const targetName = location.nearestCity ? `${location.name} (${location.nearestCity})` : location.name;
-    meteofranceLink.title = `Consulter directement les prévisions de ${targetName} sur Météo-France`;
 
-    // Résolution immédiate de la commune officielle la plus proche si non connue ou si sommet
-    if ((!rawPc || rawPc.length !== 5 || !location.nearestCity) && typeof location.lat === "number" && typeof location.lon === "number") {
-      fetch(`https://geo.api.gouv.fr/communes?lat=${location.lat}&lon=${location.lon}&fields=nom,codesPostaux`)
-        .then(r => r.ok ? r.json() : null)
-        .then(list => {
-          if (Array.isArray(list) && list.length > 0) {
-            const com = list[0];
-            const cName = com.nom || "";
-            const cPc = Array.isArray(com.codesPostaux) && com.codesPostaux.length > 0 ? com.codesPostaux[0] : "";
-            if (cName && cPc) {
-              location.nearestCity = cName;
-              location.postcode = cPc;
-              const newSlug = getCleanLocationSlug(cName);
-              meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${newSlug}/${cPc}`;
-              if (meteocielExtLink) {
-                meteocielExtLink.href = `https://www.meteociel.fr/prevville.php?action=getville&ville=${encodeURIComponent(cPc)}`;
-              }
-            }
-          }
-        })
-        .catch(() => {});
+    const isFrance = !location.countryCode || location.countryCode === "FR" || (
+      typeof location.lat === "number" && typeof location.lon === "number" &&
+      location.lat >= 41.0 && location.lat <= 51.5 && location.lon >= -5.5 && location.lon <= 10.0
+    );
+
+    if (!isFrance) {
+      meteofranceLink.href = "https://meteofrance.com/";
+      meteofranceLink.title = `Consulter les prévisions internationales sur Météo-France`;
+      return;
+    }
+
+    // Commune officielle résolue (Météo-France n'accepte QUE les communes officielles françaises au format slug/codePostal)
+    let commune = location.communeName;
+    let pc = location.communePostcode;
+
+    if (!commune && location.isCommune) {
+      commune = location.name;
+      pc = location.postcode;
+    }
+
+    if (!commune && location.nearestCity && location.nearestCity !== location.name) {
+      commune = location.nearestCity;
+      pc = location.postcode;
+    }
+
+    const cleanPc = pc ? String(pc).replace(/[^0-9]/g, "").slice(0, 5) : "";
+
+    if (commune && cleanPc.length === 5) {
+      const slug = getCleanLocationSlug(commune);
+      meteofranceLink.href = `https://meteofrance.com/previsions-meteo-france/${slug}/${cleanPc}`;
+      const targetName = (commune && commune !== location.name) ? `${location.name} (${commune})` : location.name;
+      meteofranceLink.title = `Consulter directement les prévisions de ${targetName} sur Météo-France`;
+    } else {
+      // Résolution dynamique en cours : ne pas mettre de ville arbitraire en dur
+      meteofranceLink.href = "https://meteofrance.com/";
+      meteofranceLink.title = `Consulter les prévisions de ${location.name} sur Météo-France`;
+    }
+
+    // Si la commune officielle n'est pas encore identifiée, lancer immédiatement sa résolution
+    if ((!location.communeName || !location.communePostcode) && typeof location.lat === "number" && typeof location.lon === "number") {
+      resolveNearestCommune(location);
     }
   }
+
+
+  window.getMeteofranceTargetUrlAsync = async function() {
+    if (!currentLocation) return "https://meteofrance.com/";
+    const isFrance = !currentLocation.countryCode || currentLocation.countryCode === "FR" || (
+      typeof currentLocation.lat === "number" && typeof currentLocation.lon === "number" &&
+      currentLocation.lat >= 41.0 && currentLocation.lat <= 51.5 && currentLocation.lon >= -5.5 && currentLocation.lon <= 10.0
+    );
+    if (!isFrance) return "https://meteofrance.com/";
+
+    let commune = currentLocation.communeName;
+    let pc = currentLocation.communePostcode;
+    if (!commune && currentLocation.isCommune) {
+      commune = currentLocation.name;
+      pc = currentLocation.postcode;
+    }
+    let cleanPc = pc ? String(pc).replace(/[^0-9]/g, "").slice(0, 5) : "";
+    if (commune && cleanPc.length === 5) {
+      return `https://meteofrance.com/previsions-meteo-france/${getCleanLocationSlug(commune)}/${cleanPc}`;
+    }
+
+    await resolveNearestCommune(currentLocation);
+    commune = currentLocation.communeName;
+    pc = currentLocation.communePostcode;
+    cleanPc = pc ? String(pc).replace(/[^0-9]/g, "").slice(0, 5) : "";
+    if (commune && cleanPc.length === 5) {
+      return `https://meteofrance.com/previsions-meteo-france/${getCleanLocationSlug(commune)}/${cleanPc}`;
+    }
+
+    if (meteofranceLink && meteofranceLink.href && meteofranceLink.href.includes("previsions-meteo-france")) {
+      return meteofranceLink.href;
+    }
+    return "https://meteofrance.com/";
+  };
 
   function updateMeteoblueHeaders(location) {
     const extLink = document.getElementById("meteoblueExtLink");
@@ -2223,23 +2218,8 @@
     updateWebcamsSection(location);
 
     // Résolution automatique immédiate de la commune officielle la plus proche
-    if ((!location.postcode || !location.nearestCity) && typeof location.lat === "number" && typeof location.lon === "number") {
-      fetch(`https://geo.api.gouv.fr/communes?lat=${location.lat}&lon=${location.lon}&fields=nom,codesPostaux`)
-        .then(res => res.ok ? res.json() : null)
-        .then(data => {
-          if (Array.isArray(data) && data.length > 0) {
-            const com = data[0];
-            const city = com.nom || "";
-            const pc = (Array.isArray(com.codesPostaux) && com.codesPostaux.length > 0) ? com.codesPostaux[0] : "";
-            if (city) location.nearestCity = city;
-            if (pc && pc.length === 5) location.postcode = pc;
-            updateMeteocielHeaders(location);
-            updateMeteofranceHeaders(location);
-            updateMeteoblueHeaders(location);
-            updateWebcamsSection(location);
-          }
-        })
-        .catch(() => {});
+    if ((!location.communeName || !location.communePostcode) && typeof location.lat === "number" && typeof location.lon === "number") {
+      resolveNearestCommune(location);
     }
 
     if (yrCurrentLocationName) yrCurrentLocationName.textContent = location.name;
@@ -3333,8 +3313,35 @@
 
       // Picto et description officiels
       const w12 = dItem.weather12H || {};
-      const dayIconRaw = w12.icon || "p1j";
-      const dayDesc = w12.desc || "Ensoleillé";
+      let dayIconRaw = w12.icon || "p1j";
+      let dayDesc = w12.desc || "Ensoleillé";
+
+      // Prise en compte de la dissipation du brouillard / brume matinale l'après-midi
+      // (conforme à l'affichage officiel de meteofrance.com)
+      const isMorningFog = dayIconRaw.startsWith("p7") || dayIconRaw.startsWith("p6") || dayIconRaw.startsWith("p8") || dayDesc.toLowerCase().includes("brouillard");
+      if (isMorningFog) {
+        let aftSlot = null;
+        let eveSlot = null;
+        slots.forEach(({ d, slot }) => {
+          const h = d.getHours();
+          if (h >= 12 && h <= 16 && !aftSlot) aftSlot = slot;
+          if (h >= 17 && h <= 21 && !eveSlot) eveSlot = slot;
+        });
+        const aftIcon = (aftSlot && aftSlot.weather && aftSlot.weather.icon) ? aftSlot.weather.icon : "";
+        const eveIcon = (eveSlot && eveSlot.weather && eveSlot.weather.icon) ? eveSlot.weather.icon : "";
+
+        if (aftIcon.startsWith("p1") && tMax >= 18) {
+          dayIconRaw = "p1j";
+          dayDesc = "Ensoleillé";
+        } else if ((aftIcon.startsWith("p1") || eveIcon.startsWith("p1")) && tMax >= 14) {
+          dayIconRaw = "p5j";
+          dayDesc = "Soleil et brumes matinales";
+        } else if (aftIcon.startsWith("p2") || eveIcon.startsWith("p1") || eveIcon.startsWith("p2") || dayIdx >= 9) {
+          dayIconRaw = "p2j";
+          dayDesc = "Éclaircies";
+        }
+      }
+
       const dayIcon = getMfPictoHtml(dayIconRaw, false, dayDesc);
 
       // Calcul vent représentatif et rafales maximales
