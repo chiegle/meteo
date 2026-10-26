@@ -1016,44 +1016,136 @@ body.is-reordering-blocks .radar-map-view {
   gap: 4px;
 }
 
-/* Blocs intermédiaires : Isotherme 0°C et Éphéméride (sous les températures et au-dessus des UV) */
-.mf-middle-cards-wrapper {
+/* Layout bas Météo-France : Éphéméride, Isotherme 0°C et Indice UV sur la même ligne */
+.mf-bottom-cards-layout {
   margin-top: 14px;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: max-content 1fr 1fr;
   gap: 10px;
+  align-items: stretch;
 }
 
-.metric-card-iso {
+.mf-bottom-cards-layout .ephemeris-card {
+  width: auto;
+  max-width: fit-content;
+  padding: 6px 8px; /* très petite marge sur les côtés, juste pour le texte */
+  margin: 0;
+  box-sizing: border-box;
+  height: 100%;
+}
+
+.mf-bottom-cards-layout .ephem-times-grid {
+  column-gap: 4px;
+  padding: 1px 0;
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.mf-bottom-cards-layout .ephem-grid-label-evening {
+  padding-left: 6px;
+}
+
+.mf-bottom-cards-layout .ephem-moon-row {
+  gap: 4px;
+  padding-top: 1px;
+}
+
+.mf-bottom-cards-layout .metric-card {
+  height: 100%;
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 12px;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
-  max-width: 280px;
+  box-sizing: border-box;
+  min-width: 0;
 }
 
-@media (max-width: 639px) {
-  .metric-card-iso {
-    max-width: 100%;
-  }
+.mf-bottom-cards-layout .metric-card-iso {
+  max-width: none;
 }
 
-/* Indice UV tout en bas de Météo France */
-.mf-bottom-uv-wrapper {
-  margin-top: 10px;
+.mf-bottom-cards-layout .metric-card-uv {
   position: relative;
-}
-
-.mf-bottom-uv-wrapper .metric-card-uv {
   width: 100%;
 }
 
-.mf-bottom-uv-wrapper .uv-tooltip-popover {
+.mf-bottom-cards-layout .uv-tooltip-popover {
   top: auto;
   bottom: calc(100% + 8px);
+  right: 0;
+}
+
+@media (max-width: 600px) {
+  .mf-bottom-cards-layout {
+    gap: 6px;
+  }
+  .mf-bottom-cards-layout .ephemeris-card {
+    padding: 4px 6px;
+  }
+  .mf-bottom-cards-layout .ephem-date {
+    font-size: 0.82rem;
+  }
+  .mf-bottom-cards-layout .ephem-saint {
+    font-size: 0.74rem;
+  }
+  .mf-bottom-cards-layout .ephem-grid-label {
+    font-size: 0.72rem;
+  }
+  .mf-bottom-cards-layout .ephem-grid-time {
+    font-size: 0.76rem;
+  }
+  .mf-bottom-cards-layout .ephem-grid-delta {
+    font-size: 0.68rem;
+  }
+  .mf-bottom-cards-layout .ephem-moon-row {
+    font-size: 0.70rem;
+    gap: 3px;
+  }
+  .mf-bottom-cards-layout .ephem-moon-prefix {
+    font-size: 0.70rem;
+  }
+  .mf-bottom-cards-layout .ephem-moon-label {
+    font-size: 0.74rem;
+  }
+  .mf-bottom-cards-layout .metric-card {
+    padding: 6px 6px;
+  }
+  .mf-bottom-cards-layout .metric-label {
+    font-size: 0.72rem;
+  }
+  .mf-bottom-cards-layout .metric-value {
+    font-size: 1rem;
+  }
+}
+
+@media (max-width: 440px) {
+  .mf-bottom-cards-layout {
+    gap: 4px;
+  }
+  .mf-bottom-cards-layout .ephemeris-card {
+    padding: 3px 4px;
+  }
+  .mf-bottom-cards-layout .ephem-grid-label-evening {
+    padding-left: 3px;
+  }
+  .mf-bottom-cards-layout .ephem-times-grid {
+    column-gap: 2px;
+  }
+  .mf-bottom-cards-layout .metric-card {
+    padding: 4px 4px;
+  }
+  .mf-bottom-cards-layout .metric-icon {
+    font-size: 1.15rem;
+  }
+  .mf-bottom-cards-layout .metric-label {
+    font-size: 0.68rem;
+  }
+  .mf-bottom-cards-layout .metric-value {
+    font-size: 0.88rem;
+  }
 }
 
 .metric-card-uv {

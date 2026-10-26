@@ -349,10 +349,8 @@
   let gfsDataCache = null;
   let yrnoDataCache = null;
   let lastSuccessfulFetchTime = Date.now();
-
-  // Cache léger en mémoire vive (RAM uniquement, 0 Ko sur le disque, TTL 15 min)
-  const memoryDataCache = new Map();
-  const CACHE_TTL_MS = 15 * 60 * 1000; // 15 minutes
+  let lastRommaRefreshTime = 0;
+  let lastWebcamRefreshTime = 0;
 
   // Barre de Recherche Globale & Favoris
   const globalSearchInput = document.getElementById("globalSearchInput");
@@ -957,7 +955,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.89') {
+          if (k !== 'meteo-grenoble-v8.90') {
             caches.delete(k);
           }
         });
@@ -2418,21 +2416,6 @@
         loadRadarData();
       }
 
-      // Enregistrement dans le cache mémoire vive (RAM uniquement, sans stockage disque)
-      try {
-        memoryDataCache.set(memKey, {
-          timestamp: Date.now(),
-          updatedAt: timeStr,
-          data: primaryData,
-          arome: aromeData,
-          mf: mfDataCache,
-          mfOfficial: mfOfficialDataCache,
-          gfs: gfsData,
-          yrno: yrnoDataCache,
-          ecmwf: ecmwfData
-        });
-      } catch (_) {}
-
     } catch (err) {
       console.error("Échec récupération météo en direct:", err);
       if (heroLiveBadge) {
@@ -2440,15 +2423,13 @@
         heroLiveBadge.style.cursor = "pointer";
         heroLiveBadge.onclick = () => loadAllLocationData(currentLocation, true);
       }
-      if (!hasRenderedCached) {
-        if (aromeHourlyScroll) {
-          aromeHourlyScroll.innerHTML = '<div class="error-banner">⚠️ Erreur de connexion aux serveurs météo. <button id="btnRetryArome" class="ext-link-btn" style="margin-left:10px;padding:4px 8px;font-size:0.8rem;">Réessayer</button></div>';
-          const btn = document.getElementById("btnRetryArome");
-          if (btn) btn.onclick = () => loadAllLocationData(currentLocation, true);
-        }
-        if (dailyForecastGrid) {
-          dailyForecastGrid.innerHTML = '<div class="error-banner">⚠️ Données temporairement indisponibles.</div>';
-        }
+      if (aromeHourlyScroll) {
+        aromeHourlyScroll.innerHTML = '<div class="error-banner">⚠️ Erreur de connexion aux serveurs météo. <button id="btnRetryArome" class="ext-link-btn" style="margin-left:10px;padding:4px 8px;font-size:0.8rem;">Réessayer</button></div>';
+        const btn = document.getElementById("btnRetryArome");
+        if (btn) btn.onclick = () => loadAllLocationData(currentLocation, true);
+      }
+      if (dailyForecastGrid) {
+        dailyForecastGrid.innerHTML = '<div class="error-banner">⚠️ Données temporairement indisponibles.</div>';
       }
     } finally {
       if (yrCanvasLoading) yrCanvasLoading.style.display = "none";
@@ -2935,54 +2916,105 @@
       resizeTimer = setTimeout(refreshAllComponents, 120);
     }, { passive: true });
 
-    // Rafraîchissement automatique intelligent au retour sur l'application
-    // Déclenché uniquement quand la page redevient visible et si les données ont plus de 10 min
-    // (Zéro consommation de batterie en arrière-plan)
-    // Rafraîchissement UNIQUEMENT quand l'utilisateur va sur l'appli et sur l'onglet Météo-France
-    // Zéro rechargement toutes les minutes, et STRICTEMENT rien en arrière-plan
-    function refreshMeteoFranceIfActive() {
-      if (document.visibilityState !== "visible") return;
+    // ========================================================
+    // GESTION UNIFIÉE DES RESSOURCES ET RAFRAÎCHISSEMENT (TOUS ONGLETS & PAGES)
+    // 1. Zéro tâche de fond périodique (pas de rechargement toutes les minutes)
+    // 2. Strictement rien en arrière-plan (visibilityState !== 'visible' -> aucun calcul ni requête)
+    // 3. Rechargement réel et direct à l'arrivée sur l'application ou au basculement d'onglet
+    // 4. Protection debounce (15 secondes) évitant tout martèlement ou requêtes superflues
+    // 5. Zéro cache fallacieux masquant le réseau : données toujours fraîches en direct
+    // ========================================================
+    const TAB_DEBOUNCE_MS = 15 * 1000;
 
-      // Vérifier si l'onglet Météo-France est actif
-      const aromePanel = document.getElementById("aromeSection");
-      const isAromeActive = aromePanel && (aromePanel.classList.contains("active-tab-panel") || aromePanel.style.display !== "none");
-      if (!isAromeActive) return;
-
-      // Protection debounce (15 secondes) contre les clics répétés
-      if (Date.now() - lastSuccessfulFetchTime < 15 * 1000) return;
-
-      if (currentLocation) {
-        loadAllLocationData(currentLocation, true);
+    function getActiveTabKey() {
+      const activeBtn = document.querySelector(".tab-nav-btn.active");
+      if (activeBtn && activeBtn.dataset.tab) {
+        return activeBtn.dataset.tab;
       }
+      try {
+        const stored = localStorage.getItem("meteo_active_tab_horizontal");
+        if (stored) return stored;
+      } catch (_) {}
+      return "meteociel";
     }
 
-    // 1. Quand l'utilisateur revient sur l'application (au premier plan)
+    function refreshActiveTabContent(force = false) {
+      // 1. Zéro activité si la page est masquée / en arrière-plan
+      if (document.visibilityState !== "visible") return;
+
+      const activeTab = getActiveTabKey();
+      const now = Date.now();
+
+      // 2. Onglets météo partageant les prévisions directes (Météociel, ECMWF/Yr.no, Météo-France)
+      if (["meteociel", "ecmwf", "arome"].includes(activeTab)) {
+        if (!force && (now - lastSuccessfulFetchTime < TAB_DEBOUNCE_MS)) return;
+        if (currentLocation) {
+          loadAllLocationData(currentLocation, true);
+        }
+        return;
+      }
+
+      // 3. Onglet Radar de précipitations (Météoblue)
+      if (activeTab === "meteoblue") {
+        if (radarMap) {
+          radarMap.invalidateSize();
+          if (force || (now - lastRadarLoadTime >= TAB_DEBOUNCE_MS)) {
+            loadRadarData();
+          } else {
+            syncRadarToCurrentTime();
+          }
+        }
+        return;
+      }
+
+      // 4. Onglet Webcams
+      if (activeTab === "webcams") {
+        if (force || (now - lastWebcamRefreshTime >= TAB_DEBOUNCE_MS)) {
+          lastWebcamRefreshTime = now;
+          mountVisibleWebcamMedia(true);
+        }
+        return;
+      }
+
+      // 5. Onglet Stations ROMMA
+      if (activeTab === "romma") {
+        if (force || (now - lastRommaRefreshTime >= TAB_DEBOUNCE_MS)) {
+          lastRommaRefreshTime = now;
+          if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
+            updateRommaMap(currentLocation, false);
+          }
+        }
+        return;
+      }
+    }
+    window.refreshActiveTab = refreshActiveTabContent;
+
+    // A. Événements système quand l'utilisateur revient sur l'application (au premier plan)
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        refreshMeteoFranceIfActive();
+        refreshActiveTabContent();
       } else {
         stopRadarPlayback();
       }
     });
 
-    window.addEventListener("pageshow", (e) => {
+    window.addEventListener("pageshow", () => {
       if (document.visibilityState === "visible") {
-        refreshMeteoFranceIfActive();
+        refreshActiveTabContent();
       }
     });
 
     window.addEventListener("focus", () => {
       if (document.visibilityState === "visible") {
-        refreshMeteoFranceIfActive();
+        refreshActiveTabContent();
       }
     });
 
-    // 2. Quand l'utilisateur clique / bascule sur l'onglet Météo-France
+    // B. Événements de navigation : quand l'utilisateur clique ou bascule sur un onglet
     document.addEventListener("click", (e) => {
-      const btn = e.target.closest('.tab-nav-btn[data-tab="arome"]');
+      const btn = e.target.closest('.tab-nav-btn');
       if (btn && document.visibilityState === "visible") {
-        // Petit délai pour laisser switchTab s'exécuter
-        setTimeout(refreshMeteoFranceIfActive, 50);
+        setTimeout(() => refreshActiveTabContent(false), 50);
       }
     });
   }
@@ -5706,19 +5738,6 @@
     });
 
     mountVisibleWebcamMedia(false);
-  }
-
-  let lastWebcamRefreshTime = Date.now();
-
-  function checkAutoWebcamRefresh() {
-    const wcSection = document.getElementById("webcamsSection");
-    if (!wcSection || wcSection.offsetParent === null) return;
-    const elapsedMinutes = (Date.now() - lastWebcamRefreshTime) / (60 * 1000);
-    // Rafraîchissement intelligent sans surconsommation : toutes les 10 min quand l'onglet est actif
-    if (elapsedMinutes >= 10) {
-      lastWebcamRefreshTime = Date.now();
-      mountVisibleWebcamMedia(true);
-    }
   }
 
   // ========================================================

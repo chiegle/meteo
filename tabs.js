@@ -115,6 +115,11 @@
       try {
         localStorage.setItem(STORAGE_KEY, tabKey);
       } catch (_) {}
+
+      // Rafraîchissement intelligent de l'onglet actif si sélectionné par l'utilisateur
+      if (userInitiated && typeof window.refreshActiveTab === "function") {
+        window.refreshActiveTab(false);
+      }
     }
 
     // ========================================================

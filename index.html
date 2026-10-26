@@ -7,7 +7,7 @@
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.79">
-  <link rel="stylesheet" href="style.css?v=8.89">
+  <link rel="stylesheet" href="style.css?v=8.90">
   <link rel="stylesheet" href="tabs.css?v=8.79">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.79">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.79">
@@ -272,17 +272,8 @@
             <div class="hourly-scroll" id="aromeHourlyScroll" style="display:none;"></div>
           </div>
 
-          <!-- Isotherme 0°C et Éphéméride (en dessous des températures et au-dessus des UV) -->
-          <div class="mf-middle-cards-wrapper">
-            <div class="metric-card metric-card-iso" id="metricCardIso">
-              <span class="metric-icon">❄️</span>
-              <div class="metric-data">
-                <span class="metric-label">Isotherme 0°C</span>
-                <span class="metric-value" id="currentIsoZero">-- m</span>
-              </div>
-            </div>
-
-            <!-- Éphéméride & Lune -->
+          <!-- Disposition bas Météo-France : Éphéméride, Isotherme 0°C et Indice UV sur la même ligne -->
+          <div class="mf-bottom-cards-layout">
             <div class="ephemeris-card" id="ephemerisCard">
               <div class="ephem-header">
                 <div class="ephem-date" id="ephemDate">Chargement...</div>
@@ -311,56 +302,62 @@
                 <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
               </div>
             </div>
-          </div>
 
-          <!-- Indice UV tout en bas de la page Météo France -->
-          <div class="mf-bottom-uv-wrapper">
-            <div class="metric-card metric-card-uv" id="metricCardUv">
-              <span class="metric-icon" id="currentUvIcon">☀️</span>
-              <div class="metric-data">
-                <div class="uv-title-row">
-                  <span class="metric-label">Indice UV</span>
+            <!-- Bloc Isotherme 0°C -->
+            <div class="metric-card metric-card-iso" id="metricCardIso">
+                <span class="metric-icon">❄️</span>
+                <div class="metric-data">
+                  <span class="metric-label">Isotherme 0°C</span>
+                  <span class="metric-value" id="currentIsoZero">-- m</span>
                 </div>
-                <div class="uv-value-row">
-                  <span class="metric-value" id="currentUv">--</span>
-                  <span class="uv-max-tag" id="uvMaxTag">(Max --)</span>
-                </div>
-                <div class="uv-gauge-track" id="uvGaugeTrack">
-                  <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
-                </div>
+              </div>
 
-                <!-- Info-bulle / Popover au survol -->
-                <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
-                  <div class="uv-tooltip-header">
-                    <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
-                    <button type="button" class="uv-tooltip-close" id="uvTooltipClose" aria-label="Fermer l'info-bulle">✕</button>
+              <div class="metric-card metric-card-uv" id="metricCardUv">
+                <span class="metric-icon" id="currentUvIcon">☀️</span>
+                <div class="metric-data">
+                  <div class="uv-title-row">
+                    <span class="metric-label">Indice UV</span>
                   </div>
-                  <div class="uv-tooltip-body">
-                    <div class="uv-tooltip-stat-row">
-                      <div class="uv-stat-box">
-                        <span class="uv-stat-label">Actuel</span>
-                        <strong class="uv-stat-val" id="ttUvCurrent">-- / 11</strong>
-                      </div>
-                      <div class="uv-stat-box">
-                        <span class="uv-stat-label">Pic du jour</span>
-                        <strong class="uv-stat-val" id="ttUvMax">-- / 11</strong>
-                      </div>
-                      <div class="uv-stat-box">
-                        <span class="uv-stat-label">Si ciel dégagé</span>
-                        <strong class="uv-stat-val" id="ttUvClearSky">-- / 11</strong>
-                      </div>
+                  <div class="uv-value-row">
+                    <span class="metric-value" id="currentUv">--</span>
+                    <span class="uv-max-tag" id="uvMaxTag">(Max --)</span>
+                  </div>
+                  <div class="uv-gauge-track" id="uvGaugeTrack">
+                    <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
+                  </div>
+
+                  <!-- Info-bulle / Popover au survol -->
+                  <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
+                    <div class="uv-tooltip-header">
+                      <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
+                      <button type="button" class="uv-tooltip-close" id="uvTooltipClose" aria-label="Fermer l'info-bulle">✕</button>
                     </div>
-                    <div class="uv-tooltip-scale-table">
-                      <div class="uv-scale-row uv-row-low"><span class="uv-scale-dot"></span><strong>0 à 2 : Faible</strong> <span>Sans risque (> 1h) • Crème non requise</span></div>
-                      <div class="uv-scale-row uv-row-mod"><span class="uv-scale-dot"></span><strong>3 à 5 : Modéré</strong> <span>Coup de soleil ~45 min • SPF 30+ & lunettes</span></div>
-                      <div class="uv-scale-row uv-row-high"><span class="uv-scale-dot"></span><strong>6 à 7 : Élevé</strong> <span>Coup de soleil ~25 min • SPF 50+ & chapeau</span></div>
-                      <div class="uv-scale-row uv-row-vhigh"><span class="uv-scale-dot"></span><strong>8 à 10 : Très élevé</strong> <span>Coup de soleil ~15 min • Éviter les heures chaudes</span></div>
-                      <div class="uv-scale-row uv-row-ext"><span class="uv-scale-dot"></span><strong>11+ : Extrême</strong> <span>Danger brûlure < 10 min • Ombre obligatoire</span></div>
+                    <div class="uv-tooltip-body">
+                      <div class="uv-tooltip-stat-row">
+                        <div class="uv-stat-box">
+                          <span class="uv-stat-label">Actuel</span>
+                          <strong class="uv-stat-val" id="ttUvCurrent">-- / 11</strong>
+                        </div>
+                        <div class="uv-stat-box">
+                          <span class="uv-stat-label">Pic du jour</span>
+                          <strong class="uv-stat-val" id="ttUvMax">-- / 11</strong>
+                        </div>
+                        <div class="uv-stat-box">
+                          <span class="uv-stat-label">Si ciel dégagé</span>
+                          <strong class="uv-stat-val" id="ttUvClearSky">-- / 11</strong>
+                        </div>
+                      </div>
+                      <div class="uv-tooltip-scale-table">
+                        <div class="uv-scale-row uv-row-low"><span class="uv-scale-dot"></span><strong>0 à 2 : Faible</strong> <span>Sans risque (> 1h) • Crème non requise</span></div>
+                        <div class="uv-scale-row uv-row-mod"><span class="uv-scale-dot"></span><strong>3 à 5 : Modéré</strong> <span>Coup de soleil ~45 min • SPF 30+ & lunettes</span></div>
+                        <div class="uv-scale-row uv-row-high"><span class="uv-scale-dot"></span><strong>6 à 7 : Élevé</strong> <span>Coup de soleil ~25 min • SPF 50+ & chapeau</span></div>
+                        <div class="uv-scale-row uv-row-vhigh"><span class="uv-scale-dot"></span><strong>8 à 10 : Très élevé</strong> <span>Coup de soleil ~15 min • Éviter les heures chaudes</span></div>
+                        <div class="uv-scale-row uv-row-ext"><span class="uv-scale-dot"></span><strong>11+ : Extrême</strong> <span>Danger brûlure < 10 min • Ombre obligatoire</span></div>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
           </div>
         </div>
       </section>
@@ -518,7 +515,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.89"></script>
-  <script src="tabs.js?v=8.89"></script>
+  <script src="app.js?v=8.90"></script>
+  <script src="tabs.js?v=8.90"></script>
 </body>
 </html>
