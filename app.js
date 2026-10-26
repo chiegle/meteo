@@ -263,6 +263,46 @@
     return item;
   }
 
+  // Détection fiable de la nuit (astronomique ou saisonnière)
+  function isSlotNight(date, daily) {
+    if (!date) return false;
+    const targetDate = (date instanceof Date) ? date : new Date(date);
+    if (isNaN(targetDate.getTime())) return false;
+
+    // 1. Essayer avec daily.sunrise et daily.sunset (Open-Meteo)
+    const dailyRef = (daily && Array.isArray(daily.time)) ? daily : (mfDataCache && mfDataCache.daily ? mfDataCache.daily : null);
+    if (dailyRef && Array.isArray(dailyRef.time) && Array.isArray(dailyRef.sunrise) && Array.isArray(dailyRef.sunset)) {
+      const year = targetDate.getFullYear();
+      const month = String(targetDate.getMonth() + 1).padStart(2, "0");
+      const day = String(targetDate.getDate()).padStart(2, "0");
+      const dateKey = `${year}-${month}-${day}`;
+      const idx = dailyRef.time.indexOf(dateKey);
+      if (idx !== -1 && dailyRef.sunrise[idx] && dailyRef.sunset[idx]) {
+        const rise = new Date(dailyRef.sunrise[idx]).getTime();
+        const set = new Date(dailyRef.sunset[idx]).getTime();
+        const t = targetDate.getTime();
+        return t < rise || t >= set;
+      }
+    }
+
+    // 2. Repli astronomique approché selon la saison si pas d'éphéméride précise
+    const month = targetDate.getMonth();
+    let riseHour = 7;
+    let setHour = 19;
+    if (month >= 10 || month <= 1) { // Nov, Dec, Jan, Fév
+      riseHour = 8;
+      setHour = 17.5;
+    } else if (month >= 4 && month <= 7) { // Mai, Juin, Juil, Août
+      riseHour = 6;
+      setHour = 21.25;
+    } else if (month === 2 || month === 8 || month === 9) { // Mars, Sept, Oct
+      riseHour = 7.25;
+      setHour = 19;
+    }
+    const decHour = targetDate.getHours() + targetDate.getMinutes() / 60;
+    return decHour < riseHour || decHour >= setHour;
+  }
+
   // Pictogrammes officiels Météo-France (icons/mf/*.svg) à partir du code WMO ou code officiel MF
   // En journée (j), on utilise les pictogrammes officiels avec soleil + nuage + pluie/neige/orage
   // (p12j, p14bisj, p16bisj, p17j, p19j) comme sur meteofrance.com
@@ -285,16 +325,18 @@
         trimmed = trimmed.replace(/^i0/, "p1").replace(/^i/, "p");
       }
       if (trimmed.endsWith("j") || trimmed.endsWith("n")) {
-        pictoName = trimmed;
+        const root = trimmed.slice(0, -1);
+        pictoName = `${root}${isNight ? "n" : "j"}`;
       } else {
         pictoName = `${trimmed}${isNight ? "n" : "j"}`;
       }
     } else {
-      const base = MF_PICTO_BY_WMO[codeOrName] || "p2";
+      const base = MF_PICTO_BY_WMO[codeOrName] || (isNight ? "p1" : "p2");
       pictoName = `${base}${isNight ? "n" : "j"}`;
     }
     const safeAlt = String(alt || pictoName).replace(/\x22/g, "&quot;");
-    return `<img class="mf-picto" src="icons/mf/${pictoName}.svg" alt="${safeAlt}" draggable="false" onerror="this.onerror=null;this.src='icons/mf/p1j.svg';">`;
+    const fallbackSrc = isNight ? "icons/mf/p1n.svg" : "icons/mf/p1j.svg";
+    return `<img class="mf-picto" src="icons/mf/${pictoName}.svg" alt="${safeAlt}" draggable="false" onerror="this.onerror=null;this.src='${fallbackSrc}';">`;
   }
 
   // ========================================================
@@ -3127,8 +3169,7 @@
 
     // Indice UV & Protection solaire (Échelle OMS / 11+ & Comparatif immédiat)
     if (currentUv) {
-      const nowHour = new Date().getHours();
-      const isNightNow = nowHour < 7 || nowHour >= 20;
+      const isNightNow = isSlotNight(new Date(), data.daily);
 
       let curUv = (hourly.uv_index && hourly.uv_index[idx] != null) ? hourly.uv_index[idx] : 0;
       if (isNightNow) {
@@ -3293,8 +3334,10 @@
         curWindArrow = day.currentSlot.windArrow;
       }
 
-      const curDesc = (day.currentSlot && day.currentSlot.desc) ? day.currentSlot.desc : (day.matin ? day.matin.desc : "Ensoleillé");
-      const curIcon = (day.currentSlot && day.currentSlot.icon) ? day.currentSlot.icon : (day.matin ? day.matin.icon : "☀️");
+      const isNightNow = isSlotNight(new Date(), mfDataCache && mfDataCache.daily ? mfDataCache.daily : null);
+      const fallbackIcon = isNightNow ? getMfPictoHtml("p1", true, "Nuit") : (day.matin ? day.matin.icon : "☀️");
+      const curDesc = (day.currentSlot && day.currentSlot.desc) ? day.currentSlot.desc : (isNightNow ? "Ciel clair (nuit)" : (day.matin ? day.matin.desc : "Ensoleillé"));
+      const curIcon = (day.currentSlot && day.currentSlot.icon) ? day.currentSlot.icon : fallbackIcon;
 
       periodsToRender.push({
         name: "EN CE MOMENT",
@@ -3461,9 +3504,9 @@
         };
       }
 
-      const nowHour = new Date().getHours();
-      const isNightNow = nowHour < 7 || nowHour >= 21;
-      const currentPeriodSlot = getPeriodData(nowHour, isNightNow);
+      const now = new Date();
+      const isNightNow = isSlotNight(now, mfDataCache && mfDataCache.daily ? mfDataCache.daily : null);
+      const currentPeriodSlot = getPeriodData(now.getHours(), isNightNow);
 
       const dayItem = {
         dayIdx,
@@ -3621,6 +3664,21 @@
       if (dayIdx >= 3 && dayIdx <= 7) confidence = "3/5";
       else if (dayIdx > 7) confidence = "2/5";
 
+      let currentPeriodSlot = null;
+      if (dayIdx === 0) {
+        const now = new Date();
+        const isNightNow = isSlotNight(now, daily);
+        const sNow = getClosestSlot(now.getHours());
+        const wmoNow = decodeWMO(sNow.code, isNightNow);
+        currentPeriodSlot = {
+          desc: wmoNow.desc,
+          icon: getMfPictoHtml(sNow.code, isNightNow, wmoNow.desc),
+          temp: sNow.temp,
+          wind: sNow.wind,
+          windArrow: getMeteocielWindArrow(sNow.windDir)
+        };
+      }
+
       const dayItem = {
         dayIdx,
         fullDateStr,
@@ -3631,6 +3689,7 @@
         dayIcon: getMfPictoHtml(dayCode, false, dayWmo.desc),
         dayWind,
         confidence,
+        currentSlot: currentPeriodSlot,
         matin: {
           desc: wmoMatin.desc,
           icon: getMfPictoHtml(sMatin.code, false, wmoMatin.desc),
@@ -3976,7 +4035,8 @@
     } else if (code >= 95) {
       drawYrnoThunder(ctx, cx, cy);
     } else {
-      drawYrnoSunCloud(ctx, cx, cy);
+      if (isNight) drawYrnoMoonCloud(ctx, cx, cy);
+      else drawYrnoSunCloud(ctx, cx, cy);
     }
     ctx.restore();
   }
@@ -4459,8 +4519,7 @@
       // 5. Symboles Météo Vectoriels positionnés au niveau de la courbe de température (conforme screen 2 Yr.no)
       for (let i = 0; i < totalHours; i += 2) {
         const d = new Date(hourly.time[i]);
-        const hour = d.getHours();
-        const isNight = hour < 7 || hour >= 20;
+        const isNight = isSlotNight(d, masterData.daily);
         const code = (hourly.weather_code && hourly.weather_code[i] != null) ? hourly.weather_code[i] : 0;
         const x = getX(i);
         const rawT = hourly.temperature_2m ? hourly.temperature_2m[i] : null;
@@ -4771,7 +4830,7 @@
       code: h.weather_code && h.weather_code[bestIdx] != null ? h.weather_code[bestIdx] : 0,
       wind: h.wind_speed_10m && h.wind_speed_10m[bestIdx] != null ? Math.round(h.wind_speed_10m[bestIdx]) : 0,
       gust: h.wind_gusts_10m && h.wind_gusts_10m[bestIdx] != null ? Math.round(h.wind_gusts_10m[bestIdx]) : 0,
-      isNight: hr < 7 || hr >= 20
+      isNight: isSlotNight(dObj, data.daily)
     };
   }
 
@@ -5983,18 +6042,24 @@
 
   // Icône météo rétro stylée Météociel
   function getMeteocielWeatherIcon(code, isNight) {
-    if (code === null || code === undefined || isNaN(code)) return isNight ? "🌙" : "☀️";
-    if (code === 0) return isNight ? "🌙" : "☀️";
-    if (code === 1 || code === 2) return isNight ? "☁️" : "🌤️";
-    if (code === 3) return "☁️"; // Couvert gris
-    if (code >= 45 && code <= 48) return "🌫️"; // Brouillard
-    if (code >= 51 && code <= 55) return isNight ? "🌧️" : "🌦️"; // Bruine
-    if (code >= 61 && code <= 63) return "🌧️"; // Pluie faible à modérée
-    if (code >= 65) return "🌧️"; // Forte pluie
-    if (code >= 71 && code <= 77) return "🌨️"; // Neige
-    if (code >= 80 && code <= 82) return isNight ? "🌧️" : "🌦️"; // Averse
-    if (code >= 95) return "⛈️"; // Orage
-    return isNight ? "☁️" : "⛅";
+    let icon = "☀️";
+    if (code === null || code === undefined || isNaN(code)) icon = isNight ? "🌙" : "☀️";
+    else if (code === 0) icon = isNight ? "🌙" : "☀️";
+    else if (code === 1 || code === 2) icon = isNight ? "☁️" : "🌤️";
+    else if (code === 3) icon = "☁️"; // Couvert gris
+    else if (code >= 45 && code <= 48) icon = "🌫️"; // Brouillard
+    else if (code >= 51 && code <= 55) icon = isNight ? "🌧️" : "🌦️"; // Bruine
+    else if (code >= 61 && code <= 65) icon = "🌧️"; // Pluie
+    else if (code >= 71 && code <= 77) icon = "🌨️"; // Neige
+    else if (code >= 80 && code <= 82) icon = isNight ? "🌧️" : "🌦️"; // Averse
+    else if (code >= 95) icon = "⛈️"; // Orage
+    else icon = isNight ? "☁️" : "⛅";
+
+    if (isNight) {
+      // Sécurité absolue : aucun soleil la nuit noire
+      icon = icon.replace(/☀️/g, "🌙").replace(/🌤️/g, "☁️").replace(/⛅/g, "☁️").replace(/🌦️/g, "🌧️");
+    }
+    return icon;
   }
 
 
@@ -6084,7 +6149,7 @@
           humidity: hourly.relative_humidity_2m ? Math.round(hourly.relative_humidity_2m[i]) : 80,
           pressure: hourly.surface_pressure ? Math.round(hourly.surface_pressure[i]) : 1015,
           weatherCode: hourly.weather_code ? hourly.weather_code[i] : 0,
-          isNight: hour < 7 || hour >= 20
+          isNight: isSlotNight(d, data.daily)
         });
         current3hRain = 0;
       }
@@ -6231,7 +6296,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.79").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.92").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
