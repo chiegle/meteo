@@ -1647,6 +1647,8 @@ body.oled-theme .mf-day-detail-card {
   margin-bottom: 4px;
   white-space: nowrap;
   letter-spacing: 0.2px;
+  min-height: 1.2em;
+  line-height: 1.2;
 }
 
 .mf-period-col:not(:last-child) {
@@ -1856,6 +1858,8 @@ body.oled-theme .mf-day-pill {
   }
   .mf-period-felt {
     font-size: 0.68rem;
+    min-height: 1.2em;
+    line-height: 1.2;
   }
 }
 

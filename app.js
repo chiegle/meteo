@@ -955,7 +955,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.90') {
+          if (k !== 'meteo-grenoble-v8.91') {
             caches.delete(k);
           }
         });
@@ -3337,7 +3337,7 @@
         <span class="mf-period-desc">${p.desc}</span>
         <div class="mf-period-icon">${p.icon}</div>
         <div class="mf-period-temp">${p.temp}</div>
-        ${p.felt ? `<div class="mf-period-felt">${p.felt}</div>` : ""}
+        <div class="mf-period-felt">${p.felt ? p.felt : '&nbsp;'}</div>
         <div class="mf-period-wind">
           <span class="mf-wind-arrow">${p.windArrow || "▲"}</span>
           <span>${p.wind != null ? p.wind : "--"} km/h</span>
