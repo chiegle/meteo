@@ -957,7 +957,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.86') {
+          if (k !== 'meteo-grenoble-v8.87') {
             caches.delete(k);
           }
         });
@@ -2168,7 +2168,7 @@
     updateMeteocielHeaders(currentLocation);
     const dataToUse = gfsDataCache || weatherDataCache;
     if (dataToUse) {
-      drawPrecipDiagram(dataToUse);
+
       renderMeteocielTable(dataToUse);
     }
   }
@@ -2512,7 +2512,7 @@
           headerId: "meteocielAccordionHeader",
           onExpand: () => {
             if (gfsDataCache || weatherDataCache) {
-              drawPrecipDiagram(gfsDataCache || weatherDataCache);
+              // Diagramme précipitations supprimé
             }
           }
         },
@@ -3050,23 +3050,35 @@
     }
 
     // Température & Windchill
+    let currentCalculatedWc = null;
     if (t !== null && t !== undefined) {
-      currentTemp.textContent = `${t.toFixed(1)} °C`;
-      const wc = computeWindchill(t, gust || wind || 0);
-      currentWindchill.textContent = `Ressentie ${wc} °C`;
+      currentCalculatedWc = computeWindchill(t, gust || wind || 0);
+      if (currentTemp) currentTemp.textContent = `${t.toFixed(1)} °C`;
+      if (currentWindchill) currentWindchill.textContent = `Ressentie ${currentCalculatedWc} °C`;
+      window._currentMeteoData = {
+        temp: t,
+        windchill: currentCalculatedWc,
+        wind: Math.round(wind || 0),
+        gust: Math.round(gust || 0)
+      };
     } else {
-      currentTemp.textContent = "-- °C";
-      currentWindchill.textContent = "Non mesuré";
+      if (currentTemp) currentTemp.textContent = "-- °C";
+      if (currentWindchill) currentWindchill.textContent = "Non mesuré";
+      window._currentMeteoData = null;
     }
 
-    // Vent & Rafales
-    currentWind.textContent = `${Math.round(wind || 0)} km/h`;
-    currentGusts.textContent = `Rafales max ${Math.round(gust || 0)} km/h`;
-    if (gust > 65) {
-      currentGusts.style.color = "#f43f5e";
-      currentGusts.textContent += " ⚠️ VENT FORT";
-    } else {
-      currentGusts.style.color = "";
+    // Vent & Rafales (sécurisé si le petit carré en haut est retiré)
+    if (currentWind) {
+      currentWind.textContent = `${Math.round(wind || 0)} km/h`;
+    }
+    if (currentGusts) {
+      currentGusts.textContent = `Rafales max ${Math.round(gust || 0)} km/h`;
+      if (gust > 65) {
+        currentGusts.style.color = "#f43f5e";
+        currentGusts.textContent += " ⚠️ VENT FORT";
+      } else {
+        currentGusts.style.color = "";
+      }
     }
 
     // Isotherme 0°C (Priorité aux données officielles Météo-France si disponibles)
@@ -3222,25 +3234,92 @@
       titleEl.textContent = day.fullDateStr;
     }
 
-    const periods = [
-      { key: "Matin", data: day.matin },
-      { key: "ApresMidi", data: day.apresMidi },
-      { key: "Soiree", data: day.soiree },
-      { key: "Nuit", data: day.nuit }
-    ];
+    const gridEl = document.querySelector(".mf-periods-grid");
+    if (!gridEl) return;
+    gridEl.innerHTML = "";
 
-    periods.forEach(p => {
-      const descEl = document.getElementById(`mfDesc${p.key}`);
-      const iconEl = document.getElementById(`mfIcon${p.key}`);
-      const tempEl = document.getElementById(`mfTemp${p.key}`);
-      const windSpeedEl = document.getElementById(`mfWindSpeed${p.key}`);
-      const windArrowEl = document.getElementById(`mfWindArrow${p.key}`);
+    const periodsToRender = [];
+    const currentHour = new Date().getHours();
 
-      if (descEl) descEl.textContent = p.data.desc;
-      if (iconEl) iconEl.innerHTML = p.data.icon;
-      if (tempEl) tempEl.textContent = `${p.data.temp}°`;
-      if (windSpeedEl) windSpeedEl.textContent = `${p.data.wind} km/h`;
-      if (windArrowEl) windArrowEl.textContent = p.data.windArrow;
+    if (dayIndex === 0) {
+      // JOUR J : Température actuelle ressentie du moment en première colonne,
+      // puis uniquement la suite de la journée restante (pas de matin si 15h !).
+
+      // 1. Valeurs du moment
+      let curT = null;
+      let curWc = null;
+      let curWind = day.dayWind || 10;
+      let curWindArrow = "▲";
+
+      if (window._currentMeteoData && window._currentMeteoData.temp != null) {
+        curT = Math.round(window._currentMeteoData.temp);
+        curWc = Math.round(window._currentMeteoData.windchill);
+        if (window._currentMeteoData.wind != null) curWind = window._currentMeteoData.wind;
+      } else if (day.currentSlot && day.currentSlot.temp != null) {
+        curT = Math.round(day.currentSlot.temp);
+        curWc = Math.round(day.currentSlot.felt != null ? day.currentSlot.felt : day.currentSlot.temp);
+        curWind = day.currentSlot.wind;
+        curWindArrow = day.currentSlot.windArrow || "▲";
+      } else {
+        curT = day.apresMidi ? day.apresMidi.temp : (day.matin ? day.matin.temp : 0);
+        curWc = curT;
+      }
+
+      if (day.currentSlot && day.currentSlot.windArrow) {
+        curWindArrow = day.currentSlot.windArrow;
+      }
+
+      const curDesc = (day.currentSlot && day.currentSlot.desc) ? day.currentSlot.desc : (day.matin ? day.matin.desc : "Ensoleillé");
+      const curIcon = (day.currentSlot && day.currentSlot.icon) ? day.currentSlot.icon : (day.matin ? day.matin.icon : "☀️");
+
+      periodsToRender.push({
+        name: "EN CE MOMENT",
+        desc: curDesc,
+        icon: curIcon,
+        temp: `${curT}°`,
+        felt: `Ressentie ${curWc}°`,
+        wind: curWind,
+        windArrow: curWindArrow
+      });
+
+      // 2. Suite de la journée
+      // - Si < 12h : Après-midi, Soirée, Nuit
+      // - Si 12h <= h < 18h (ex: 15h) : Soirée, Nuit (le matin et début d'après-midi sont passés)
+      // - Si 18h <= h < 22h : Nuit
+      // - Si >= 22h : fin de journée, seule la météo du moment est affichée
+      if (currentHour < 12) {
+        if (day.apresMidi) periodsToRender.push({ name: "APRÈS-MIDI", desc: day.apresMidi.desc, icon: day.apresMidi.icon, temp: `${day.apresMidi.temp}°`, wind: day.apresMidi.wind, windArrow: day.apresMidi.windArrow });
+        if (day.soiree) periodsToRender.push({ name: "SOIRÉE", desc: day.soiree.desc, icon: day.soiree.icon, temp: `${day.soiree.temp}°`, wind: day.soiree.wind, windArrow: day.soiree.windArrow });
+        if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
+      } else if (currentHour >= 12 && currentHour < 18) {
+        if (day.soiree) periodsToRender.push({ name: "SOIRÉE", desc: day.soiree.desc, icon: day.soiree.icon, temp: `${day.soiree.temp}°`, wind: day.soiree.wind, windArrow: day.soiree.windArrow });
+        if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
+      } else if (currentHour >= 18 && currentHour < 22) {
+        if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
+      }
+    } else {
+      // Jours futurs (J+1 à J+14) : Les 4 périodes classiques AVEC prévisions du vent
+      if (day.matin) periodsToRender.push({ name: "MATIN", desc: day.matin.desc, icon: day.matin.icon, temp: `${day.matin.temp}°`, wind: day.matin.wind, windArrow: day.matin.windArrow });
+      if (day.apresMidi) periodsToRender.push({ name: "APRÈS-MIDI", desc: day.apresMidi.desc, icon: day.apresMidi.icon, temp: `${day.apresMidi.temp}°`, wind: day.apresMidi.wind, windArrow: day.apresMidi.windArrow });
+      if (day.soiree) periodsToRender.push({ name: "SOIRÉE", desc: day.soiree.desc, icon: day.soiree.icon, temp: `${day.soiree.temp}°`, wind: day.soiree.wind, windArrow: day.soiree.windArrow });
+      if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
+    }
+
+    periodsToRender.forEach(p => {
+      const col = document.createElement("div");
+      col.className = "mf-period-col";
+      col.innerHTML = `
+        <span class="mf-period-name">${p.name}</span>
+        <span class="mf-period-desc">${p.desc}</span>
+        <div class="mf-period-icon">${p.icon}</div>
+        <div class="mf-period-temp">${p.temp}</div>
+        ${p.felt ? `<div class="mf-period-felt">${p.felt}</div>` : ""}
+        <div class="mf-period-wind">
+          <span class="mf-wind-arrow">${p.windArrow || "▲"}</span>
+          <span>${p.wind != null ? p.wind : "--"} km/h</span>
+        </div>
+      `;
+      gridEl.appendChild(col);
     });
   }
 
@@ -3358,6 +3437,10 @@
         };
       }
 
+      const nowHour = new Date().getHours();
+      const isNightNow = nowHour < 7 || nowHour >= 21;
+      const currentPeriodSlot = getPeriodData(nowHour, isNightNow);
+
       const dayItem = {
         dayIdx,
         fullDateStr,
@@ -3368,6 +3451,7 @@
         dayIcon,
         dayWind,
         dayGustBadge,
+        currentSlot: currentPeriodSlot,
         matin: getPeriodData(8, false),
         apresMidi: getPeriodData(14, false),
         soiree: getPeriodData(20, true),
@@ -5956,145 +6040,8 @@
 
   // 2. Rendu Diagramme Précipitations (mm) en bâtons bleus (Image 2)
   function drawPrecipDiagram(data) {
-    if (!data || !data.hourly || !data.hourly.time) return;
-    const canvas = meteocielPrecipCanvas;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-
-    const rect = canvas.getBoundingClientRect();
-    const dpr = window.devicePixelRatio || 1;
-    const width = Math.round(rect.width) || 580;
-    const height = Math.round(rect.height) || 180;
-    canvas.width = width * dpr;
-    canvas.height = height * dpr;
-    ctx.scale(dpr, dpr);
-
-    // Fond couleur pastel Météociel (#e3f5f4)
-    ctx.fillStyle = "#e3f5f4";
-    ctx.fillRect(0, 0, width, height);
-
-    // Regrouper par créneaux de 3h (comme sur le tableau et l'image 2)
-    // 8 créneaux par jour (02h, 05h, 08h, 11h, 14h, 17h, 20h, 23h)
-    const hourly = data.hourly;
-    const chunks = [];
-    const maxHours = Math.min(120, hourly.time.length); // Jusqu'à 5 jours
-
-    let currentChunkSum = 0;
-    let chunkCount = 0;
-    let chunkHour = "";
-    let chunkDate = null;
-
-    for (let i = 0; i < maxHours; i++) {
-      const p = hourly.precipitation ? hourly.precipitation[i] : 0;
-      currentChunkSum += (p || 0);
-      chunkCount++;
-
-      const dateObj = new Date(hourly.time[i]);
-      const hour = dateObj.getHours();
-
-      // Fin de pas de 3h à 2h, 5h, 8h, 11h, 14h, 17h, 20h, 23h
-      if ([2, 5, 8, 11, 14, 17, 20, 23].includes(hour) || i === maxHours - 1) {
-        chunks.push({
-          rain: Math.round(currentChunkSum * 10) / 10,
-          date: dateObj,
-          hour: hour
-        });
-        currentChunkSum = 0;
-        chunkCount = 0;
-      }
-    }
-
-    if (chunks.length === 0) return;
-
-    // Dimensions graphiques
-    const padLeft = 32;
-    const padRight = 16;
-    const padTop = 22;
-    const padBottom = 26;
-    const chartW = width - padLeft - padRight;
-    const chartH = height - padTop - padBottom;
-
-    // Échelle max (minimum 14 mm comme sur l'image Météociel)
-    let maxRain = 14;
-    chunks.forEach(c => {
-      if (c.rain > maxRain) maxRain = Math.ceil(c.rain + 2);
-    });
-
-    // Lignes de grille horizontales (pas de 2 en 2)
-    ctx.font = "bold 11px Arial, sans-serif";
-    ctx.textAlign = "right";
-    ctx.textBaseline = "middle";
-
-    const step = maxRain <= 16 ? 2 : 4;
-    for (let v = 0; v <= maxRain; v += step) {
-      const y = padTop + chartH - (v / maxRain) * chartH;
-      
-      // Ligne de grille grise
-      ctx.beginPath();
-      ctx.strokeStyle = v === 0 ? "#0000ff" : "#b0c4de";
-      ctx.lineWidth = v === 0 ? 1.5 : 0.8;
-      ctx.moveTo(padLeft, y);
-      ctx.lineTo(width - padRight, y);
-      ctx.stroke();
-
-      // Label Y bleu marine foncé
-      ctx.fillStyle = "#001b5e";
-      ctx.fillText(v.toString(), padLeft - 6, y);
-    }
-
-    // Séparateurs de jours et barres de pluie
-    const totalSlots = chunks.length;
-    const slotW = chartW / totalSlots;
-    const barW = Math.max(5, Math.min(14, slotW - 2));
-
-    let lastDay = -1;
-
-    chunks.forEach((c, idx) => {
-      const day = c.date.getDay();
-      const x = padLeft + idx * slotW + slotW / 2;
-
-      // Changement de jour : tracer une ligne verticale de séparation
-      if (day !== lastDay) {
-        lastDay = day;
-        ctx.beginPath();
-        ctx.strokeStyle = "#708090";
-        ctx.lineWidth = 1;
-        ctx.moveTo(padLeft + idx * slotW, padTop - 6);
-        ctx.lineTo(padLeft + idx * slotW, padTop + chartH + 18);
-        ctx.stroke();
-
-        // Label du jour sous l'axe X (Lun, Mar, Mer, Jeu, Ven...)
-        const dayLabel = c.date.toLocaleDateString("fr-FR", { weekday: "short" });
-        ctx.fillStyle = "#001b5e";
-        ctx.font = "bold 11px Arial, sans-serif";
-        ctx.textAlign = "left";
-        ctx.fillText(dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1, 3), padLeft + idx * slotW + 4, padTop + chartH + 12);
-      }
-
-      // Dessin de la barre de précipitation en 3D / ombre
-      if (c.rain > 0) {
-        const barH = (c.rain / maxRain) * chartH;
-        const barY = padTop + chartH - barH;
-        const barX = x - barW / 2;
-
-        // Ombre / face droite 3D (noir / bleu foncé)
-        ctx.fillStyle = "#000088";
-        ctx.fillRect(barX + 2, barY, barW, barH);
-
-        // Face avant bleu électrique Météociel (#001aff)
-        ctx.fillStyle = "#001aff";
-        ctx.fillRect(barX, barY, barW - 1, barH);
-
-        // Liseré clair cyan sur le haut et la gauche (#00ffff)
-        ctx.strokeStyle = "#00ffff";
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(barX, barY + barH);
-        ctx.lineTo(barX, barY);
-        ctx.lineTo(barX + barW - 1, barY);
-        ctx.stroke();
-      }
-    });
+    // Supprime a la demande de l'utilisateur
+    return;
   }
 
   // 3. Rendu Grand Tableau Horaire Météociel à codes couleurs (Image 1)

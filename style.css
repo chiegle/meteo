@@ -950,33 +950,38 @@ body.is-reordering-blocks .radar-map-view {
   gap: 4px;
 }
 
-/* Metrics Grid */
+/* Metrics Grid (Isotherme 0°C) */
 .metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  display: flex;
   gap: 8px;
   margin-top: 6px;
+  max-width: 280px;
 }
 
 @media (max-width: 639px) {
-  .metric-card-uv {
-    grid-column: span 1;
+  .metrics-grid {
+    max-width: 100%;
   }
 }
 
-@media (min-width: 640px) and (max-width: 1023px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  .metric-card-uv {
-    grid-column: span 1;
-  }
+/* Éphéméride intégrée dans le Hero Météo France */
+.hero-accordion-body .ephemeris-card {
+  margin-top: 8px;
 }
 
-@media (min-width: 1024px) {
-  .metrics-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
+/* Indice UV tout en bas de Météo France */
+.mf-bottom-uv-wrapper {
+  margin-top: 14px;
+  position: relative;
+}
+
+.mf-bottom-uv-wrapper .metric-card-uv {
+  width: 100%;
+}
+
+.mf-bottom-uv-wrapper .uv-tooltip-popover {
+  top: auto;
+  bottom: calc(100% + 8px);
 }
 
 .metric-card-uv {
@@ -1454,19 +1459,30 @@ body.oled-theme .mf-day-detail-card {
 }
 
 .mf-periods-grid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  display: flex;
   gap: 0;
   align-items: stretch;
 }
 
 .mf-period-col {
+  flex: 1 1 0;
+  min-width: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
   padding: 8px 12px;
   position: relative;
+}
+
+.mf-period-felt {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: #bae6fd;
+  margin-top: -2px;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  letter-spacing: 0.2px;
 }
 
 .mf-period-col:not(:last-child) {
@@ -1653,16 +1669,29 @@ body.oled-theme .mf-day-pill {
 
 @media (max-width: 600px) {
   .mf-periods-grid {
-    grid-template-columns: repeat(2, 1fr);
-    row-gap: 12px;
+    display: flex;
+    gap: 0;
   }
-  .mf-period-col:nth-child(2) {
-    border-right: none;
+  .mf-period-col {
+    padding: 6px 4px;
   }
-  .mf-period-col:nth-child(1),
-  .mf-period-col:nth-child(2) {
-    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-    padding-bottom: 12px;
+  .mf-period-name {
+    font-size: 0.68rem;
+    letter-spacing: 0.3px;
+  }
+  .mf-period-desc {
+    font-size: 0.72rem;
+  }
+  .mf-period-icon {
+    font-size: 2.1rem;
+    margin: 6px 0;
+  }
+  .mf-period-temp {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+  }
+  .mf-period-felt {
+    font-size: 0.68rem;
   }
 }
 
@@ -2263,22 +2292,13 @@ body.oled-theme .mf-day-pill {
   border-color: rgba(56, 189, 248, 0.4);
 }
 
-/* Layout Météociel : Prévisions à gauche, Éphéméride & Graphique à droite à la verticale */
+/* Layout Météociel : Prévisions pleine largeur */
 .meteociel-layout-grid {
-  display: grid;
-  grid-template-columns: minmax(0, 1.45fr) minmax(340px, 1fr);
-  gap: 16px;
-  align-items: start;
+  display: block;
   margin-top: 14px;
   width: 100%;
   max-width: 100%;
   min-width: 0;
-}
-
-@media (max-width: 980px) {
-  .meteociel-layout-grid {
-    grid-template-columns: minmax(0, 1fr);
-  }
 }
 
 .meteociel-side-col {
@@ -2447,7 +2467,7 @@ body.oled-theme .mf-day-pill {
   border-radius: 4px;
   overflow: visible !important;
   width: 100%;
-  max-width: 100%;
+  max-width: 720px;
   min-width: 0;
   height: auto !important;
   max-height: none !important;

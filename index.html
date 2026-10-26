@@ -7,7 +7,7 @@
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.79">
-  <link rel="stylesheet" href="style.css?v=8.79">
+  <link rel="stylesheet" href="style.css?v=8.87">
   <link rel="stylesheet" href="tabs.css?v=8.79">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.79">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.79">
@@ -158,46 +158,6 @@
                 </table>
               </div>
             </div>
-
-            <div class="meteociel-side-col">
-              <div class="ephemeris-card" id="ephemerisCard">
-                <div class="ephem-header">
-                  <div class="ephem-date" id="ephemDate">Chargement...</div>
-                  <div class="ephem-saint" id="ephemSaint">--</div>
-                </div>
-                <div class="ephem-times-grid">
-                  <span class="ephem-grid-icon">☀️</span>
-                  <span class="ephem-grid-label">Lever :</span>
-                  <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
-                  <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
-                  <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
-                  <span class="ephem-grid-delta" id="ephemDelta"></span>
-
-                  <div class="ephem-grid-divider"></div>
-
-                  <span class="ephem-grid-icon">🌅</span>
-                  <span class="ephem-grid-label">Aube :</span>
-                  <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
-                  <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
-                  <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
-                  <span class="ephem-grid-delta"></span>
-                </div>
-                <div class="ephem-moon-row">
-                  <span class="ephem-moon-prefix">Phase de la lune :</span>
-                  <span class="ephem-moon-icon" id="ephemMoonIcon">🌕</span>
-                  <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
-                </div>
-              </div>
-
-              <div class="precip-diagram-card">
-                <div class="precip-diagram-header">
-                  <h4 class="precip-diagram-title">Diagramme précipitations (mm) :</h4>
-                </div>
-                <div class="precip-canvas-wrapper">
-                  <canvas id="meteocielPrecipCanvas" width="540" height="190"></canvas>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
@@ -296,76 +256,41 @@
             <div class="accordion-body hero-accordion-body">
               <div class="metrics-grid">
                 <div class="metric-card">
-                  <span class="metric-icon">🌡️</span>
-                  <div class="metric-data">
-                    <span class="metric-label">T° Actuelle</span>
-                    <span class="metric-value" id="currentTemp">-- °C</span>
-                    <span class="metric-sub" id="currentWindchill">Ressentie -- °C</span>
-                  </div>
-                </div>
-
-                <div class="metric-card">
-                  <span class="metric-icon">💨</span>
-                  <div class="metric-data">
-                    <span class="metric-label">Vent / Rafales</span>
-                    <span class="metric-value" id="currentWind">-- km/h</span>
-                    <span class="metric-sub" id="currentGusts">Raf. max -- km/h</span>
-                  </div>
-                </div>
-
-                <div class="metric-card">
                   <span class="metric-icon">❄️</span>
                   <div class="metric-data">
                     <span class="metric-label">Isotherme 0°C</span>
                     <span class="metric-value" id="currentIsoZero">-- m</span>
                   </div>
                 </div>
+              </div>
 
-                <div class="metric-card metric-card-uv" id="metricCardUv">
-                  <span class="metric-icon" id="currentUvIcon">☀️</span>
-                  <div class="metric-data">
-                    <div class="uv-title-row">
-                      <span class="metric-label">Indice UV</span>
-                    </div>
-                    <div class="uv-value-row">
-                      <span class="metric-value" id="currentUv">--</span>
-                      <span class="uv-max-tag" id="uvMaxTag">(Max --)</span>
-                    </div>
-                    <div class="uv-gauge-track" id="uvGaugeTrack">
-                      <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
-                    </div>
+              <!-- Éphéméride & Lune (Déplacée depuis Météociel) -->
+              <div class="ephemeris-card" id="ephemerisCard">
+                <div class="ephem-header">
+                  <div class="ephem-date" id="ephemDate">Chargement...</div>
+                  <div class="ephem-saint" id="ephemSaint">--</div>
+                </div>
+                <div class="ephem-times-grid">
+                  <span class="ephem-grid-icon">☀️</span>
+                  <span class="ephem-grid-label">Lever :</span>
+                  <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
+                  <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
+                  <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
+                  <span class="ephem-grid-delta" id="ephemDelta"></span>
 
-                    <!-- Info-bulle / Popover au survol -->
-                    <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
-                      <div class="uv-tooltip-header">
-                        <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
-                        <button type="button" class="uv-tooltip-close" id="uvTooltipClose" aria-label="Fermer l'info-bulle">✕</button>
-                      </div>
-                      <div class="uv-tooltip-body">
-                        <div class="uv-tooltip-stat-row">
-                          <div class="uv-stat-box">
-                            <span class="uv-stat-label">Actuel</span>
-                            <strong class="uv-stat-val" id="ttUvCurrent">-- / 11</strong>
-                          </div>
-                          <div class="uv-stat-box">
-                            <span class="uv-stat-label">Pic du jour</span>
-                            <strong class="uv-stat-val" id="ttUvMax">-- / 11</strong>
-                          </div>
-                          <div class="uv-stat-box">
-                            <span class="uv-stat-label">Si ciel dégagé</span>
-                            <strong class="uv-stat-val" id="ttUvClearSky">-- / 11</strong>
-                          </div>
-                        </div>
-                        <div class="uv-tooltip-scale-table">
-                          <div class="uv-scale-row uv-row-low"><span class="uv-scale-dot"></span><strong>0 à 2 : Faible</strong> <span>Sans risque (> 1h) • Crème non requise</span></div>
-                          <div class="uv-scale-row uv-row-mod"><span class="uv-scale-dot"></span><strong>3 à 5 : Modéré</strong> <span>Coup de soleil ~45 min • SPF 30+ & lunettes</span></div>
-                          <div class="uv-scale-row uv-row-high"><span class="uv-scale-dot"></span><strong>6 à 7 : Élevé</strong> <span>Coup de soleil ~25 min • SPF 50+ & chapeau</span></div>
-                          <div class="uv-scale-row uv-row-vhigh"><span class="uv-scale-dot"></span><strong>8 à 10 : Très élevé</strong> <span>Coup de soleil ~15 min • Éviter les heures chaudes</span></div>
-                          <div class="uv-scale-row uv-row-ext"><span class="uv-scale-dot"></span><strong>11+ : Extrême</strong> <span>Danger brûlure < 10 min • Ombre obligatoire</span></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+                  <div class="ephem-grid-divider"></div>
+
+                  <span class="ephem-grid-icon">🌅</span>
+                  <span class="ephem-grid-label">Aube :</span>
+                  <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
+                  <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
+                  <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
+                  <span class="ephem-grid-delta"></span>
+                </div>
+                <div class="ephem-moon-row">
+                  <span class="ephem-moon-prefix">Phase de la lune :</span>
+                  <span class="ephem-moon-icon" id="ephemMoonIcon">🌕</span>
+                  <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
                 </div>
               </div>
             </div>
@@ -373,54 +298,11 @@
           <div id="aromeTimelineView" class="arome-timeline-container">
             <!-- DESIGN OFFICIEL MÉTÉO FRANCE (Screen 3) -->
             <div class="mf-official-container" id="mfOfficialContainer">
-              <!-- 1. Carte Détail du Jour Sélectionné (4 périodes : Matin, Après-midi, Soirée, Nuit) -->
+              <!-- 1. Carte Détail du Jour Sélectionné (périodes générées dynamiquement selon le jour) -->
               <div class="mf-day-detail-card" id="mfDayDetailCard">
                 <div class="mf-day-detail-header" id="mfDayDetailTitle">Chargement...</div>
                 <div class="mf-periods-grid">
-                  <!-- MATIN -->
-                  <div class="mf-period-col" id="mfPeriodMatin">
-                    <span class="mf-period-name">MATIN</span>
-                    <span class="mf-period-desc" id="mfDescMatin">--</span>
-                    <div class="mf-period-icon" id="mfIconMatin">☀️</div>
-                    <div class="mf-period-temp" id="mfTempMatin">--°</div>
-                    <div class="mf-period-wind" id="mfWindMatin">
-                      <span class="mf-wind-arrow" id="mfWindArrowMatin">▲</span>
-                      <span id="mfWindSpeedMatin">-- km/h</span>
-                    </div>
-                  </div>
-                  <!-- APRÈS-MIDI -->
-                  <div class="mf-period-col" id="mfPeriodApresMidi">
-                    <span class="mf-period-name">APRÈS-MIDI</span>
-                    <span class="mf-period-desc" id="mfDescApresMidi">--</span>
-                    <div class="mf-period-icon" id="mfIconApresMidi">☀️</div>
-                    <div class="mf-period-temp" id="mfTempApresMidi">--°</div>
-                    <div class="mf-period-wind" id="mfWindApresMidi">
-                      <span class="mf-wind-arrow" id="mfWindArrowApresMidi">▲</span>
-                      <span id="mfWindSpeedApresMidi">-- km/h</span>
-                    </div>
-                  </div>
-                  <!-- SOIRÉE -->
-                  <div class="mf-period-col" id="mfPeriodSoiree">
-                    <span class="mf-period-name">SOIRÉE</span>
-                    <span class="mf-period-desc" id="mfDescSoiree">--</span>
-                    <div class="mf-period-icon" id="mfIconSoiree">🌙</div>
-                    <div class="mf-period-temp" id="mfTempSoiree">--°</div>
-                    <div class="mf-period-wind" id="mfWindSoiree">
-                      <span class="mf-wind-arrow" id="mfWindArrowSoiree">▲</span>
-                      <span id="mfWindSpeedSoiree">-- km/h</span>
-                    </div>
-                  </div>
-                  <!-- NUIT -->
-                  <div class="mf-period-col" id="mfPeriodNuit">
-                    <span class="mf-period-name">NUIT</span>
-                    <span class="mf-period-desc" id="mfDescNuit">--</span>
-                    <div class="mf-period-icon" id="mfIconNuit">🌙</div>
-                    <div class="mf-period-temp" id="mfTempNuit">--°</div>
-                    <div class="mf-period-wind" id="mfWindNuit">
-                      <span class="mf-wind-arrow" id="mfWindArrowNuit">▲</span>
-                      <span id="mfWindSpeedNuit">-- km/h</span>
-                    </div>
-                  </div>
+                  <div class="loading-state" style="padding: 12px; width: 100%; text-align: center;">Chargement des prévisions...</div>
                 </div>
               </div>
 
@@ -433,6 +315,56 @@
             </div>
             <!-- Conteneur alternatif conservé pour compatibilité interne -->
             <div class="hourly-scroll" id="aromeHourlyScroll" style="display:none;"></div>
+          </div>
+
+          <!-- Indice UV tout en bas de la page Météo France -->
+          <div class="mf-bottom-uv-wrapper">
+            <div class="metric-card metric-card-uv" id="metricCardUv">
+              <span class="metric-icon" id="currentUvIcon">☀️</span>
+              <div class="metric-data">
+                <div class="uv-title-row">
+                  <span class="metric-label">Indice UV</span>
+                </div>
+                <div class="uv-value-row">
+                  <span class="metric-value" id="currentUv">--</span>
+                  <span class="uv-max-tag" id="uvMaxTag">(Max --)</span>
+                </div>
+                <div class="uv-gauge-track" id="uvGaugeTrack">
+                  <div class="uv-gauge-pin" id="uvGaugePin" style="left: 0%;"></div>
+                </div>
+
+                <!-- Info-bulle / Popover au survol -->
+                <div class="uv-tooltip-popover" id="uvTooltipPopover" role="tooltip">
+                  <div class="uv-tooltip-header">
+                    <span class="uv-tooltip-title">☀️ Guide & Échelle de l'Indice UV</span>
+                    <button type="button" class="uv-tooltip-close" id="uvTooltipClose" aria-label="Fermer l'info-bulle">✕</button>
+                  </div>
+                  <div class="uv-tooltip-body">
+                    <div class="uv-tooltip-stat-row">
+                      <div class="uv-stat-box">
+                        <span class="uv-stat-label">Actuel</span>
+                        <strong class="uv-stat-val" id="ttUvCurrent">-- / 11</strong>
+                      </div>
+                      <div class="uv-stat-box">
+                        <span class="uv-stat-label">Pic du jour</span>
+                        <strong class="uv-stat-val" id="ttUvMax">-- / 11</strong>
+                      </div>
+                      <div class="uv-stat-box">
+                        <span class="uv-stat-label">Si ciel dégagé</span>
+                        <strong class="uv-stat-val" id="ttUvClearSky">-- / 11</strong>
+                      </div>
+                    </div>
+                    <div class="uv-tooltip-scale-table">
+                      <div class="uv-scale-row uv-row-low"><span class="uv-scale-dot"></span><strong>0 à 2 : Faible</strong> <span>Sans risque (> 1h) • Crème non requise</span></div>
+                      <div class="uv-scale-row uv-row-mod"><span class="uv-scale-dot"></span><strong>3 à 5 : Modéré</strong> <span>Coup de soleil ~45 min • SPF 30+ & lunettes</span></div>
+                      <div class="uv-scale-row uv-row-high"><span class="uv-scale-dot"></span><strong>6 à 7 : Élevé</strong> <span>Coup de soleil ~25 min • SPF 50+ & chapeau</span></div>
+                      <div class="uv-scale-row uv-row-vhigh"><span class="uv-scale-dot"></span><strong>8 à 10 : Très élevé</strong> <span>Coup de soleil ~15 min • Éviter les heures chaudes</span></div>
+                      <div class="uv-scale-row uv-row-ext"><span class="uv-scale-dot"></span><strong>11+ : Extrême</strong> <span>Danger brûlure < 10 min • Ombre obligatoire</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -590,7 +522,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.86"></script>
-  <script src="tabs.js?v=8.86"></script>
+  <script src="app.js?v=8.87"></script>
+  <script src="tabs.js?v=8.87"></script>
 </body>
 </html>
