@@ -957,7 +957,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.87') {
+          if (k !== 'meteo-grenoble-v8.89') {
             caches.delete(k);
           }
         });
@@ -2223,35 +2223,14 @@
     if (yrCurrentLocationName) yrCurrentLocationName.textContent = location.name;
     if (yrCurrentLocationAlt) yrCurrentLocationAlt.textContent = `${Math.round(location.alt).toLocaleString('fr-FR')} m`;
 
-    // Vérification du cache ultra-léger en mémoire vive (RAM, TTL 15 minutes) :
-    // Permet un affichage immédiat 0ms lors de la navigation sans solliciter la batterie ni le stockage
-    const memKey = `${location.lat.toFixed(3)}_${location.lon.toFixed(3)}_${Math.round(location.alt)}`;
-    const cachedEntry = memoryDataCache.get(memKey);
-    const nowTs = Date.now();
-    if (!forceFresh && cachedEntry && (nowTs - cachedEntry.timestamp < CACHE_TTL_MS)) {
-      weatherDataCache = cachedEntry.data;
-      aromeDataCache = cachedEntry.arome;
-      mfDataCache = cachedEntry.mf || cachedEntry.arome;
-      mfOfficialDataCache = cachedEntry.mfOfficial || null;
-      gfsDataCache = cachedEntry.gfs;
-      yrnoDataCache = cachedEntry.yrno;
-      renderCurrentMetrics(cachedEntry.data);
-      renderEphemeris(cachedEntry.data, location);
-      renderSelectedMeteocielModel();
-      renderAromeTimeline(mfDataCache || aromeDataCache);
-      drawYrnoMeteogram(yrnoDataCache);
-      renderEcmwfDaily(cachedEntry.ecmwf || cachedEntry.data);
-      renderRommaStations(location);
-      updateMeteoblueMap(location);
-      if (heroLiveBadge) {
-        heroLiveBadge.textContent = `● ${cachedEntry.updatedAt}`;
-      }
-      return;
-    }
+    // Pas d'utilisation de cache : requêtes toujours réelles et fraîches en direct
+    // (si pas de réseau, aucune donnée obsolète masquant l'erreur)
 
-    if (aromeHourlyScroll) aromeHourlyScroll.innerHTML = '<div class="loading-state">Calcul des prévisions en direct...</div>';
-    if (yrCanvasLoading) yrCanvasLoading.style.display = "flex";
-    if (dailyForecastGrid) dailyForecastGrid.innerHTML = '<div class="loading-state">Calcul des tendances 7 jours ECMWF...</div>';
+    if (!forceFresh) {
+      if (aromeHourlyScroll) aromeHourlyScroll.innerHTML = '<div class="loading-state">Calcul des prévisions en direct...</div>';
+      if (yrCanvasLoading) yrCanvasLoading.style.display = "flex";
+      if (dailyForecastGrid) dailyForecastGrid.innerHTML = '<div class="loading-state">Calcul des tendances 7 jours ECMWF...</div>';
+    }
 
     // 2. Requêtes API TOUJOURS EN DIRECT (cache: 'no-store')
     try {
@@ -2502,11 +2481,7 @@
     // Blocs Accordéons / Enroulables (Tous les modules du dashboard)
     function setupAccordions() {
       const accordions = [
-        {
-          sectionId: "summitHeroSection",
-          headerId: "heroAccordionHeader",
-          onExpand: null
-        },
+
         {
           sectionId: "meteocielCitySection",
           headerId: "meteocielAccordionHeader",
@@ -2963,36 +2938,52 @@
     // Rafraîchissement automatique intelligent au retour sur l'application
     // Déclenché uniquement quand la page redevient visible et si les données ont plus de 10 min
     // (Zéro consommation de batterie en arrière-plan)
-    function checkAutoRefresh() {
-      const elapsedMinutes = (Date.now() - lastSuccessfulFetchTime) / (60 * 1000);
-      if (elapsedMinutes >= 10 && currentLocation) {
+    // Rafraîchissement UNIQUEMENT quand l'utilisateur va sur l'appli et sur l'onglet Météo-France
+    // Zéro rechargement toutes les minutes, et STRICTEMENT rien en arrière-plan
+    function refreshMeteoFranceIfActive() {
+      if (document.visibilityState !== "visible") return;
+
+      // Vérifier si l'onglet Météo-France est actif
+      const aromePanel = document.getElementById("aromeSection");
+      const isAromeActive = aromePanel && (aromePanel.classList.contains("active-tab-panel") || aromePanel.style.display !== "none");
+      if (!isAromeActive) return;
+
+      // Protection debounce (15 secondes) contre les clics répétés
+      if (Date.now() - lastSuccessfulFetchTime < 15 * 1000) return;
+
+      if (currentLocation) {
         loadAllLocationData(currentLocation, true);
-      } else if (radarMap) {
-        if (Date.now() - lastRadarLoadTime > 8 * 60 * 1000) {
-          loadRadarData();
-        } else {
-          syncRadarToCurrentTime();
-        }
       }
-      checkAutoWebcamRefresh();
     }
 
+    // 1. Quand l'utilisateur revient sur l'application (au premier plan)
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        checkAutoRefresh();
+        refreshMeteoFranceIfActive();
       } else {
         stopRadarPlayback();
       }
     });
 
     window.addEventListener("pageshow", (e) => {
-      if (e.persisted || document.visibilityState === "visible") {
-        checkAutoRefresh();
+      if (document.visibilityState === "visible") {
+        refreshMeteoFranceIfActive();
       }
     });
 
     window.addEventListener("focus", () => {
-      checkAutoRefresh();
+      if (document.visibilityState === "visible") {
+        refreshMeteoFranceIfActive();
+      }
+    });
+
+    // 2. Quand l'utilisateur clique / bascule sur l'onglet Météo-France
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest('.tab-nav-btn[data-tab="arome"]');
+      if (btn && document.visibilityState === "visible") {
+        // Petit délai pour laisser switchTab s'exécuter
+        setTimeout(refreshMeteoFranceIfActive, 50);
+      }
     });
   }
 
@@ -3240,6 +3231,7 @@
 
     const periodsToRender = [];
     const currentHour = new Date().getHours();
+    window._lastRenderedDayHour = currentHour;
 
     if (dayIndex === 0) {
       // JOUR J : Température actuelle ressentie du moment en première colonne,

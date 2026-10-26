@@ -7,7 +7,7 @@
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.79">
-  <link rel="stylesheet" href="style.css?v=8.87">
+  <link rel="stylesheet" href="style.css?v=8.89">
   <link rel="stylesheet" href="tabs.css?v=8.79">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.79">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.79">
@@ -234,8 +234,7 @@
           <section class="summit-hero card" id="summitHeroSection">
             <!-- En-tête sur une seule ligne : Ville, Dépt italique, Altitude, Favori, Direct -->
             <div class="hero-header-single-row">
-              <div class="hero-title-group accordion-header" id="heroAccordionHeader" role="button" tabindex="0" aria-label="Replier ou déplier les indicateurs météo" aria-expanded="true">
-                <span class="accordion-arrow">▼</span>
+              <div class="hero-title-group" id="heroAccordionHeader">
                 <h2 class="hero-summit-name" id="heroSummitName">Grenoble</h2>
                 <span class="hero-dept-italic" id="heroDeptTag">Isère</span>
                 <span class="altitude-badge" id="heroAltitudeBadge">212 m</span>
@@ -244,55 +243,11 @@
                 </button>
                 <span class="hero-live-badge" id="heroLiveBadge">● --:--</span>
               </div>
-
             </div>
 
             <!-- Barre masquée pour compatibilité interne -->
             <div class="favorites-bar-row" id="favoritesBarRow" style="display:none !important;">
               <div class="favorites-chips-container" id="favoritesChipsContainer"></div>
-            </div>
-
-            <!-- Quick Metrics Grid Enroulable -->
-            <div class="accordion-body hero-accordion-body">
-              <div class="metrics-grid">
-                <div class="metric-card">
-                  <span class="metric-icon">❄️</span>
-                  <div class="metric-data">
-                    <span class="metric-label">Isotherme 0°C</span>
-                    <span class="metric-value" id="currentIsoZero">-- m</span>
-                  </div>
-                </div>
-              </div>
-
-              <!-- Éphéméride & Lune (Déplacée depuis Météociel) -->
-              <div class="ephemeris-card" id="ephemerisCard">
-                <div class="ephem-header">
-                  <div class="ephem-date" id="ephemDate">Chargement...</div>
-                  <div class="ephem-saint" id="ephemSaint">--</div>
-                </div>
-                <div class="ephem-times-grid">
-                  <span class="ephem-grid-icon">☀️</span>
-                  <span class="ephem-grid-label">Lever :</span>
-                  <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
-                  <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
-                  <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
-                  <span class="ephem-grid-delta" id="ephemDelta"></span>
-
-                  <div class="ephem-grid-divider"></div>
-
-                  <span class="ephem-grid-icon">🌅</span>
-                  <span class="ephem-grid-label">Aube :</span>
-                  <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
-                  <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
-                  <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
-                  <span class="ephem-grid-delta"></span>
-                </div>
-                <div class="ephem-moon-row">
-                  <span class="ephem-moon-prefix">Phase de la lune :</span>
-                  <span class="ephem-moon-icon" id="ephemMoonIcon">🌕</span>
-                  <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
-                </div>
-              </div>
             </div>
           </section>
           <div id="aromeTimelineView" class="arome-timeline-container">
@@ -315,6 +270,47 @@
             </div>
             <!-- Conteneur alternatif conservé pour compatibilité interne -->
             <div class="hourly-scroll" id="aromeHourlyScroll" style="display:none;"></div>
+          </div>
+
+          <!-- Isotherme 0°C et Éphéméride (en dessous des températures et au-dessus des UV) -->
+          <div class="mf-middle-cards-wrapper">
+            <div class="metric-card metric-card-iso" id="metricCardIso">
+              <span class="metric-icon">❄️</span>
+              <div class="metric-data">
+                <span class="metric-label">Isotherme 0°C</span>
+                <span class="metric-value" id="currentIsoZero">-- m</span>
+              </div>
+            </div>
+
+            <!-- Éphéméride & Lune -->
+            <div class="ephemeris-card" id="ephemerisCard">
+              <div class="ephem-header">
+                <div class="ephem-date" id="ephemDate">Chargement...</div>
+                <div class="ephem-saint" id="ephemSaint">--</div>
+              </div>
+              <div class="ephem-times-grid">
+                <span class="ephem-grid-icon">☀️</span>
+                <span class="ephem-grid-label">Lever :</span>
+                <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
+                <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
+                <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
+                <span class="ephem-grid-delta" id="ephemDelta"></span>
+
+                <div class="ephem-grid-divider"></div>
+
+                <span class="ephem-grid-icon">🌅</span>
+                <span class="ephem-grid-label">Aube :</span>
+                <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
+                <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
+                <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
+                <span class="ephem-grid-delta"></span>
+              </div>
+              <div class="ephem-moon-row">
+                <span class="ephem-moon-prefix">Phase de la lune :</span>
+                <span class="ephem-moon-icon" id="ephemMoonIcon">🌕</span>
+                <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
+              </div>
+            </div>
           </div>
 
           <!-- Indice UV tout en bas de la page Météo France -->
@@ -522,7 +518,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.87"></script>
-  <script src="tabs.js?v=8.87"></script>
+  <script src="app.js?v=8.89"></script>
+  <script src="tabs.js?v=8.89"></script>
 </body>
 </html>
