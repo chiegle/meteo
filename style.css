@@ -1034,19 +1034,21 @@ body.is-reordering-blocks .radar-map-view {
   height: 100%;
 }
 
-.mf-bottom-cards-layout .ephem-times-grid {
-  column-gap: 4px;
+.mf-bottom-cards-layout .ephem-sun-block {
   padding: 1px 0;
   margin: 0 auto;
-  width: fit-content;
 }
 
-.mf-bottom-cards-layout .ephem-grid-label-evening {
-  padding-left: 6px;
+.mf-bottom-cards-layout .ephem-sun-row {
+  gap: 4px;
+}
+
+.mf-bottom-cards-layout .ephem-time-sunset {
+  margin-left: 6px;
 }
 
 .mf-bottom-cards-layout .ephem-moon-row {
-  gap: 4px;
+  gap: 6px;
   padding-top: 1px;
 }
 
@@ -2509,86 +2511,72 @@ body.oled-theme .mf-day-pill {
   margin-top: 1px;
 }
 
-.ephem-times-grid {
-  display: grid;
-  grid-template-columns: 20px auto auto auto auto auto;
+.ephem-sun-block {
+  display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  column-gap: 6px;
-  row-gap: 2px;
+  gap: 1px;
   padding: 2px 0;
-  margin: 0 auto;
-  width: fit-content;
-  max-width: 100%;
 }
 
-.ephem-grid-icon {
+.ephem-sun-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.05rem;
-  width: 20px;
+  gap: 6px;
+  font-size: 0.84rem;
+  color: #001f5c;
+  white-space: nowrap;
 }
 
-.ephem-grid-label {
+.ephem-sun-img {
+  width: 22px;
+  height: 16px;
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.ephem-time-item {
   font-weight: 500;
-  text-align: right;
-  white-space: nowrap;
-  font-size: 0.78rem;
   color: #001f5c;
-  padding-right: 2px;
 }
 
-.ephem-grid-label-evening {
-  padding-left: 16px;
+.ephem-time-sunset {
+  margin-left: 8px;
 }
 
-.ephem-grid-time {
+.ephem-time-val {
   font-weight: 800;
-  font-size: 0.85rem;
-  white-space: nowrap;
-  text-align: left;
   color: #001f5c;
 }
 
-.ephem-grid-delta {
-  font-weight: 600;
-  font-size: 0.75rem;
+.ephem-delta-row {
+  font-size: 0.80rem;
+  font-weight: 700;
   color: #001f5c;
-  white-space: nowrap;
-  padding-left: 2px;
-}
-
-.ephem-grid-divider {
-  grid-column: 1 / -1;
-  border-bottom: 1px dashed rgba(159, 195, 200, 0.7);
-  margin: 1px 0;
-  width: 100%;
+  text-align: center;
+  line-height: 1.1;
 }
 
 .ephem-moon-row {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex-wrap: wrap;
   gap: 6px;
   padding-top: 2px;
-  font-size: 0.78rem;
+  white-space: nowrap;
 }
 
-.ephem-moon-prefix {
-  font-size: 0.78rem;
-  font-weight: 500;
-  color: #001f5c;
-}
-
-.ephem-moon-icon {
-  font-size: 1.05rem;
-  line-height: 1;
+.ephem-moon-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  vertical-align: middle;
 }
 
 .ephem-moon-label {
-  font-size: 0.82rem;
+  font-size: 0.84rem;
   font-weight: 800;
   color: #001f5c;
 }

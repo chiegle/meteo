@@ -263,13 +263,95 @@
     return item;
   }
 
+  // Calcul astronomique haute précision de lever/coucher conforme Météociel / NOAA (zenith 90°50')
+  function computeSunTimes(date, lat = 45.1885, lon = 5.7245) {
+    const d = (date instanceof Date) ? date : new Date(date);
+    if (isNaN(d.getTime())) return null;
+    const startOfYear = new Date(d.getFullYear(), 0, 1);
+    const dayOfYear = Math.floor((d - startOfYear) / 86400000) + 1;
+    const lngHour = lon / 15.0;
+
+    function getTime(isSunrise, dayOffset = 0) {
+      const N = dayOfYear + dayOffset;
+      const t = N + (isSunrise ? (6.0 - lngHour) / 24.0 : (18.0 - lngHour) / 24.0);
+      const M = (0.9856 * t) - 3.289;
+      let L = (M + (1.916 * Math.sin(M * Math.PI / 180.0)) + (0.020 * Math.sin(2.0 * M * Math.PI / 180.0)) + 282.634) % 360.0;
+      if (L < 0) L += 360.0;
+
+      let RA = (Math.atan(0.91764 * Math.tan(L * Math.PI / 180.0)) * 180.0 / Math.PI) % 360.0;
+      if (RA < 0) RA += 360.0;
+
+      const Lquadrant = Math.floor(L / 90.0) * 90.0;
+      const RAquadrant = Math.floor(RA / 90.0) * 90.0;
+      RA = (RA + (Lquadrant - RAquadrant)) / 15.0;
+
+      const sinDec = 0.39782 * Math.sin(L * Math.PI / 180.0);
+      const cosDec = Math.cos(Math.asin(sinDec));
+      const zenith = 90.83333; // 90° 50' standard réfraction + disque solaire Météociel / NOAA
+      const cosH = (Math.cos(zenith * Math.PI / 180.0) - (sinDec * Math.sin(lat * Math.PI / 180.0))) / (cosDec * Math.cos(lat * Math.PI / 180.0));
+      if (cosH > 1 || cosH < -1) return null;
+
+      const H = (isSunrise ? 360.0 - Math.acos(cosH) * 180.0 / Math.PI : Math.acos(cosH) * 180.0 / Math.PI) / 15.0;
+      const T = H + RA - (0.06571 * t) - 6.622;
+      let UT = (T - lngHour) % 24.0;
+      if (UT < 0) UT += 24.0;
+
+      // Heure d'été en France : dernier dimanche de mars (02h) au dernier dimanche d'octobre (03h)
+      const year = d.getFullYear();
+      const dMarch = new Date(year, 2, 31);
+      const lastSunMarch = new Date(year, 2, 31 - dMarch.getDay(), 2, 0, 0);
+      const dOct = new Date(year, 9, 31);
+      const lastSunOct = new Date(year, 9, 31 - dOct.getDay(), 3, 0, 0);
+      const isDst = (d >= lastSunMarch && d < lastSunOct);
+      const tzOffset = isDst ? 2.0 : 1.0;
+
+      return (UT + tzOffset) % 24.0;
+    }
+
+    const rise = getTime(true, 0);
+    const set = getTime(false, 0);
+    if (rise === null || set === null) return null;
+
+    const durToday = (set - rise) * 60.0;
+    const riseTmrw = getTime(true, 1);
+    const setTmrw = getTime(false, 1);
+    const durTmrw = (setTmrw - riseTmrw) * 60.0;
+    const diffMin = Math.round(durTmrw - durToday);
+
+    let rh = Math.floor(rise);
+    let rm = Math.round((rise - rh) * 60);
+    if (rm >= 60) { rh += 1; rm = 0; }
+
+    let sh = Math.floor(set);
+    let sm = Math.round((set - sh) * 60);
+    if (sm >= 60) { sh += 1; sm = 0; }
+
+    return {
+      riseHour: rh + rm / 60.0,
+      setHour: sh + sm / 60.0,
+      riseStr: `${String(rh).padStart(2, '0')}:${String(rm).padStart(2, '0')}`,
+      setStr: `${String(sh).padStart(2, '0')}:${String(sm).padStart(2, '0')}`,
+      diffMinutes: diffMin,
+      deltaStr: `( ${diffMin > 0 ? "+" : diffMin < 0 ? "-" : ""}${Math.abs(diffMin)} min. )`
+    };
+  }
+
   // Détection fiable de la nuit (astronomique ou saisonnière)
   function isSlotNight(date, daily) {
     if (!date) return false;
     const targetDate = (date instanceof Date) ? date : new Date(date);
     if (isNaN(targetDate.getTime())) return false;
 
-    // 1. Essayer avec daily.sunrise et daily.sunset (Open-Meteo)
+    // 1. Calcul astronomique haute précision (conforme Météociel / NOAA)
+    const lat = (currentLocation && currentLocation.lat) ? currentLocation.lat : 45.1885;
+    const lon = (currentLocation && currentLocation.lon) ? currentLocation.lon : 5.7245;
+    const sun = computeSunTimes(targetDate, lat, lon);
+    if (sun) {
+      const decHour = targetDate.getHours() + targetDate.getMinutes() / 60.0;
+      return decHour < sun.riseHour || decHour >= sun.setHour;
+    }
+
+    // 2. Repli avec daily.sunrise et daily.sunset (Open-Meteo)
     const dailyRef = (daily && Array.isArray(daily.time)) ? daily : (mfDataCache && mfDataCache.daily ? mfDataCache.daily : null);
     if (dailyRef && Array.isArray(dailyRef.time) && Array.isArray(dailyRef.sunrise) && Array.isArray(dailyRef.sunset)) {
       const year = targetDate.getFullYear();
@@ -285,7 +367,7 @@
       }
     }
 
-    // 2. Repli astronomique approché selon la saison si pas d'éphéméride précise
+    // 3. Repli de sécurité saisonnier si pas d'éphéméride précise
     const month = targetDate.getMonth();
     let riseHour = 7;
     let setHour = 19;
@@ -449,6 +531,7 @@
   const ephemDelta = document.getElementById("ephemDelta");
   const ephemDawn = document.getElementById("ephemDawn");
   const ephemDusk = document.getElementById("ephemDusk");
+  const ephemMoonImg = document.getElementById("ephemMoonImg");
   const ephemMoonIcon = document.getElementById("ephemMoonIcon");
   const ephemMoonText = document.getElementById("ephemMoonText");
   const meteocielPrecipCanvas = document.getElementById("meteocielPrecipCanvas");
@@ -5887,7 +5970,7 @@
     "10-16": "Sainte Edwige", "10-17": "Saint Baudouin", "10-18": "Saint Luc", "10-19": "Saint René",
     "10-20": "Sainte Adeline", "10-21": "Sainte Céline", "10-22": "Sainte Élodie", "10-23": "Saint Jean de Capistran",
     "10-24": "Saint Florentin", "10-25": "Saint Crépin", "10-26": "Saint Dimitri", "10-27": "Sainte Émeline",
-    "10-28": "Saints Simon et Jude", "10-29": "Saint Narcisse", "10-30": "Saint Bienvenu", "10-31": "Saint Quentin",
+    "10-28": "Saint Simon et Saint Jude", "10-29": "Saint Narcisse", "10-30": "Saint Bienvenu", "10-31": "Saint Quentin",
     "11-01": "La Toussaint", "11-02": "Fête des Défunts", "11-03": "Saint Hubert", "11-04": "Saint Charles Borromée",
     "11-05": "Sainte Sylvie", "11-06": "Sainte Bertille", "11-07": "Sainte Carine", "11-08": "Saint Geoffroy",
     "11-09": "Saint Théodore", "11-10": "Saint Léon", "11-11": "Saint Martin", "11-12": "Saint Christian",
@@ -5906,7 +5989,7 @@
     "12-29": "Saint David", "12-30": "Saint Roger", "12-31": "Saint Sylvestre"
   };
 
-  // Calcul astronomique haute précision de la phase lunaire et de son illumination
+  // Calcul astronomique haute précision de la phase lunaire (conforme Météociel lune0.gif à lune7.gif)
   function computeMoonPhase(date) {
     const knownNewMoon = new Date('2024-01-11T11:57:00Z');
     const synodicMonth = 29.530588853;
@@ -5918,40 +6001,40 @@
     const illumination = Math.round((1.0 - Math.cos(2.0 * Math.PI * normalized)) / 2.0 * 100);
 
     let name = "";
-    let icon = "";
+    let iconIndex = 0;
 
-    // 8 phases canoniques astronomiques
+    // 8 phases canoniques astronomiques (exactement comme Météociel lune0.gif à lune7.gif)
     if (normalized < 0.03 || normalized >= 0.97) {
       name = "Nouvelle lune";
-      icon = "🌑";
+      iconIndex = 0;
     } else if (normalized < 0.22) {
       name = "Premier croissant";
-      icon = "🌒";
+      iconIndex = 1;
     } else if (normalized < 0.28) {
       name = "Premier quartier";
-      icon = "🌓";
+      iconIndex = 2;
     } else if (normalized < 0.47) {
-      name = "Gibbeuse croissante";
-      icon = "🌔";
+      name = "Lune gibbeuse croissante";
+      iconIndex = 3;
     } else if (normalized < 0.53) {
       name = "Pleine lune";
-      icon = "🌕";
+      iconIndex = 4;
     } else if (normalized < 0.72) {
-      name = "Gibbeuse décroissante";
-      icon = "🌖";
+      name = "Lune gibbeuse décroissante";
+      iconIndex = 5;
     } else if (normalized < 0.78) {
       name = "Dernier quartier";
-      icon = "🌗";
+      iconIndex = 6;
     } else {
       name = "Dernier croissant";
-      icon = "🌘";
+      iconIndex = 7;
     }
 
     return {
       name: name,
-      icon: icon,
-      illumination: illumination,
-      fullText: `${name} (${illumination}%)`
+      iconIndex: iconIndex,
+      iconSrc: `icons/moon/lune${iconIndex}.gif`,
+      illumination: illumination
     };
   }
 
@@ -6064,54 +6147,50 @@
 
 
 
-  // 1. Rendu Éphéméride & Lune (Image 3)
-  function renderEphemeris(data) {
+  // 1. Rendu Éphéméride & Lune (conforme Météociel)
+  function renderEphemeris(data, location) {
     const now = new Date();
-    // Nom du jour en français (ex: Mardi 20 octobre 2026)
+    // Nom du jour en français (ex: Mercredi 28 octobre 2026)
     const dayName = now.toLocaleDateString("fr-FR", { weekday: "long" });
     const capitalizedDay = dayName.charAt(0).toUpperCase() + dayName.slice(1);
     const dayNum = now.getDate();
     const monthName = now.toLocaleDateString("fr-FR", { month: "long" });
     const year = now.getFullYear();
 
-    ephemDate.textContent = `${capitalizedDay} ${dayNum} ${monthName} ${year}`;
+    if (ephemDate) ephemDate.textContent = `${capitalizedDay} ${dayNum} ${monthName} ${year}`;
 
     // Saint du jour
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(dayNum).padStart(2, "0");
     const saintKey = `${mm}-${dd}`;
-    ephemSaint.textContent = FRENCH_SAINTS[saintKey] || "Sainte Adeline";
+    if (ephemSaint) ephemSaint.textContent = FRENCH_SAINTS[saintKey] || "Sainte Adeline";
 
-    // Heures de Lever / Coucher
-    if (data.daily && data.daily.sunrise && data.daily.sunrise[0]) {
+    // Heures de Lever / Coucher calculées selon la formule astronomique officielle Météociel / NOAA
+    const loc = location || currentLocation;
+    const lat = (loc && loc.lat) ? loc.lat : 45.1885;
+    const lon = (loc && loc.lon) ? loc.lon : 5.7245;
+
+    const sun = computeSunTimes(now, lat, lon);
+    if (sun) {
+      if (ephemSunrise) ephemSunrise.textContent = sun.riseStr;
+      if (ephemSunset) ephemSunset.textContent = sun.setStr;
+      if (ephemDelta) ephemDelta.textContent = sun.deltaStr;
+    } else if (data && data.daily && data.daily.sunrise && data.daily.sunrise[0]) {
       const riseDate = new Date(data.daily.sunrise[0]);
       const setDate = new Date(data.daily.sunset[0]);
-
-      ephemSunrise.textContent = riseDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-      ephemSunset.textContent = setDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
-
-      // Différence de durée du jour (par rapport au jour suivant ou précédent)
-      if (data.daily.sunrise[1] && data.daily.sunset[1]) {
-        const durToday = setDate.getTime() - riseDate.getTime();
-        const durTmrw = new Date(data.daily.sunset[1]).getTime() - new Date(data.daily.sunrise[1]).getTime();
-        const diffMinutes = Math.round((durTmrw - durToday) / 60000);
-        const sign = diffMinutes > 0 ? "+" : diffMinutes < 0 ? "-" : "";
-        ephemDelta.textContent = `( ${sign}${diffMinutes !== 0 ? Math.abs(diffMinutes) : 0} min. )`;
-      } else {
-        ephemDelta.textContent = "( -3 min. )";
-      }
-
-      // Aube et Crépuscule civil calculés astronomiquement
-      const lat = (currentLocation && currentLocation.lat) ? currentLocation.lat : 45.1885;
-      const tw = computeTwilight(lat, now, riseDate, setDate);
-      if (ephemDawn) ephemDawn.textContent = tw.dawnStr;
-      if (ephemDusk) ephemDusk.textContent = tw.duskStr;
+      if (ephemSunrise) ephemSunrise.textContent = riseDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      if (ephemSunset) ephemSunset.textContent = setDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      if (ephemDelta) ephemDelta.textContent = "( -3 min. )";
     }
 
-    // Phase Lunaire avec pourcentage d'illumination officiel
+    // Phase Lunaire avec icône exacte et libellé Météociel
     const moon = computeMoonPhase(now);
-    if (ephemMoonIcon) ephemMoonIcon.textContent = moon.icon;
-    if (ephemMoonText) ephemMoonText.textContent = moon.fullText;
+    if (ephemMoonImg) {
+      ephemMoonImg.src = moon.iconSrc;
+      ephemMoonImg.alt = moon.name;
+      ephemMoonImg.title = `Lune éclairée à ${moon.illumination}%`;
+    }
+    if (ephemMoonText) ephemMoonText.textContent = moon.name;
   }
 
   // 2. Rendu Diagramme Précipitations (mm) en bâtons bleus (Image 2)
@@ -6296,7 +6375,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.92").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.93").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
