@@ -6014,13 +6014,13 @@
       name = "Premier quartier";
       iconIndex = 2;
     } else if (normalized < 0.47) {
-      name = "Lune gibbeuse croissante";
+      name = "Gibbeuse croissante";
       iconIndex = 3;
     } else if (normalized < 0.53) {
       name = "Pleine lune";
       iconIndex = 4;
     } else if (normalized < 0.72) {
-      name = "Lune gibbeuse décroissante";
+      name = "Gibbeuse décroissante";
       iconIndex = 5;
     } else if (normalized < 0.78) {
       name = "Dernier quartier";
@@ -6034,7 +6034,8 @@
       name: name,
       iconIndex: iconIndex,
       iconSrc: `icons/moon/lune${iconIndex}.gif`,
-      illumination: illumination
+      illumination: illumination,
+      fullText: `${name} (${illumination}%)`
     };
   }
 
@@ -6170,17 +6171,32 @@
     const lat = (loc && loc.lat) ? loc.lat : 45.1885;
     const lon = (loc && loc.lon) ? loc.lon : 5.7245;
 
+    let riseDate = null;
+    let setDate = null;
+
     const sun = computeSunTimes(now, lat, lon);
     if (sun) {
       if (ephemSunrise) ephemSunrise.textContent = sun.riseStr;
       if (ephemSunset) ephemSunset.textContent = sun.setStr;
       if (ephemDelta) ephemDelta.textContent = sun.deltaStr;
+
+      const [rh, rm] = sun.riseStr.split(':').map(Number);
+      const [sh, sm] = sun.setStr.split(':').map(Number);
+      riseDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), rh, rm, 0);
+      setDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), sh, sm, 0);
     } else if (data && data.daily && data.daily.sunrise && data.daily.sunrise[0]) {
-      const riseDate = new Date(data.daily.sunrise[0]);
-      const setDate = new Date(data.daily.sunset[0]);
+      riseDate = new Date(data.daily.sunrise[0]);
+      setDate = new Date(data.daily.sunset[0]);
       if (ephemSunrise) ephemSunrise.textContent = riseDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
       if (ephemSunset) ephemSunset.textContent = setDate.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
       if (ephemDelta) ephemDelta.textContent = "( -3 min. )";
+    }
+
+    // Aube et Crépuscule civil calculés astronomiquement
+    if (riseDate && setDate) {
+      const tw = computeTwilight(lat, now, riseDate, setDate);
+      if (ephemDawn) ephemDawn.textContent = tw.dawnStr;
+      if (ephemDusk) ephemDusk.textContent = tw.duskStr;
     }
 
     // Phase Lunaire avec icône exacte et libellé Météociel
@@ -6190,7 +6206,7 @@
       ephemMoonImg.alt = moon.name;
       ephemMoonImg.title = `Lune éclairée à ${moon.illumination}%`;
     }
-    if (ephemMoonText) ephemMoonText.textContent = moon.name;
+    if (ephemMoonText) ephemMoonText.textContent = moon.fullText;
   }
 
   // 2. Rendu Diagramme Précipitations (mm) en bâtons bleus (Image 2)
@@ -6375,7 +6391,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.93").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.94").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

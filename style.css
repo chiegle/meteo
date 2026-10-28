@@ -1034,21 +1034,19 @@ body.is-reordering-blocks .radar-map-view {
   height: 100%;
 }
 
-.mf-bottom-cards-layout .ephem-sun-block {
+.mf-bottom-cards-layout .ephem-times-grid {
+  column-gap: 4px;
   padding: 1px 0;
   margin: 0 auto;
+  width: fit-content;
 }
 
-.mf-bottom-cards-layout .ephem-sun-row {
-  gap: 4px;
-}
-
-.mf-bottom-cards-layout .ephem-time-sunset {
-  margin-left: 6px;
+.mf-bottom-cards-layout .ephem-grid-label-evening {
+  padding-left: 6px;
 }
 
 .mf-bottom-cards-layout .ephem-moon-row {
-  gap: 6px;
+  gap: 4px;
   padding-top: 1px;
 }
 
@@ -2511,61 +2509,77 @@ body.oled-theme .mf-day-pill {
   margin-top: 1px;
 }
 
-.ephem-sun-block {
-  display: flex;
-  flex-direction: column;
+.ephem-times-grid {
+  display: grid;
+  grid-template-columns: 20px auto auto auto auto auto;
   align-items: center;
   justify-content: center;
-  gap: 1px;
+  column-gap: 6px;
+  row-gap: 2px;
   padding: 2px 0;
+  margin: 0 auto;
+  width: fit-content;
+  max-width: 100%;
 }
 
-.ephem-sun-row {
+.ephem-grid-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  font-size: 0.84rem;
+  font-size: 1.05rem;
+  width: 20px;
+}
+
+.ephem-grid-label {
+  font-weight: 500;
+  text-align: right;
+  white-space: nowrap;
+  font-size: 0.78rem;
+  color: #001f5c;
+  padding-right: 2px;
+}
+
+.ephem-grid-label-evening {
+  padding-left: 16px;
+}
+
+.ephem-grid-time {
+  font-weight: 800;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  text-align: left;
+  color: #001f5c;
+}
+
+.ephem-grid-delta {
+  font-weight: 600;
+  font-size: 0.75rem;
   color: #001f5c;
   white-space: nowrap;
+  padding-left: 2px;
 }
 
-.ephem-sun-img {
-  width: 22px;
-  height: 16px;
-  object-fit: contain;
-  vertical-align: middle;
-}
-
-.ephem-time-item {
-  font-weight: 500;
-  color: #001f5c;
-}
-
-.ephem-time-sunset {
-  margin-left: 8px;
-}
-
-.ephem-time-val {
-  font-weight: 800;
-  color: #001f5c;
-}
-
-.ephem-delta-row {
-  font-size: 0.80rem;
-  font-weight: 700;
-  color: #001f5c;
-  text-align: center;
-  line-height: 1.1;
+.ephem-grid-divider {
+  grid-column: 1 / -1;
+  border-bottom: 1px dashed rgba(159, 195, 200, 0.7);
+  margin: 1px 0;
+  width: 100%;
 }
 
 .ephem-moon-row {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-wrap: wrap;
   gap: 6px;
   padding-top: 2px;
-  white-space: nowrap;
+  font-size: 0.78rem;
+}
+
+.ephem-moon-prefix {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #001f5c;
 }
 
 .ephem-moon-img {
@@ -2576,7 +2590,7 @@ body.oled-theme .mf-day-pill {
 }
 
 .ephem-moon-label {
-  font-size: 0.84rem;
+  font-size: 0.82rem;
   font-weight: 800;
   color: #001f5c;
 }

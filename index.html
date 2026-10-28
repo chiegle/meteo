@@ -7,7 +7,7 @@
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.79">
-  <link rel="stylesheet" href="style.css?v=8.93">
+  <link rel="stylesheet" href="style.css?v=8.94">
   <link rel="stylesheet" href="tabs.css?v=8.79">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.79">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.79">
@@ -279,17 +279,27 @@
                 <div class="ephem-date" id="ephemDate">Chargement...</div>
                 <div class="ephem-saint" id="ephemSaint">--</div>
               </div>
-              <div class="ephem-sun-block">
-                <div class="ephem-sun-row">
-                  <img src="icons/moon/soleil.gif" class="ephem-sun-img" alt="Soleil" width="22" height="16">
-                  <span class="ephem-time-item">Lever : <b class="ephem-time-val" id="ephemSunrise">--:--</b></span>
-                  <span class="ephem-time-item ephem-time-sunset">Coucher : <b class="ephem-time-val" id="ephemSunset">--:--</b></span>
-                </div>
-                <div class="ephem-delta-row" id="ephemDelta"></div>
+              <div class="ephem-times-grid">
+                <span class="ephem-grid-icon">☀️</span>
+                <span class="ephem-grid-label">Lever :</span>
+                <strong class="ephem-grid-time" id="ephemSunrise">--:--</strong>
+                <span class="ephem-grid-label ephem-grid-label-evening">Coucher :</span>
+                <strong class="ephem-grid-time" id="ephemSunset">--:--</strong>
+                <span class="ephem-grid-delta" id="ephemDelta"></span>
+
+                <div class="ephem-grid-divider"></div>
+
+                <span class="ephem-grid-icon">🌅</span>
+                <span class="ephem-grid-label">Aube :</span>
+                <strong class="ephem-grid-time" id="ephemDawn">--:--</strong>
+                <span class="ephem-grid-label ephem-grid-label-evening">Crépuscule :</span>
+                <strong class="ephem-grid-time" id="ephemDusk">--:--</strong>
+                <span class="ephem-grid-delta"></span>
               </div>
               <div class="ephem-moon-row">
+                <span class="ephem-moon-prefix">Phase de la lune :</span>
                 <img class="ephem-moon-img" id="ephemMoonImg" src="icons/moon/lune5.gif" alt="Lune" width="18" height="18">
-                <b class="ephem-moon-label" id="ephemMoonText">Chargement...</b>
+                <strong class="ephem-moon-label" id="ephemMoonText">Chargement...</strong>
               </div>
             </div>
 
@@ -505,7 +515,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.93"></script>
-  <script src="tabs.js?v=8.93"></script>
+  <script src="app.js?v=8.94"></script>
+  <script src="tabs.js?v=8.94"></script>
 </body>
 </html>
