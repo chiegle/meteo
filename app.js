@@ -438,17 +438,10 @@
     isSummit: false
   };
 
+  // Toujours démarrer sur Grenoble à l'arrivée sur le site (nettoyage de toute ancienne valeur stockée)
   try {
-    const savedLoc = localStorage.getItem("meteo_current_location");
-    if (savedLoc) {
-      const parsed = JSON.parse(savedLoc);
-      if (parsed && parsed.name && typeof parsed.lat === "number" && typeof parsed.lon === "number") {
-        currentLocation = parsed;
-      }
-    }
-  } catch (errLoc) {
-    console.warn("Erreur lecture localisation stockée:", errLoc);
-  }
+    localStorage.removeItem("meteo_current_location");
+  } catch (_) {}
 
   // Purge de tout cache météo lourd en sessionStorage/localStorage pour économiser la mémoire
   try {
@@ -1080,7 +1073,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.91') {
+          if (k !== 'meteo-grenoble-v8.95') {
             caches.delete(k);
           }
         });
@@ -1711,9 +1704,6 @@
   function selectLocation(loc) {
     currentLocation = loc;
     addToSearchHistory(loc);
-    try {
-      localStorage.setItem("meteo_current_location", JSON.stringify(loc));
-    } catch (e) {}
 
     if (globalSearchInput) globalSearchInput.value = "";
     if (globalSearchDropdown) globalSearchDropdown.style.display = "none";
@@ -2136,12 +2126,6 @@
             location.communePostcode = cPc;
             location.nearestCity = cName;
             if (!location.postcode) location.postcode = cPc;
-
-            if (currentLocation && currentLocation.lat === location.lat && currentLocation.lon === location.lon) {
-              try {
-                localStorage.setItem("meteo_current_location", JSON.stringify(currentLocation));
-              } catch (_) {}
-            }
 
             updateMeteofranceHeaders(location);
             updateMeteocielHeaders(location);
@@ -6391,7 +6375,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.94").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.95").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
