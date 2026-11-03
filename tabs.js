@@ -80,6 +80,9 @@
           try {
             btn.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
           } catch (_) {}
+          try {
+            window.scrollTo({ top: 0, behavior: "instant" });
+          } catch (_) {}
         }
       });
 

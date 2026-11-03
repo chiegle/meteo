@@ -1073,7 +1073,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.95') {
+          if (k !== 'meteo-grenoble-v8.96') {
             caches.delete(k);
           }
         });
@@ -6375,7 +6375,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.95").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.96").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
