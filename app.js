@@ -399,18 +399,33 @@
     95: "p16bis", 96: "p24", 99: "p24"
   };
 
+  const MF_V2_ICON_MAP = {
+    i0: "p1", i00: "p1",
+    i1: "p1bis", i01: "p1bis",
+    i2: "p2", i02: "p2",
+    i3: "p3", i03: "p3",
+    i4: "p3bis", i04: "p3bis",
+    i5: "p2bis", i05: "p3",
+    i08: "p12", i10: "p14bis",
+    i30: "p6", i31: "p7", i32: "p8",
+    i50: "p14", i51: "p9", i52: "p14bis", i53: "p15",
+    i60: "p19", i61: "p17", i62: "p19", i63: "p23",
+    i70: "p14bis", i71: "p12bis", i72: "p14bis", i73: "p14",
+    i80: "p17", i81: "p17", i82: "p21", i83: "p21",
+    i90: "p16bis", i91: "p24", i92: "p24"
+  };
+
   function getMfPictoHtml(codeOrName, isNight = false, alt = "") {
     let pictoName = "";
     if (typeof codeOrName === "string" && codeOrName.trim()) {
       let trimmed = codeOrName.trim();
-      if (trimmed.startsWith("i")) {
-        trimmed = trimmed.replace(/^i0/, "p1").replace(/^i/, "p");
-      }
-      if (trimmed.endsWith("j") || trimmed.endsWith("n")) {
-        const root = trimmed.slice(0, -1);
-        pictoName = `${root}${isNight ? "n" : "j"}`;
+      const hasSuffix = trimmed.endsWith("j") || trimmed.endsWith("n");
+      const root = hasSuffix ? trimmed.slice(0, -1) : trimmed;
+      if (root.startsWith("i")) {
+        const mappedRoot = MF_V2_ICON_MAP[root] || root.replace(/^i0/, "p1").replace(/^i/, "p");
+        pictoName = `${mappedRoot}${isNight ? "n" : "j"}`;
       } else {
-        pictoName = `${trimmed}${isNight ? "n" : "j"}`;
+        pictoName = `${root}${isNight ? "n" : "j"}`;
       }
     } else {
       const base = MF_PICTO_BY_WMO[codeOrName] || (isNight ? "p1" : "p2");
@@ -461,6 +476,8 @@
   let aromeDataCache = null;
   let mfDataCache = null;
   let mfOfficialDataCache = null;
+  let mfGpDataCache = null;
+  let mfObsDataCache = null;
   let geocodeTimeout = null;
   let currentMeteocielModel = "gfs"; // Modèle GFS NOAA (conforme capture d'écran Météociel)
   let gfsDataCache = null;
@@ -1073,7 +1090,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.96') {
+          if (k !== 'meteo-grenoble-v8.97') {
             caches.delete(k);
           }
         });
@@ -2357,42 +2374,55 @@
         ? `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&models=meteofrance_arome_france_hd&timezone=Europe%2FParis`
         : baseUrl;
 
-      // d) Modèle GFS 0.25° NOAA (Météociel Classique 3 jours)
-      const gfsUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&models=gfs_seamless&timezone=Europe%2FParis`;
+      // d) Modèle GFS 0.25° NOAA (Météociel Classique 3 jours : grille brute GFS sans correction altimétrique artificielle pour les villes)
+      const gfsElevParam = location.isSummit ? location.alt : "nan";
+      const gfsUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${gfsElevParam}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&models=gfs_seamless&timezone=Europe%2FParis`;
 
       // e) Modèle ECMWF IFS 0.25° (Centre Européen / Base de Yr.no et tendances 15 jours Météo-France)
       const ecmwfUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=ecmwf_ifs025&timezone=Europe%2FParis&forecast_days=16`;
 
       // f) API officielle MET Norway (Yr.no) en direct
-      const metNoPromise = fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${location.lat.toFixed(4)}&lon=${location.lon.toFixed(4)}`, fetchOpts)
+      const metNoAltParam = (location.isSummit && location.alt) ? `&altitude=${Math.round(location.alt)}` : "";
+      const metNoPromise = fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${location.lat.toFixed(4)}&lon=${location.lon.toFixed(4)}${metNoAltParam}`, fetchOpts)
         .then(r => r.ok ? r.json() : null)
         .catch(errMet => {
           console.warn("Repli sur modèle ECMWF IFS (MET Norway non joignable):", errMet);
           return null;
         });
 
-      // g) API officielle Météo-France en direct (prévisions expertisées et pictos natifs MF)
+      // g) APIs officielles Météo-France en direct (prévisions expertisées, périodes grand public et observation temps réel)
+      const mfToken = "__Wj7dVSTjV9YGu1guveLyDq0g7S7TfTjaHBTPTpO0kj8__";
       const mfOfficialUrl = inFrance
-        ? `https://webservice.meteofrance.com/forecast?token=__Wj7dVSTjV9YGu1guveLyDq0g7S7TfTjaHBTPTpO0kj8__&lat=${location.lat}&lon=${location.lon}`
+        ? `https://webservice.meteofrance.com/forecast?token=${mfToken}&lat=${location.lat}&lon=${location.lon}`
         : null;
+      const mfGpUrl = inFrance
+        ? `https://webservice.meteofrance.com/v2/forecast/gp?token=${mfToken}&lat=${location.lat}&lon=${location.lon}&instants=morning,afternoon,evening,night`
+        : null;
+      const mfObsUrl = inFrance
+        ? `https://webservice.meteofrance.com/observation/gridded?token=${mfToken}&lat=${location.lat}&lon=${location.lon}`
+        : null;
+
       const mfOfficialPromise = mfOfficialUrl
-        ? fetch(mfOfficialUrl, fetchOpts)
-            .then(r => r.ok ? r.json() : null)
-            .catch(err => {
-              console.warn("API Météo-France webservice inaccessible, repli sur modèle seamless:", err);
-              return null;
-            })
+        ? fetch(mfOfficialUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null)
+        : Promise.resolve(null);
+      const mfGpPromise = mfGpUrl
+        ? fetch(mfGpUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null)
+        : Promise.resolve(null);
+      const mfObsPromise = mfObsUrl
+        ? fetch(mfObsUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null)
         : Promise.resolve(null);
 
       // Lancement simultané des requêtes
-      const [baseRes, mfRes, aromeRes, gfsRes, ecmwfRes, metNoData, mfOfficialData] = await Promise.all([
+      const [baseRes, mfRes, aromeRes, gfsRes, ecmwfRes, metNoData, mfOfficialData, mfGpData, mfObsData] = await Promise.all([
         fetch(baseUrl, fetchOpts).catch(() => null),
         fetch(mfUrl, fetchOpts).catch(() => null),
         fetch(aromeUrl, fetchOpts).catch(() => null),
         fetch(gfsUrl, fetchOpts).catch(() => null),
         fetch(ecmwfUrl, fetchOpts).catch(() => null),
         metNoPromise,
-        mfOfficialPromise
+        mfOfficialPromise,
+        mfGpPromise,
+        mfObsPromise
       ]);
 
       const baseData = (baseRes && baseRes.ok) ? await baseRes.json() : null;
@@ -2483,6 +2513,8 @@
       aromeDataCache = aromeData || primaryData;
       mfDataCache = mfMergedData || aromeData || primaryData;
       mfOfficialDataCache = mfOfficialData;
+      mfGpDataCache = mfGpData;
+      mfObsDataCache = mfObsData;
       gfsDataCache = gfsData || primaryData;
 
       // Traitement Yr.no officiel
@@ -3377,21 +3409,21 @@
       // JOUR J : Température actuelle ressentie du moment en première colonne,
       // puis uniquement la suite de la journée restante (pas de matin si 15h !).
 
-      // 1. Valeurs du moment
+      // 1. Valeurs du moment (priorité aux observations/prévisions officielles Météo-France)
       let curT = null;
       let curWc = null;
       let curWind = day.dayWind || 10;
       let curWindArrow = "▲";
 
-      if (window._currentMeteoData && window._currentMeteoData.temp != null) {
+      if (day.currentSlot && day.currentSlot.temp != null) {
+        curT = Math.round(day.currentSlot.temp);
+        curWc = Math.round(day.currentSlot.felt != null ? day.currentSlot.felt : day.currentSlot.temp);
+        curWind = day.currentSlot.wind != null ? day.currentSlot.wind : curWind;
+        curWindArrow = day.currentSlot.windArrow || "▲";
+      } else if (window._currentMeteoData && window._currentMeteoData.temp != null) {
         curT = Math.round(window._currentMeteoData.temp);
         curWc = Math.round(window._currentMeteoData.windchill);
         if (window._currentMeteoData.wind != null) curWind = window._currentMeteoData.wind;
-      } else if (day.currentSlot && day.currentSlot.temp != null) {
-        curT = Math.round(day.currentSlot.temp);
-        curWc = Math.round(day.currentSlot.felt != null ? day.currentSlot.felt : day.currentSlot.temp);
-        curWind = day.currentSlot.wind;
-        curWindArrow = day.currentSlot.windArrow || "▲";
       } else {
         curT = day.apresMidi ? day.apresMidi.temp : (day.matin ? day.matin.temp : 0);
         curWc = curT;
@@ -3416,19 +3448,22 @@
         windArrow: curWindArrow
       });
 
-      // 2. Suite de la journée
-      // - Si < 12h : Après-midi, Soirée, Nuit
-      // - Si 12h <= h < 18h (ex: 15h) : Soirée, Nuit (le matin et début d'après-midi sont passés)
-      // - Si 18h <= h < 22h : Nuit
-      // - Si >= 22h : fin de journée, seule la météo du moment est affichée
+      // 2. Suite de la journée (conforme à meteofrance.com : Matin <12h, Après-midi <18h, Soirée <22h, Nuit)
       if (currentHour < 12) {
+        if (currentHour < 7 && day.matin) {
+          periodsToRender.push({ name: "MATIN", desc: day.matin.desc, icon: day.matin.icon, temp: `${day.matin.temp}°`, wind: day.matin.wind, windArrow: day.matin.windArrow });
+        }
         if (day.apresMidi) periodsToRender.push({ name: "APRÈS-MIDI", desc: day.apresMidi.desc, icon: day.apresMidi.icon, temp: `${day.apresMidi.temp}°`, wind: day.apresMidi.wind, windArrow: day.apresMidi.windArrow });
         if (day.soiree) periodsToRender.push({ name: "SOIRÉE", desc: day.soiree.desc, icon: day.soiree.icon, temp: `${day.soiree.temp}°`, wind: day.soiree.wind, windArrow: day.soiree.windArrow });
         if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
       } else if (currentHour >= 12 && currentHour < 18) {
+        if (day.apresMidi) periodsToRender.push({ name: "APRÈS-MIDI", desc: day.apresMidi.desc, icon: day.apresMidi.icon, temp: `${day.apresMidi.temp}°`, wind: day.apresMidi.wind, windArrow: day.apresMidi.windArrow });
         if (day.soiree) periodsToRender.push({ name: "SOIRÉE", desc: day.soiree.desc, icon: day.soiree.icon, temp: `${day.soiree.temp}°`, wind: day.soiree.wind, windArrow: day.soiree.windArrow });
         if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
       } else if (currentHour >= 18 && currentHour < 22) {
+        if (day.soiree) periodsToRender.push({ name: "SOIRÉE", desc: day.soiree.desc, icon: day.soiree.icon, temp: `${day.soiree.temp}°`, wind: day.soiree.wind, windArrow: day.soiree.windArrow });
+        if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
+      } else {
         if (day.nuit) periodsToRender.push({ name: "NUIT", desc: day.nuit.desc, icon: day.nuit.icon, temp: `${day.nuit.temp}°`, wind: day.nuit.wind, windArrow: day.nuit.windArrow });
       }
     } else {
@@ -3473,6 +3508,20 @@
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
       if (!hourlyByDay.has(key)) hourlyByDay.set(key, []);
       hourlyByDay.get(key).push({ d, slot });
+    });
+
+    // Grouper les 4 périodes officielles Grand Public (v2/forecast/gp : matin, après-midi, soirée, nuit) par jour
+    const gpPeriodsByDay = new Map();
+    const gpForecastList = (mfGpDataCache && mfGpDataCache.properties && Array.isArray(mfGpDataCache.properties.forecast))
+      ? mfGpDataCache.properties.forecast
+      : [];
+    gpForecastList.forEach(gpSlot => {
+      if (!gpSlot || !gpSlot.time || !gpSlot.moment_day) return;
+      // Chaque période v2/forecast/gp est horodatée à sa fin (12Z matin, 18Z après-midi, 00Z J+1 soirée, 06Z J+1 nuit)
+      const refDate = new Date(new Date(gpSlot.time).getTime() - 7 * 3600 * 1000);
+      const key = `${refDate.getUTCFullYear()}-${String(refDate.getUTCMonth() + 1).padStart(2, '0')}-${String(refDate.getUTCDate()).padStart(2, '0')}`;
+      if (!gpPeriodsByDay.has(key)) gpPeriodsByDay.set(key, {});
+      gpPeriodsByDay.get(key)[gpSlot.moment_day] = gpSlot;
     });
 
     mfDaysForecastData = [];
@@ -3536,13 +3585,33 @@
       const dayWind = maxWind < 8 ? 5 : (maxWind < 13 ? 10 : (maxWind || 10));
       const dayGustBadge = maxGust >= 40 ? `<span class="mf-day-pill-gust" title="Rafales maximales : ${maxGust} km/h">${maxGust}</span>` : "";
 
-      // 4 Périodes : Matin (8h), Après-midi (14h), Soirée (20h), Nuit (2h)
-      function getPeriodData(targetHour, isNight) {
+      const gpDayMoments = gpPeriodsByDay.get(dateKey) || {};
+
+      // 4 Périodes officielles Météo-France : Matin, Après-midi, Soirée, Nuit
+      function getPeriodData(targetHour, isNight, momentName = null) {
+        const gpSlot = momentName ? gpDayMoments[momentName] : null;
+        if (gpSlot && gpSlot.T != null) {
+          const gpDesc = gpSlot.weather_description || dayDesc;
+          const gpIconRaw = gpSlot.weather_icon || dayIconRaw;
+          const gpTemp = Math.round(gpSlot.T);
+          const gpFelt = gpSlot.T_windchill != null ? Math.round(gpSlot.T_windchill) : gpTemp;
+          const gpWind = gpSlot.wind_speed != null ? Math.round(gpSlot.wind_speed * 3.6) : dayWind;
+          const gpDir = gpSlot.wind_direction != null ? gpSlot.wind_direction : 0;
+          return {
+            desc: gpDesc,
+            icon: getMfPictoHtml(gpIconRaw, isNight, gpDesc),
+            temp: gpTemp,
+            felt: gpFelt,
+            wind: gpWind < 8 ? 5 : (gpWind < 13 ? 10 : gpWind),
+            windArrow: getMeteocielWindArrow(gpDir)
+          };
+        }
         if (!slots || slots.length === 0) {
           return {
             desc: dayDesc,
             icon: getMfPictoHtml(dayIconRaw, isNight, dayDesc),
             temp: isNight ? tMin : tMax,
+            felt: isNight ? tMin : tMax,
             wind: dayWind,
             windArrow: "▲"
           };
@@ -3560,12 +3629,14 @@
         const sDesc = (s.weather && s.weather.desc) ? s.weather.desc : dayDesc;
         const sIconRaw = (s.weather && s.weather.icon) ? s.weather.icon : dayIconRaw;
         const sTemp = (s.T && s.T.value != null) ? Math.round(s.T.value) : (isNight ? tMin : tMax);
+        const sFelt = (s.T && s.T.windchill != null) ? Math.round(s.T.windchill) : sTemp;
         const sWind = s.wind ? Math.round((s.wind.speed || 0) * 3.6) : dayWind;
         const sDir = s.wind ? (s.wind.direction || 0) : 0;
         return {
           desc: sDesc,
           icon: getMfPictoHtml(sIconRaw, isNight, sDesc),
           temp: sTemp,
+          felt: sFelt,
           wind: sWind,
           windArrow: getMeteocielWindArrow(sDir)
         };
@@ -3573,7 +3644,26 @@
 
       const now = new Date();
       const isNightNow = isSlotNight(now, mfDataCache && mfDataCache.daily ? mfDataCache.daily : null);
-      const currentPeriodSlot = getPeriodData(now.getHours(), isNightNow);
+      let currentPeriodSlot = getPeriodData(now.getHours(), isNightNow);
+
+      // Si Jour J et observation officielle en temps réel disponible (endpoint observation/gridded de meteofrance.com)
+      if (dayIdx === 0 && mfObsDataCache && mfObsDataCache.observation && mfObsDataCache.observation.T != null) {
+        const obs = mfObsDataCache.observation;
+        const obsTemp = Math.round(obs.T);
+        const obsWindRaw = (obs.wind && obs.wind.speed != null) ? Math.round(obs.wind.speed * 3.6) : currentPeriodSlot.wind;
+        const obsWind = obsWindRaw < 8 ? 5 : (obsWindRaw < 13 ? 10 : obsWindRaw);
+        const obsDir = (obs.wind && obs.wind.direction != null) ? obs.wind.direction : 0;
+        const obsDesc = (obs.weather && obs.weather.desc) ? obs.weather.desc : currentPeriodSlot.desc;
+        const obsIconRaw = (obs.weather && obs.weather.icon) ? obs.weather.icon : "p2j";
+        currentPeriodSlot = {
+          desc: obsDesc,
+          icon: getMfPictoHtml(obsIconRaw, isNightNow, obsDesc),
+          temp: obsTemp,
+          felt: computeWindchill(obs.T, obsWindRaw),
+          wind: obsWind,
+          windArrow: getMeteocielWindArrow(obsDir)
+        };
+      }
 
       const dayItem = {
         dayIdx,
@@ -3586,10 +3676,10 @@
         dayWind,
         dayGustBadge,
         currentSlot: currentPeriodSlot,
-        matin: getPeriodData(8, false),
-        apresMidi: getPeriodData(14, false),
-        soiree: getPeriodData(20, true),
-        nuit: getPeriodData(2, true)
+        matin: getPeriodData(8, false, "matin"),
+        apresMidi: getPeriodData(14, false, "après-midi"),
+        soiree: getPeriodData(20, true, "soirée"),
+        nuit: getPeriodData(2, true, "nuit")
       };
 
       mfDaysForecastData.push(dayItem);
@@ -4586,7 +4676,7 @@
       // 5. Symboles Météo Vectoriels positionnés au niveau de la courbe de température (conforme screen 2 Yr.no)
       for (let i = 0; i < totalHours; i += 2) {
         const d = new Date(hourly.time[i]);
-        const isNight = isSlotNight(d, masterData.daily);
+        const isNight = isSlotNight(d, data.daily);
         const code = (hourly.weather_code && hourly.weather_code[i] != null) ? hourly.weather_code[i] : 0;
         const x = getX(i);
         const rawT = hourly.temperature_2m ? hourly.temperature_2m[i] : null;
@@ -6205,7 +6295,8 @@
     const hourly = data.hourly;
     meteocielTableBody.innerHTML = "";
 
-    // Construire les créneaux de 3h : 02h, 05h, 08h, 11h, 14h, 17h, 20h, 23h
+    // Construire les créneaux synoptiques GFS de 3h (00Z, 03Z, 06Z, 09Z, 12Z, 15Z, 18Z, 21Z :
+    // soit 01h, 04h, 07h, 10h, 13h, 16h, 19h, 22h en heure d'hiver CET et 02h, 05h, 08h, 11h, 14h, 17h, 20h, 23h en heure d'été CEST)
     const slots = [];
     let current3hRain = 0;
 
@@ -6214,16 +6305,20 @@
       current3hRain += (p || 0);
 
       const d = new Date(hourly.time[i]);
-      const hour = d.getHours();
 
-      if ([2, 5, 8, 11, 14, 17, 20, 23].includes(hour) || i === Math.min(120, hourly.time.length) - 1) {
+      if (d.getUTCHours() % 3 === 0) {
+        const rawWind = hourly.wind_speed_10m ? hourly.wind_speed_10m[i] : 0;
+        const rawGust = hourly.wind_gusts_10m ? hourly.wind_gusts_10m[i] : 0;
+        const wMoy = Math.round((rawWind || 0) / 5) * 5;
+        const wRaf = Math.max(wMoy, 5, Math.round((rawGust || 0) / 5) * 5);
+
         slots.push({
           date: d,
           timeStr: d.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }),
           temp: hourly.temperature_2m ? hourly.temperature_2m[i] : 0,
           windDir: hourly.wind_direction_10m ? hourly.wind_direction_10m[i] : 0,
-          windSpeed: hourly.wind_speed_10m ? Math.round(hourly.wind_speed_10m[i]) : 0,
-          windGust: hourly.wind_gusts_10m ? Math.round(hourly.wind_gusts_10m[i]) : 0,
+          windSpeed: wMoy,
+          windGust: wRaf,
           rain3h: Math.round(current3hRain * 10) / 10,
           humidity: hourly.relative_humidity_2m ? Math.round(hourly.relative_humidity_2m[i]) : 80,
           pressure: hourly.surface_pressure ? Math.round(hourly.surface_pressure[i]) : 1015,
@@ -6294,12 +6389,13 @@
           tr.className = "tr-current-slot";
         }
 
-        // Colonne Jour fusionnée (Jour au-dessus, numéro du jour en dessous à la verticale)
+        // Colonne Jour fusionnée (Jour au-dessus, numéro du jour sur 2 chiffres en dessous à la verticale)
         if (idx === 0) {
           const tdJour = document.createElement("td");
           tdJour.className = `td-jour-group ${dayClass}`;
           tdJour.rowSpan = group.slots.length;
-          tdJour.innerHTML = `<div class="td-jour-content"><span class="td-jour-name">${group.dayName}</span><span class="td-jour-num">${group.dayNum}</span></div>`;
+          const dayNumStr = String(group.dayNum).padStart(2, "0");
+          tdJour.innerHTML = `<div class="td-jour-content"><span class="td-jour-name">${group.dayName}</span><span class="td-jour-num">${dayNumStr}</span></div>`;
           tr.appendChild(tdJour);
         }
 
@@ -6312,10 +6408,11 @@
         tdHeure.textContent = s.timeStr;
         tr.appendChild(tdHeure);
 
-        // Colonne Température (avec code couleur Screen 1)
+        // Colonne Température (avec code couleur Screen 1 et arrondi conforme Météociel)
+        const displayTemp = Math.round(s.temp - 0.05);
         const tdTemp = document.createElement("td");
-        tdTemp.className = `td-temp ${getMeteocielTempClass(s.temp)}`;
-        tdTemp.textContent = `${Math.round(s.temp)} °C`;
+        tdTemp.className = `td-temp ${getMeteocielTempClass(displayTemp)}`;
+        tdTemp.textContent = `${displayTemp} °C`;
         tr.appendChild(tdTemp);
 
         // Colonnes Vent (dir, moy, raf) - Même charte couleur Screen 1 pour la flèche et la vitesse
@@ -6375,7 +6472,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.96").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.97").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
