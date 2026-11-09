@@ -453,9 +453,17 @@
     isSummit: false
   };
 
-  // Toujours démarrer sur Grenoble à l'arrivée sur le site (nettoyage de toute ancienne valeur stockée)
+  const CURRENT_LOCATION_KEY = "meteo_current_location";
+
+  // Restaurer la dernière localisation consultée (objet léger ~150 octets, repli sur Grenoble uniquement au tout premier lancement)
   try {
-    localStorage.removeItem("meteo_current_location");
+    const savedLocRaw = localStorage.getItem(CURRENT_LOCATION_KEY);
+    if (savedLocRaw) {
+      const parsedLoc = JSON.parse(savedLocRaw);
+      if (parsedLoc && parsedLoc.name && typeof parsedLoc.lat === "number" && typeof parsedLoc.lon === "number") {
+        currentLocation = parsedLoc;
+      }
+    }
   } catch (_) {}
 
   // Purge de tout cache météo lourd en sessionStorage/localStorage pour économiser la mémoire
@@ -1090,7 +1098,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.97') {
+          if (k !== 'meteo-grenoble-v8.98') {
             caches.delete(k);
           }
         });
@@ -1720,6 +1728,26 @@
 
   function selectLocation(loc) {
     currentLocation = loc;
+    try {
+      const minimalLoc = {
+        name: loc.name,
+        alt: typeof loc.alt === "number" ? Math.round(loc.alt) : 250,
+        lat: loc.lat,
+        lon: loc.lon,
+        postcode: loc.postcode || "",
+        communePostcode: loc.communePostcode || loc.postcode || "",
+        nearestCity: loc.nearestCity || loc.name,
+        communeName: loc.communeName || (loc.isCommune ? loc.name : ""),
+        admin1: loc.admin1 || "",
+        countryCode: loc.countryCode || "FR",
+        isCommune: !!loc.isCommune,
+        isSummit: !!loc.isSummit,
+        isLake: !!loc.isLake,
+        isHut: !!loc.isHut,
+        massif: loc.massif || ""
+      };
+      localStorage.setItem(CURRENT_LOCATION_KEY, JSON.stringify(minimalLoc));
+    } catch (_) {}
     addToSearchHistory(loc);
 
     if (globalSearchInput) globalSearchInput.value = "";
@@ -5076,6 +5104,34 @@
         });
       }
 
+      // Prolonger jusqu'à +3h (futureCount = 12 créneaux de 15 min) avec les tuiles horaires officielles Météoblue
+      // lorsque meteomapsTimeLast24h s'arrête à +2h (FCST120)
+      const existingFutureSteps = endIndex - currentIdx;
+      if (existingFutureSteps < futureCount && radarSlots.length > 0) {
+        const lastBaseDate = new Date(allTimesteps[endIndex].timestep);
+        for (let step = existingFutureSteps + 1; step <= futureCount; step++) {
+          const extraSteps = step - existingFutureSteps;
+          const d = new Date(lastBaseDate.getTime() + extraSteps * 15 * 60 * 1000);
+          const offsetMin = step * 15;
+          // Arrondir à l'heure UTC la plus proche pour la tuile horaire Météoblue ICONAUTO
+          const roundedUtc = new Date(Math.round(d.getTime() / (3600 * 1000)) * 3600 * 1000);
+          const utcHourIso = `${roundedUtc.getUTCFullYear()}-${String(roundedUtc.getUTCMonth() + 1).padStart(2, '0')}-${String(roundedUtc.getUTCDate()).padStart(2, '0')}T${String(roundedUtc.getUTCHours()).padStart(2, '0')}:00`;
+          const tileKey = `hourly_${utcHourIso}`;
+          const customTileUrl = `https://maps-api.meteoblue.com/v1/map/raster/ICONAUTO/${utcHourIso}/61~sfc~hourly~none~contourSteps~0.1~rgba(133,247,244,0.49803922)~0.25~rgba(133,247,244,1.0)~0.5~rgba(105,148,252,1.0)~1.0~rgba(90,123,248,1.0)~1.5~rgba(1,124,254,1.0)~2.0~rgba(2,104,213,1.0)~3.0~rgba(3,151,135,1.0)~5.0~rgba(2,198,33,1.0)~7.0~rgba(174,255,3,1.0)~10.0~rgba(218,255,53,1.0)~15.0~rgba(255,173,2,1.0)~20.0~rgba(255,97,1,1.0)~25.0~rgba(252,60,3,1.0)~30.0~rgba(251,20,3,1.0)/{z}/{x}/{y}?temperatureUnit=C&velocityUnit=km%2Fh&lengthUnit=metric&energyUnit=watts&apikey=${apiKey}`;
+
+          radarSlots.push({
+            time: Math.floor(d.getTime() / 1000),
+            label: formatSlotLabel(d),
+            fullDate: d,
+            type: "future",
+            isObservation: false,
+            offsetMinutes: offsetMin,
+            tileValue: tileKey,
+            customTileUrl: customTileUrl
+          });
+        }
+      }
+
       // Supprimer les anciennes couches radar du map
       radarLayersMap.forEach(l => {
         if (radarMap && radarMap.hasLayer(l)) radarMap.removeLayer(l);
@@ -5087,10 +5143,10 @@
         futureRadarLayer = null;
       }
 
-      // Pré-créer les couches de tuiles officielles Météoblue
+      // Pré-créer les couches de tuiles officielles Météoblue (dédupliquées par tileValue)
       radarSlots.forEach(s => {
         if (!radarLayersMap.has(s.tileValue)) {
-          const tileUrl = `https://maps-api-cdn.meteoblue.com/v1/tiles/precipitation_global_internal/${s.tileValue}/{z}/{x}/{y}.png?apikey=${apiKey}`;
+          const tileUrl = s.customTileUrl || `https://maps-api-cdn.meteoblue.com/v1/tiles/precipitation_global_internal/${s.tileValue}/{z}/{x}/{y}.png?apikey=${apiKey}`;
           const tileLayer = L.tileLayer(tileUrl, {
             tileSize: 512,
             zoomOffset: -1,
@@ -6472,7 +6528,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.97").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.98").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
