@@ -355,8 +355,5 @@
     } catch (_) {}
 
     switchTab(initialTab, false);
-    setTimeout(() => {
-      switchTab(initialTab, false);
-    }, 150);
   });
 })();

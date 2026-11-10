@@ -1033,7 +1033,7 @@ body.tabs-view {
 
 /* 4. Fluidité officielle Météoblue (fondu doux entre deux pas de 15 min) */
 .radar-tile-layer {
-  transition: opacity 0.42s linear !important;
+  transition: opacity 0.26s cubic-bezier(0.22, 1, 0.36, 1) !important;
   will-change: opacity;
 }
 

@@ -493,6 +493,9 @@
   let lastSuccessfulFetchTime = Date.now();
   let lastRommaRefreshTime = 0;
   let lastWebcamRefreshTime = 0;
+  let isFetchingWeatherData = false;
+  let currentFetchId = 0;
+  const AUTO_REFRESH_STALE_MS = 10 * 60 * 1000; // Actualisation automatique au-delà de 10 min
 
   // Barre de Recherche Globale & Favoris
   const globalSearchInput = document.getElementById("globalSearchInput");
@@ -1098,7 +1101,7 @@
     if ("caches" in window) {
       caches.keys().then(keys => {
         keys.forEach(k => {
-          if (k !== 'meteo-grenoble-v8.98') {
+          if (k !== 'meteo-grenoble-v8.99') {
             caches.delete(k);
           }
         });
@@ -2366,11 +2369,7 @@
     updateMeteofranceHeaders(location);
     updateMeteoblueHeaders(location);
     updateWebcamsSection(location);
-
-    // Résolution automatique immédiate de la commune officielle la plus proche
-    if ((!location.communeName || !location.communePostcode) && typeof location.lat === "number" && typeof location.lon === "number") {
-      resolveNearestCommune(location);
-    }
+    renderEphemeris(null, location);
 
     if (yrCurrentLocationName) yrCurrentLocationName.textContent = location.name;
     if (yrCurrentLocationAlt) yrCurrentLocationAlt.textContent = `${Math.round(location.alt).toLocaleString('fr-FR')} m`;
@@ -2384,7 +2383,10 @@
       if (dailyForecastGrid) dailyForecastGrid.innerHTML = '<div class="loading-state">Calcul des tendances 7 jours ECMWF...</div>';
     }
 
-    // 2. Requêtes API TOUJOURS EN DIRECT (cache: 'no-store')
+    const fetchId = ++currentFetchId;
+    isFetchingWeatherData = true;
+
+    // 2. Requêtes API TOUJOURS EN DIRECT (cache: 'no-store') avec rendu progressif ultra-rapide
     try {
       const fetchOpts = { cache: "no-store" };
 
@@ -2404,19 +2406,45 @@
 
       // d) Modèle GFS 0.25° NOAA (Météociel Classique 3 jours : grille brute GFS sans correction altimétrique artificielle pour les villes)
       const gfsElevParam = location.isSummit ? location.alt : "nan";
-      const gfsUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${gfsElevParam}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&models=gfs_seamless&timezone=Europe%2FParis`;
+      const gfsUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${gfsElevParam}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height,weather_code&daily=sunrise,sunset&models=gfs_seamless&timezone=Europe%2FParis`;
 
       // e) Modèle ECMWF IFS 0.25° (Centre Européen / Base de Yr.no et tendances 15 jours Météo-France)
       const ecmwfUrl = `https://api.open-meteo.com/v1/forecast?latitude=${location.lat}&longitude=${location.lon}&elevation=${location.alt}&hourly=temperature_2m,relative_humidity_2m,surface_pressure,precipitation,snowfall,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,freezing_level_height&daily=sunrise,sunset,weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum&models=ecmwf_ifs025&timezone=Europe%2FParis&forecast_days=16`;
 
       // f) API officielle MET Norway (Yr.no) en direct
       const metNoAltParam = (location.isSummit && location.alt) ? `&altitude=${Math.round(location.alt)}` : "";
+      let fastRenderedYrno = false;
       const metNoPromise = fetch(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${location.lat.toFixed(4)}&lon=${location.lon.toFixed(4)}${metNoAltParam}`, fetchOpts)
         .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && fetchId === currentFetchId) {
+            const yrFast = convertMetNoToHourly(data);
+            if (yrFast && yrFast.hourly && yrFast.hourly.time.length > 0) {
+              yrnoDataCache = yrFast;
+              fastRenderedYrno = true;
+              drawYrnoMeteogram(yrnoDataCache);
+            }
+          }
+          return data;
+        })
         .catch(errMet => {
           console.warn("Repli sur modèle ECMWF IFS (MET Norway non joignable):", errMet);
           return null;
         });
+
+      // Fast-path Météociel : rendu immédiat dès réception de GFS sans attendre les 8 autres flux
+      let fastRenderedMeteociel = false;
+      const gfsPromise = fetch(gfsUrl, fetchOpts)
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (data && data.hourly && fetchId === currentFetchId) {
+            gfsDataCache = data;
+            fastRenderedMeteociel = true;
+            renderSelectedMeteocielModel();
+          }
+          return data;
+        })
+        .catch(() => null);
 
       // g) APIs officielles Météo-France en direct (prévisions expertisées, périodes grand public et observation temps réel)
       const mfToken = "__Wj7dVSTjV9YGu1guveLyDq0g7S7TfTjaHBTPTpO0kj8__";
@@ -2441,23 +2469,19 @@
         : Promise.resolve(null);
 
       // Lancement simultané des requêtes
-      const [baseRes, mfRes, aromeRes, gfsRes, ecmwfRes, metNoData, mfOfficialData, mfGpData, mfObsData] = await Promise.all([
-        fetch(baseUrl, fetchOpts).catch(() => null),
-        fetch(mfUrl, fetchOpts).catch(() => null),
-        fetch(aromeUrl, fetchOpts).catch(() => null),
-        fetch(gfsUrl, fetchOpts).catch(() => null),
-        fetch(ecmwfUrl, fetchOpts).catch(() => null),
+      const [baseData, mfRawData, aromeData, gfsData, ecmwfData, metNoData, mfOfficialData, mfGpData, mfObsData] = await Promise.all([
+        fetch(baseUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(mfUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(aromeUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null),
+        gfsPromise,
+        fetch(ecmwfUrl, fetchOpts).then(r => r.ok ? r.json() : null).catch(() => null),
         metNoPromise,
         mfOfficialPromise,
         mfGpPromise,
         mfObsPromise
       ]);
 
-      const baseData = (baseRes && baseRes.ok) ? await baseRes.json() : null;
-      const mfRawData = (mfRes && mfRes.ok) ? await mfRes.json() : null;
-      const aromeData = (aromeRes && aromeRes.ok) ? await aromeRes.json() : null;
-      const gfsData = (gfsRes && gfsRes.ok) ? await gfsRes.json() : null;
-      const ecmwfData = (ecmwfRes && ecmwfRes.ok) ? await ecmwfRes.json() : null;
+      if (fetchId !== currentFetchId) return;
 
       // Fusion intelligente pour Météo-France :
       // 1. Modèle officiel Météo-France (AROME 1.3km + ARPEGE via meteofrance_seamless) pour les 4-5 premiers jours
@@ -2567,8 +2591,10 @@
       renderCurrentMetrics(primaryData);
       renderEphemeris(primaryData, location);
 
-      // Rendu Météociel selon le modèle choisi (AROME HD ou GFS)
-      renderSelectedMeteocielModel();
+      // Rendu Météociel si non déjà rendu par le fast-path GFS
+      if (!fastRenderedMeteociel) {
+        renderSelectedMeteocielModel();
+      }
 
       // Rendu Météo-France (alimenté par le modèle officiel Météo-France AROME + ARPEGE étendu)
       renderAromeTimeline(mfDataCache || aromeDataCache);
@@ -2576,12 +2602,15 @@
         drawAromeChart(aromeDataCache);
       }
 
-      // Rendu Yr.no (avec données officielles MET Norway / ECMWF)
-      drawYrnoMeteogram(yrnoDataCache);
+      // Rendu Yr.no (si non déjà rendu par le fast-path MET Norway)
+      if (!fastRenderedYrno) {
+        drawYrnoMeteogram(yrnoDataCache);
+      }
       renderEcmwfDaily(ecmwfData || primaryData);
       renderRommaStations(location);
       updateMeteoblueMap(location);
-      if (radarMap) {
+      const mbSec = document.getElementById("meteoblueSection");
+      if (radarMap && mbSec && mbSec.offsetParent !== null) {
         loadRadarData();
       }
 
@@ -2601,6 +2630,9 @@
         dailyForecastGrid.innerHTML = '<div class="error-banner">⚠️ Données temporairement indisponibles.</div>';
       }
     } finally {
+      if (fetchId === currentFetchId) {
+        isFetchingWeatherData = false;
+      }
       if (yrCanvasLoading) yrCanvasLoading.style.display = "none";
     }
   }
@@ -2882,7 +2914,12 @@
 
     setupAccordions();
     setupBlockReordering();
-    setTimeout(initRadarMap, 100);
+    setTimeout(() => {
+      const mbSec = document.getElementById("meteoblueSection");
+      if (mbSec && mbSec.offsetParent !== null) {
+        initRadarMap();
+      }
+    }, 100);
 
     // Gestion interactive de l'info-bulle Indice UV
     const uvTooltipPopover = document.getElementById("uvTooltipPopover");
@@ -2936,10 +2973,16 @@
       }
     });
 
-    // Info-bulle & Guideline au survol du météogramme Yr.no
+    // Info-bulle & Guideline au survol du météogramme Yr.no (optimisé requestAnimationFrame)
     if (yrCanvas) {
-      function updateYrnoTooltip(e) {
-        if (!yrnoMeteogramMeta || !yrnoMeteogramMeta.data) return;
+      let yrnoHoverRaf = null;
+      let lastYrnoHoverEvent = null;
+      let lastYrnoRenderedIndex = -1;
+
+      function renderYrnoTooltipFrame() {
+        yrnoHoverRaf = null;
+        const e = lastYrnoHoverEvent;
+        if (!e || !yrnoMeteogramMeta || !yrnoMeteogramMeta.data) return;
         const { data, totalHours, padLeft, slotW, totalW } = yrnoMeteogramMeta;
         if (!totalHours || slotW <= 0 || !data.hourly || !data.hourly.time) return;
 
@@ -2964,45 +3007,48 @@
           return;
         }
 
-        const d = new Date(hourly.time[index]);
-        const dayStr = d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
-        const capDay = dayStr.charAt(0).toUpperCase() + dayStr.slice(1);
-        const hStart = d.getHours();
-        const hEnd = (hStart + 1) % 24;
+        if (index !== lastYrnoRenderedIndex) {
+          lastYrnoRenderedIndex = index;
+          const d = new Date(hourly.time[index]);
+          const dayStr = d.toLocaleDateString("fr-FR", { weekday: "short", day: "numeric", month: "short" });
+          const capDay = dayStr.charAt(0).toUpperCase() + dayStr.slice(1);
+          const hStart = d.getHours();
+          const hEnd = (hStart + 1) % 24;
 
-        if (yrnoTtHeader) yrnoTtHeader.textContent = `${capDay} à ${hStart}–${hEnd}h`;
+          if (yrnoTtHeader) yrnoTtHeader.textContent = `${capDay} à ${hStart}–${hEnd}h`;
 
-        // Température
-        const rawT = hourly.temperature_2m ? hourly.temperature_2m[index] : null;
-        if (yrnoTtTemp) {
-          if (rawT !== null && rawT !== undefined && !isNaN(Number(rawT))) {
-            const t = Number(rawT);
-            yrnoTtTemp.textContent = `${Math.round(t)}°`;
-            yrnoTtTemp.style.color = t < 0 ? "#0284c7" : "#dc2626";
-          } else {
-            yrnoTtTemp.textContent = "--";
+          // Température
+          const rawT = hourly.temperature_2m ? hourly.temperature_2m[index] : null;
+          if (yrnoTtTemp) {
+            if (rawT !== null && rawT !== undefined && !isNaN(Number(rawT))) {
+              const t = Number(rawT);
+              yrnoTtTemp.textContent = `${Math.round(t)}°`;
+              yrnoTtTemp.style.color = t < 0 ? "#0284c7" : "#dc2626";
+            } else {
+              yrnoTtTemp.textContent = "--";
+            }
           }
-        }
 
-        // Précipitations
-        const rawP = hourly.precipitation ? hourly.precipitation[index] : null;
-        if (yrnoTtRain) {
-          if (rawP !== null && rawP !== undefined && !isNaN(Number(rawP))) {
-            const p = Number(rawP);
-            yrnoTtRain.textContent = `${p >= 10 ? Math.round(p) : p.toFixed(1)} mm`;
-          } else {
-            yrnoTtRain.textContent = "0 mm";
+          // Précipitations
+          const rawP = hourly.precipitation ? hourly.precipitation[index] : null;
+          if (yrnoTtRain) {
+            if (rawP !== null && rawP !== undefined && !isNaN(Number(rawP))) {
+              const p = Number(rawP);
+              yrnoTtRain.textContent = `${p >= 10 ? Math.round(p) : p.toFixed(1)} mm`;
+            } else {
+              yrnoTtRain.textContent = "0 mm";
+            }
           }
-        }
 
-        // Vent (toujours en km/h)
-        const rawW = hourly.wind_speed_10m ? hourly.wind_speed_10m[index] : null;
-        if (yrnoTtWind) {
-          if (rawW !== null && rawW !== undefined && !isNaN(Number(rawW))) {
-            const numWind = Number(rawW);
-            yrnoTtWind.textContent = `${Math.round(numWind)} km/h`;
-          } else {
-            yrnoTtWind.textContent = "--";
+          // Vent (toujours en km/h)
+          const rawW = hourly.wind_speed_10m ? hourly.wind_speed_10m[index] : null;
+          if (yrnoTtWind) {
+            if (rawW !== null && rawW !== undefined && !isNaN(Number(rawW))) {
+              const numWind = Number(rawW);
+              yrnoTtWind.textContent = `${Math.round(numWind)} km/h`;
+            } else {
+              yrnoTtWind.textContent = "--";
+            }
           }
         }
 
@@ -3030,12 +3076,24 @@
         }
       }
 
+      function updateYrnoTooltip(e) {
+        lastYrnoHoverEvent = e;
+        if (!yrnoHoverRaf) {
+          yrnoHoverRaf = requestAnimationFrame(renderYrnoTooltipFrame);
+        }
+      }
+
       function hideYrnoTooltip() {
+        if (yrnoHoverRaf) {
+          cancelAnimationFrame(yrnoHoverRaf);
+          yrnoHoverRaf = null;
+        }
+        lastYrnoRenderedIndex = -1;
         if (yrnoTooltip) yrnoTooltip.style.display = "none";
         if (yrnoGuideline) yrnoGuideline.style.display = "none";
       }
 
-      yrCanvas.addEventListener("mousemove", updateYrnoTooltip);
+      yrCanvas.addEventListener("mousemove", updateYrnoTooltip, { passive: true });
       yrCanvas.addEventListener("mouseleave", hideYrnoTooltip);
 
       yrCanvas.addEventListener("touchstart", updateYrnoTooltip, { passive: true });
@@ -3052,17 +3110,19 @@
         drawYrnoMeteogram(yrnoDataCache || weatherDataCache);
       }
       const mbSection = document.getElementById("meteoblueSection");
-      if (radarMap) {
-        if (mbSection && mbSection.offsetParent !== null) {
+      if (mbSection && mbSection.offsetParent !== null) {
+        if (!radarMap) {
+          initRadarMap();
+        } else {
           radarMap.invalidateSize();
-          if (Date.now() - lastRadarLoadTime > 8 * 60 * 1000) {
+          if (Date.now() - lastRadarLoadTime >= AUTO_REFRESH_STALE_MS) {
             loadRadarData();
           } else {
             syncRadarToCurrentTime();
           }
-        } else {
-          stopRadarPlayback();
         }
+      } else if (radarMap) {
+        stopRadarPlayback();
       }
       if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
         // Chargement initial uniquement (aucun recentrage forcé au resize : la carte reste déplaçable)
@@ -3086,15 +3146,11 @@
     }, { passive: true });
 
     // ========================================================
-    // GESTION UNIFIÉE DES RESSOURCES ET RAFRAÎCHISSEMENT (TOUS ONGLETS & PAGES)
-    // 1. Zéro tâche de fond périodique (pas de rechargement toutes les minutes)
-    // 2. Strictement rien en arrière-plan (visibilityState !== 'visible' -> aucun calcul ni requête)
-    // 3. Rechargement réel et direct à l'arrivée sur l'application ou au basculement d'onglet
-    // 4. Protection debounce (15 secondes) évitant tout martèlement ou requêtes superflues
-    // 5. Zéro cache fallacieux masquant le réseau : données toujours fraîches en direct
+    // GESTION UNIFIÉE DES RESSOURCES ET ACTUALISATION AUTOMATIQUE (> 10 MIN)
+    // 1. Strictement rien en arrière-plan (visibilityState !== 'visible' -> aucun calcul ni requête)
+    // 2. Actualisation automatique dès que l'utilisateur est sur le site et que les données ont > 10 min
+    // 3. Zéro rechargement inutile lors d'un simple changement d'onglet si les données ont < 10 min
     // ========================================================
-    const TAB_DEBOUNCE_MS = 15 * 1000;
-
     function getActiveTabKey() {
       const activeBtn = document.querySelector(".tab-nav-btn.active");
       if (activeBtn && activeBtn.dataset.tab) {
@@ -3113,21 +3169,20 @@
 
       const activeTab = getActiveTabKey();
       const now = Date.now();
+      const isWeatherStale = (now - lastSuccessfulFetchTime) >= AUTO_REFRESH_STALE_MS;
 
-      // 2. Onglets météo partageant les prévisions directes (Météociel, ECMWF/Yr.no, Météo-France)
-      if (["meteociel", "ecmwf", "arome"].includes(activeTab)) {
-        if (!force && (now - lastSuccessfulFetchTime < TAB_DEBOUNCE_MS)) return;
-        if (currentLocation) {
-          loadAllLocationData(currentLocation, true);
-        }
-        return;
+      // 2. Si les prévisions météo ont plus de 10 min (ou force=true), tout réactualiser automatiquement
+      if ((force || isWeatherStale) && !isFetchingWeatherData && currentLocation) {
+        loadAllLocationData(currentLocation, true);
       }
 
       // 3. Onglet Radar de précipitations (Météoblue)
       if (activeTab === "meteoblue") {
-        if (radarMap) {
+        if (!radarMap) {
+          initRadarMap();
+        } else {
           radarMap.invalidateSize();
-          if (force || (now - lastRadarLoadTime >= TAB_DEBOUNCE_MS)) {
+          if (force || (now - lastRadarLoadTime >= AUTO_REFRESH_STALE_MS)) {
             loadRadarData();
           } else {
             syncRadarToCurrentTime();
@@ -3138,16 +3193,17 @@
 
       // 4. Onglet Webcams
       if (activeTab === "webcams") {
-        if (force || (now - lastWebcamRefreshTime >= TAB_DEBOUNCE_MS)) {
+        const isWebcamStale = lastWebcamRefreshTime > 0 && (now - lastWebcamRefreshTime >= AUTO_REFRESH_STALE_MS);
+        if (force || lastWebcamRefreshTime === 0 || isWebcamStale) {
           lastWebcamRefreshTime = now;
-          mountVisibleWebcamMedia(true);
+          mountVisibleWebcamMedia(force || isWebcamStale);
         }
         return;
       }
 
       // 5. Onglet Stations ROMMA
       if (activeTab === "romma") {
-        if (force || (now - lastRommaRefreshTime >= TAB_DEBOUNCE_MS)) {
+        if (force || lastRommaRefreshTime === 0 || (now - lastRommaRefreshTime >= AUTO_REFRESH_STALE_MS)) {
           lastRommaRefreshTime = now;
           if (rommaMapIframe && rommaMapIframe.offsetParent !== null) {
             updateRommaMap(currentLocation, false);
@@ -3158,10 +3214,18 @@
     }
     window.refreshActiveTab = refreshActiveTabContent;
 
+    // Surveillance légère pendant que l'utilisateur est sur le site :
+    // déclenche l'actualisation toute seule dès que les données ont plus de 10 minutes
+    setInterval(() => {
+      if (document.visibilityState === "visible") {
+        refreshActiveTabContent(false);
+      }
+    }, 30 * 1000);
+
     // A. Événements système quand l'utilisateur revient sur l'application (au premier plan)
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") {
-        refreshActiveTabContent();
+        refreshActiveTabContent(false);
       } else {
         stopRadarPlayback();
       }
@@ -3169,13 +3233,19 @@
 
     window.addEventListener("pageshow", () => {
       if (document.visibilityState === "visible") {
-        refreshActiveTabContent();
+        refreshActiveTabContent(false);
       }
     });
 
     window.addEventListener("focus", () => {
       if (document.visibilityState === "visible") {
-        refreshActiveTabContent();
+        refreshActiveTabContent(false);
+      }
+    });
+
+    window.addEventListener("online", () => {
+      if (document.visibilityState === "visible") {
+        refreshActiveTabContent(true);
       }
     });
 
@@ -4909,11 +4979,41 @@
   let radarMarker = null;
   let radarSlots = [];
   let radarLayersMap = new Map(); // path -> L.tileLayer
+  let radarChipElements = [];
+  let radarFadeOutTimer = null;
+  let radarScrollRaf = null;
   let futureRadarLayer = null;
   let currentRadarIndex = 0;
   let radarPlayInterval = null;
   let radarTimeRangeHours = 3; // 3h par défaut selon la demande utilisateur
   let lastRadarLoadTime = 0;
+
+  function animateRadarTimelineScroll(scrollEl, targetLeft, durationMs = 220) {
+    if (!scrollEl) return;
+    if (radarScrollRaf) {
+      cancelAnimationFrame(radarScrollRaf);
+      radarScrollRaf = null;
+    }
+    const startLeft = scrollEl.scrollLeft;
+    const delta = targetLeft - startLeft;
+    if (Math.abs(delta) < 1) {
+      scrollEl.scrollLeft = targetLeft;
+      return;
+    }
+    const startTime = performance.now();
+    function step(now) {
+      const elapsed = now - startTime;
+      const t = Math.min(1, elapsed / durationMs);
+      const ease = 1 - Math.pow(1 - t, 3);
+      scrollEl.scrollLeft = startLeft + delta * ease;
+      if (t < 1) {
+        radarScrollRaf = requestAnimationFrame(step);
+      } else {
+        radarScrollRaf = null;
+      }
+    }
+    radarScrollRaf = requestAnimationFrame(step);
+  }
 
   function syncRadarToCurrentTime() {
     if (!radarSlots || radarSlots.length === 0 || radarPlayInterval) return;
@@ -5104,30 +5204,77 @@
         });
       }
 
-      // Prolonger jusqu'à +3h (futureCount = 12 créneaux de 15 min) avec les tuiles horaires officielles Météoblue
-      // lorsque meteomapsTimeLast24h s'arrête à +2h (FCST120)
+      // Prolonger jusqu'à +3h (futureCount = 12 créneaux de 15 min) avec interpolation progressive 15 min
+      // entre la dernière tuile 15 min (FCST120) et les tuiles horaires officielles Météoblue ICONAUTO
       const existingFutureSteps = endIndex - currentIdx;
       if (existingFutureSteps < futureCount && radarSlots.length > 0) {
         const lastBaseDate = new Date(allTimesteps[endIndex].timestep);
+        const lastBaseMs = lastBaseDate.getTime();
+        const lastBaseTileValue = allTimesteps[endIndex].value;
+
+        function buildIconAutoSpec(utcMs) {
+          const dt = new Date(utcMs);
+          const utcHourIso = `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}T${String(dt.getUTCHours()).padStart(2, '0')}:00`;
+          const key = `hourly_${utcHourIso}`;
+          const url = `https://maps-api.meteoblue.com/v1/map/raster/ICONAUTO/${utcHourIso}/61~sfc~hourly~none~contourSteps~0.1~rgba(133,247,244,0.49803922)~0.25~rgba(133,247,244,1.0)~0.5~rgba(105,148,252,1.0)~1.0~rgba(90,123,248,1.0)~1.5~rgba(1,124,254,1.0)~2.0~rgba(2,104,213,1.0)~3.0~rgba(3,151,135,1.0)~5.0~rgba(2,198,33,1.0)~7.0~rgba(174,255,3,1.0)~10.0~rgba(218,255,53,1.0)~15.0~rgba(255,173,2,1.0)~20.0~rgba(255,97,1,1.0)~25.0~rgba(252,60,3,1.0)~30.0~rgba(251,20,3,1.0)/{z}/{x}/{y}?temperatureUnit=C&velocityUnit=km%2Fh&lengthUnit=metric&energyUnit=watts&apikey=${apiKey}`;
+          return { key, url };
+        }
+
         for (let step = existingFutureSteps + 1; step <= futureCount; step++) {
           const extraSteps = step - existingFutureSteps;
-          const d = new Date(lastBaseDate.getTime() + extraSteps * 15 * 60 * 1000);
+          const d = new Date(lastBaseMs + extraSteps * 15 * 60 * 1000);
+          const dMs = d.getTime();
           const offsetMin = step * 15;
-          // Arrondir à l'heure UTC la plus proche pour la tuile horaire Météoblue ICONAUTO
-          const roundedUtc = new Date(Math.round(d.getTime() / (3600 * 1000)) * 3600 * 1000);
-          const utcHourIso = `${roundedUtc.getUTCFullYear()}-${String(roundedUtc.getUTCMonth() + 1).padStart(2, '0')}-${String(roundedUtc.getUTCDate()).padStart(2, '0')}T${String(roundedUtc.getUTCHours()).padStart(2, '0')}:00`;
-          const tileKey = `hourly_${utcHourIso}`;
-          const customTileUrl = `https://maps-api.meteoblue.com/v1/map/raster/ICONAUTO/${utcHourIso}/61~sfc~hourly~none~contourSteps~0.1~rgba(133,247,244,0.49803922)~0.25~rgba(133,247,244,1.0)~0.5~rgba(105,148,252,1.0)~1.0~rgba(90,123,248,1.0)~1.5~rgba(1,124,254,1.0)~2.0~rgba(2,104,213,1.0)~3.0~rgba(3,151,135,1.0)~5.0~rgba(2,198,33,1.0)~7.0~rgba(174,255,3,1.0)~10.0~rgba(218,255,53,1.0)~15.0~rgba(255,173,2,1.0)~20.0~rgba(255,97,1,1.0)~25.0~rgba(252,60,3,1.0)~30.0~rgba(251,20,3,1.0)/{z}/{x}/{y}?temperatureUnit=C&velocityUnit=km%2Fh&lengthUnit=metric&energyUnit=watts&apikey=${apiKey}`;
+
+          const hFloorMs = Math.floor(dMs / (3600 * 1000)) * 3600 * 1000;
+          const hCeilMs = (hFloorMs === dMs) ? (hFloorMs + 3600 * 1000) : (hFloorMs + 3600 * 1000);
+
+          let primaryKey, primaryUrl, secondaryKey = null, secondaryUrl = null, blendWeight = 0;
+
+          if (hFloorMs <= lastBaseMs) {
+            // Entre FCST120 (lastBaseMs) et l'heure pleine suivante (hCeilMs)
+            const spanMs = Math.max(15 * 60 * 1000, hCeilMs - lastBaseMs);
+            const ratio = Math.min(1, Math.max(0, (dMs - lastBaseMs) / spanMs));
+            const ceilSpec = buildIconAutoSpec(hCeilMs);
+            if (ratio >= 0.98) {
+              primaryKey = ceilSpec.key;
+              primaryUrl = ceilSpec.url;
+            } else {
+              primaryKey = lastBaseTileValue;
+              primaryUrl = null;
+              secondaryKey = ceilSpec.key;
+              secondaryUrl = ceilSpec.url;
+              blendWeight = ratio;
+            }
+          } else {
+            // Entre deux heures pleines successives ICONAUTO (hFloorMs et hCeilMs)
+            const ratio = Math.min(1, Math.max(0, (dMs - hFloorMs) / (3600 * 1000)));
+            const floorSpec = buildIconAutoSpec(hFloorMs);
+            if (ratio <= 0.02) {
+              primaryKey = floorSpec.key;
+              primaryUrl = floorSpec.url;
+            } else {
+              const ceilSpec = buildIconAutoSpec(hCeilMs);
+              primaryKey = floorSpec.key;
+              primaryUrl = floorSpec.url;
+              secondaryKey = ceilSpec.key;
+              secondaryUrl = ceilSpec.url;
+              blendWeight = ratio;
+            }
+          }
 
           radarSlots.push({
-            time: Math.floor(d.getTime() / 1000),
+            time: Math.floor(dMs / 1000),
             label: formatSlotLabel(d),
             fullDate: d,
             type: "future",
             isObservation: false,
             offsetMinutes: offsetMin,
-            tileValue: tileKey,
-            customTileUrl: customTileUrl
+            tileValue: primaryKey,
+            customTileUrl: primaryUrl,
+            secondaryTileValue: secondaryKey,
+            secondaryTileUrl: secondaryUrl,
+            blendWeight: blendWeight
           });
         }
       }
@@ -5143,22 +5290,29 @@
         futureRadarLayer = null;
       }
 
-      // Pré-créer les couches de tuiles officielles Météoblue (dédupliquées par tileValue)
+      function ensureRadarTileLayer(tileKey, customUrl) {
+        if (!tileKey || radarLayersMap.has(tileKey)) return;
+        const tileUrl = customUrl || `https://maps-api-cdn.meteoblue.com/v1/tiles/precipitation_global_internal/${tileKey}/{z}/{x}/{y}.png?apikey=${apiKey}`;
+        const tileLayer = L.tileLayer(tileUrl, {
+          tileSize: 512,
+          zoomOffset: -1,
+          minZoom: 1,
+          maxNativeZoom: 7,
+          maxZoom: 19,
+          keepBuffer: 4,
+          updateWhenIdle: false,
+          opacity: 0.001,
+          zIndex: 10,
+          className: "radar-tile-layer"
+        });
+        radarLayersMap.set(tileKey, tileLayer);
+      }
+
+      // Créer les couches de tuiles officielles Météoblue (dédupliquées par clé)
       radarSlots.forEach(s => {
-        if (!radarLayersMap.has(s.tileValue)) {
-          const tileUrl = s.customTileUrl || `https://maps-api-cdn.meteoblue.com/v1/tiles/precipitation_global_internal/${s.tileValue}/{z}/{x}/{y}.png?apikey=${apiKey}`;
-          const tileLayer = L.tileLayer(tileUrl, {
-            tileSize: 512,
-            zoomOffset: -1,
-            minZoom: 1,
-            maxNativeZoom: 7,
-            maxZoom: 19,
-            opacity: 0,
-            zIndex: 10,
-            className: "radar-tile-layer"
-          });
-          if (radarMap) tileLayer.addTo(radarMap);
-          radarLayersMap.set(s.tileValue, tileLayer);
+        ensureRadarTileLayer(s.tileValue, s.customTileUrl);
+        if (s.secondaryTileValue) {
+          ensureRadarTileLayer(s.secondaryTileValue, s.secondaryTileUrl);
         }
       });
 
@@ -5166,6 +5320,16 @@
 
       // Afficher le créneau EN DIRECT par défaut au chargement (sans défilement automatique)
       showRadarSlot(activeSlotIndex);
+
+      // Pré-monter toutes les couches radar à opacité 0.001 (GPU texture pre-warming) pour une lecture ▶ 100% fluide sans saccade
+      requestAnimationFrame(() => {
+        if (!radarMap) return;
+        radarLayersMap.forEach(layer => {
+          if (!radarMap.hasLayer(layer)) {
+            layer.addTo(radarMap);
+          }
+        });
+      });
 
     } catch (e) {
       console.warn("Erreur chargement données radar Météoblue:", e);
@@ -5176,6 +5340,8 @@
     const scrollEl = document.getElementById("radarTimelineScroll");
     if (!scrollEl) return;
     scrollEl.innerHTML = "";
+    radarChipElements = [];
+    const frag = document.createDocumentFragment();
 
     radarSlots.forEach((slot, idx) => {
       const chip = document.createElement("button");
@@ -5191,8 +5357,10 @@
         stopRadarPlayback();
         showRadarSlot(idx);
       });
-      scrollEl.appendChild(chip);
+      radarChipElements.push(chip);
+      frag.appendChild(chip);
     });
+    scrollEl.appendChild(frag);
   }
 
   function showRadarSlot(index, isPlaying = false) {
@@ -5200,14 +5368,40 @@
     currentRadarIndex = index;
     const slot = radarSlots[index];
 
-    // 1. Affichage de la couche radar officielle Météoblue
+    if (radarFadeOutTimer) {
+      clearTimeout(radarFadeOutTimer);
+      radarFadeOutTimer = null;
+    }
+
+    // 1. Calcul des opacités cibles (couche simple ou fondu progressif entre deux échéances)
+    const activeTargets = new Map();
+    const BASE_OPACITY = 0.85;
+    if (slot.secondaryTileValue && slot.blendWeight > 0 && slot.blendWeight < 1) {
+      const w = slot.blendWeight;
+      // Fondu à énergie visuelle constante entre les deux échéances encadrantes
+      activeTargets.set(slot.tileValue, +(BASE_OPACITY * Math.pow(1 - w, 0.65)).toFixed(3));
+      activeTargets.set(slot.secondaryTileValue, +(BASE_OPACITY * Math.pow(w, 0.65)).toFixed(3));
+    } else {
+      activeTargets.set(slot.tileValue, BASE_OPACITY);
+    }
+
+    // Monter immédiatement la nouvelle couche active avant d'atténuer la précédente (zéro clignotement)
+    const layersToFadeOut = [];
     radarLayersMap.forEach((layer, val) => {
-      if (val === slot.tileValue) {
-        layer.setOpacity(0.85);
+      if (activeTargets.has(val)) {
+        if (radarMap && !radarMap.hasLayer(layer)) layer.addTo(radarMap);
+        layer.setOpacity(activeTargets.get(val));
       } else {
-        layer.setOpacity(0);
+        layersToFadeOut.push(layer);
       }
     });
+
+    radarFadeOutTimer = setTimeout(() => {
+      radarFadeOutTimer = null;
+      for (let i = 0; i < layersToFadeOut.length; i++) {
+        layersToFadeOut[i].setOpacity(0.001);
+      }
+    }, 45);
 
     // 2. Mettre à jour l'étiquette d'heure active et le badge de statut
     const labelEl = document.getElementById("radarActiveTimeLabel");
@@ -5238,29 +5432,32 @@
       }
     }
 
-    // 3. Mettre à jour la puce temporelle active et défilement fluide
-    const chips = document.querySelectorAll(".radar-time-chip");
-    chips.forEach((c, i) => c.classList.toggle("active", i === index));
+    // 3. Mettre à jour la puce temporelle active et défilement fluide par requestAnimationFrame
+    const chips = radarChipElements.length === radarSlots.length ? radarChipElements : document.querySelectorAll(".radar-time-chip");
+    for (let i = 0; i < chips.length; i++) {
+      chips[i].classList.toggle("active", i === index);
+    }
     const activeChip = chips[index];
     const scrollEl = document.getElementById("radarTimelineScroll");
     if (scrollEl && activeChip) {
       const targetScroll = activeChip.offsetLeft - (scrollEl.clientWidth - activeChip.clientWidth) / 2;
-      if (isPlaying) {
-        scrollEl.scrollLeft = targetScroll;
-      } else {
-        scrollEl.scrollTo({ left: targetScroll, behavior: "smooth" });
-      }
+      animateRadarTimelineScroll(scrollEl, targetScroll, isPlaying ? 240 : 200);
     }
   }
 
   function startRadarPlayback() {
     stopRadarPlayback();
+    if (radarMap) {
+      radarLayersMap.forEach(layer => {
+        if (!radarMap.hasLayer(layer)) layer.addTo(radarMap);
+      });
+    }
     const playBtn = document.getElementById("radarPlayBtn");
     if (playBtn) playBtn.textContent = "⏸";
 
-    // Vitesse officielle Météoblue (~580 ms par pas de 15 min + pause en fin de boucle)
-    const STEP_DELAY_MS = 580;
-    const END_PAUSE_MS = 1150;
+    // Cadence fluide continue (~460 ms par pas de 15 min avec fondu croisé + pause en fin de boucle)
+    const STEP_DELAY_MS = 460;
+    const END_PAUSE_MS = 1050;
 
     function tick() {
       let next = currentRadarIndex + 1;
@@ -6528,7 +6725,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.98").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=8.99").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }

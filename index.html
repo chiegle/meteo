@@ -7,8 +7,12 @@
   <meta name="description" content="Dashboard météo par onglets : Météociel, AROME 1.3km, ECMWF/Yr.no, capteurs ROMMA et BERA Météo-France.">
   <meta name="theme-color" content="#000000">
   <link rel="manifest" href="manifest.json?v=8.79">
-  <link rel="stylesheet" href="style.css?v=8.98">
-  <link rel="stylesheet" href="tabs.css?v=8.98">
+  <link rel="preconnect" href="https://api.open-meteo.com" crossorigin>
+  <link rel="preconnect" href="https://webservice.meteofrance.com" crossorigin>
+  <link rel="preconnect" href="https://api.met.no" crossorigin>
+  <link rel="preconnect" href="https://unpkg.com" crossorigin>
+  <link rel="stylesheet" href="style.css?v=8.99">
+  <link rel="stylesheet" href="tabs.css?v=8.99">
   <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png?v=8.79">
   <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png?v=8.79">
   <link rel="icon" type="image/png" sizes="48x48" href="favicon-48x48.png?v=8.79">
@@ -27,7 +31,7 @@
   </script>
   <!-- Leaflet CSS & JS pour la carte radar native -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script defer src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
 <body class="tabs-view">
   <!-- Contenu Principal -->
@@ -515,7 +519,7 @@
     </div>
   </main>
 
-  <script src="app.js?v=8.98"></script>
-  <script src="tabs.js?v=8.98"></script>
+  <script defer src="app.js?v=8.99"></script>
+  <script defer src="tabs.js?v=8.99"></script>
 </body>
 </html>
