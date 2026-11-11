@@ -972,6 +972,28 @@ body.tabs-view {
 
 /* 2. Recherche : uniquement la loupe (comme un onglet) par défaut ;
    le champ + icône GPS + étoile favoris ne s'affichent qu'au clic */
+.top-bar-city-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  max-width: 170px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 4px 0 6px;
+  cursor: pointer;
+  user-select: none;
+  transition: color var(--transition-fast);
+}
+
+.top-bar-city-label:hover {
+  color: var(--text-primary);
+}
+
+.hero-search-inline-wrap.search-open .top-bar-city-label {
+  display: none !important;
+}
+
 .search-toggle-tab-btn {
   display: inline-flex;
   align-items: center;
@@ -1039,6 +1061,10 @@ body.tabs-view {
 
 /* 5. Mobile : pleine largeur de la page + suppression du gros encart noir inutile */
 @media (max-width: 700px) {
+  .top-bar-city-label {
+    display: none !important;
+  }
+
   .search-toggle-tab-btn {
     padding: 7px 10px;
     font-size: 0.95rem;

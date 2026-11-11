@@ -514,8 +514,12 @@
   const heroFavLabel = document.getElementById("heroFavLabel");
 
   // Hero Section
+  const topBarCityLabel = document.getElementById("topBarCityLabel");
   const heroMassifTag = document.getElementById("heroMassifTag");
   const heroSummitName = document.getElementById("heroSummitName");
+  if (topBarCityLabel && currentLocation && currentLocation.name) {
+    topBarCityLabel.textContent = currentLocation.name;
+  }
   const heroDeptTag = document.getElementById("heroDeptTag");
   const heroAltitudeBadge = document.getElementById("heroAltitudeBadge");
   const heroLiveBadge = document.getElementById("heroLiveBadge");
@@ -1174,6 +1178,12 @@
     const searchToggleTabBtn = document.getElementById("searchToggleTabBtn");
     if (searchToggleTabBtn) {
       searchToggleTabBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        openSearchBar();
+      });
+    }
+    if (topBarCityLabel) {
+      topBarCityLabel.addEventListener("click", (e) => {
         e.stopPropagation();
         openSearchBar();
       });
@@ -2337,6 +2347,7 @@
     // 1. Mise à jour immédiate des titres et badges d'en-tête (sans lat/lon et sans doublon d'altitude)
     if (globalSearchInput) globalSearchInput.value = "";
     if (heroSummitName) heroSummitName.textContent = location.name;
+    if (topBarCityLabel) topBarCityLabel.textContent = location.name;
     if (heroAltitudeBadge) heroAltitudeBadge.textContent = `${Math.round(location.alt).toLocaleString('fr-FR')} m`;
     if (heroDeptTag) {
       let deptText = "";
@@ -6725,7 +6736,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=8.99").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=9.00").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
