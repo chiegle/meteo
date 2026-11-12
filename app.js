@@ -408,32 +408,71 @@
     i5: "p2bis", i05: "p3",
     i08: "p12", i10: "p14bis",
     i30: "p6", i31: "p7", i32: "p8",
-    i50: "p14", i51: "p9", i52: "p14bis", i53: "p15",
+    i50: "p14", i51: "p9", i52: "p14bis", i53: "p15", i54: "p13",
     i60: "p19", i61: "p17", i62: "p19", i63: "p23",
     i70: "p14bis", i71: "p12bis", i72: "p14bis", i73: "p14",
     i80: "p17", i81: "p17", i82: "p21", i83: "p21",
     i90: "p16bis", i91: "p24", i92: "p24"
   };
 
+  // Pictogrammes présents localement dans icons/mf (chacun en version j et n)
+  const MF_AVAILABLE_PICTOS = new Set([
+    "p1", "p1bis", "p2", "p2bis", "p3", "p3bis", "p4", "p5", "p5bis", "p6", "p6bis", "p7", "p7bis",
+    "p8", "p8bis", "p9", "p10", "p10bis", "p11", "p12", "p12bis", "p13", "p13bis", "p14", "p14bis",
+    "p15", "p16", "p16bis", "p17", "p17bis", "p18", "p18bis", "p19", "p19bis", "p20", "p20bis",
+    "p21", "p21bis", "p22", "p22bis", "p23", "p24", "p24bis", "p25", "p25bis", "p26", "p26bis",
+    "p27", "p28", "p28bis", "p29", "p30", "p31", "p32"
+  ]);
+
+  // Code inconnu : on déduit le pictogramme du libellé de prévision Météo-France (ex: "Pluie faible")
+  function getMfPictoFromDesc(desc) {
+    const t = String(desc || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (!t) return null;
+    if (t.includes("orage")) return "p16bis";
+    if (t.includes("verglac")) return "p11";
+    if (t.includes("pluie et neige") || t.includes("neige et pluie") || t.includes("neige mel")) return "p21";
+    if (t.includes("averse") && t.includes("neige")) return "p19";
+    if (t.includes("neige forte")) return "p23";
+    if (t.includes("neige faible") || t.includes("quelques flocons")) return "p17";
+    if (t.includes("neige")) return "p18";
+    if (t.includes("averses faibles")) return "p12bis";
+    if (t.includes("averse")) return "p14bis";
+    if (t.includes("bruine")) return "p9";
+    if (t.includes("pluie forte")) return "p15";
+    if (t.includes("pluie faible")) return "p13";
+    if (t.includes("pluie")) return "p14";
+    if (t.includes("brouillard givrant")) return "p8";
+    if (t.includes("brouillard")) return "p6";
+    if (t.includes("brume")) return "p5";
+    if (t.includes("couvert")) return "p3bis";
+    if (t.includes("tres nuageux")) return "p3";
+    if (t.includes("peu nuageux")) return "p1bis";
+    if (t.includes("eclaircie")) return "p2";
+    if (t.includes("nuage") || t.includes("nuageux")) return "p3";
+    if (t.includes("ensoleille") || t.includes("ciel clair") || t.includes("soleil")) return "p1";
+    return null;
+  }
+
   function getMfPictoHtml(codeOrName, isNight = false, alt = "") {
-    let pictoName = "";
+    let root = "";
     if (typeof codeOrName === "string" && codeOrName.trim()) {
-      let trimmed = codeOrName.trim();
+      const trimmed = codeOrName.trim();
       const hasSuffix = trimmed.endsWith("j") || trimmed.endsWith("n");
-      const root = hasSuffix ? trimmed.slice(0, -1) : trimmed;
+      // Variantes officielles "ter" (ex: p13terj) = même pictogramme que la base (p13j)
+      root = (hasSuffix ? trimmed.slice(0, -1) : trimmed).replace(/ter$/, "");
       if (root.startsWith("i")) {
-        const mappedRoot = MF_V2_ICON_MAP[root] || root.replace(/^i0/, "p1").replace(/^i/, "p");
-        pictoName = `${mappedRoot}${isNight ? "n" : "j"}`;
-      } else {
-        pictoName = `${root}${isNight ? "n" : "j"}`;
+        root = MF_V2_ICON_MAP[root] || "";
       }
     } else {
-      const base = MF_PICTO_BY_WMO[codeOrName] || (isNight ? "p1" : "p2");
-      pictoName = `${base}${isNight ? "n" : "j"}`;
+      root = MF_PICTO_BY_WMO[codeOrName] || "";
     }
+    // Code inconnu (pas de fichier local) : adapter l'icône d'après la prévision elle-même
+    if (!MF_AVAILABLE_PICTOS.has(root)) {
+      root = getMfPictoFromDesc(alt) || "p3";
+    }
+    const pictoName = `${root}${isNight ? "n" : "j"}`;
     const safeAlt = String(alt || pictoName).replace(/\x22/g, "&quot;");
-    const fallbackSrc = isNight ? "icons/mf/p1n.svg" : "icons/mf/p1j.svg";
-    return `<img class="mf-picto" src="icons/mf/${pictoName}.svg" alt="${safeAlt}" draggable="false" onerror="this.onerror=null;this.src='${fallbackSrc}';">`;
+    return `<img class="mf-picto" src="icons/mf/${pictoName}.svg" alt="${safeAlt}" draggable="false">`;
   }
 
   // ========================================================
@@ -6736,7 +6775,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=9.00").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=9.01").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
