@@ -5743,7 +5743,7 @@
           site: "chamrousse",
           siteLabel: "Chamrousse",
           title: "Les Crêtes",
-          alt: "1 960 m",
+          alt: "2 150 m",
           type: "iframe",
           src: "https://www.skaping.com/chamrousse/les-cretes",
           officialUrl: "https://www.chamrousse.com/webcams.html"
@@ -5763,7 +5763,7 @@
           site: "chamrousse",
           siteLabel: "Chamrousse",
           title: "Vue Grenoble & Vercors",
-          alt: "1 780 m",
+          alt: "1 800 m",
           type: "image",
           src: "http://static.meteo-chamrousse.com/webcam/webcam-chamrousse.jpg",
           officialUrl: "https://www.chamrousse.com/webcams.html"
@@ -5773,7 +5773,7 @@
           site: "chamrousse",
           siteLabel: "Chamrousse",
           title: "Panorama Casserousse",
-          alt: "1 650 m",
+          alt: "1 870 m",
           type: "iframe",
           src: "https://www.skaping.com/chamrousse/panorama-casserousse",
           officialUrl: "https://www.chamrousse.com/webcams.html"
@@ -5783,7 +5783,7 @@
           site: "bastille",
           siteLabel: "La Bastille",
           title: "Grenoble • Sommet de la Bastille",
-          alt: "476 m",
+          alt: "490 m",
           type: "iframe",
           src: "https://www.skaping.com/grenoble/bastille",
           officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
@@ -5793,7 +5793,7 @@
           site: "bastille",
           siteLabel: "La Bastille",
           title: "Grenoble • Hôtel de Ville & Belledonne",
-          alt: "214 m",
+          alt: "292 m",
           type: "iframe",
           src: "https://www.skaping.com/grenoble/hotel-de-ville",
           officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
@@ -5813,7 +5813,7 @@
           site: "chamechaude",
           siteLabel: "Chamechaude",
           title: "Le Sappey-en-Chartreuse • Vue Chamechaude",
-          alt: "1 000 m",
+          alt: "1 014 m",
           type: "iframe",
           src: "https://www.skaping.com/sappey-en-chartreuse",
           officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
@@ -5823,7 +5823,7 @@
           site: "chamechaude",
           siteLabel: "Chamechaude",
           title: "Col de Porte • Pistes de Chamechaude",
-          alt: "1 326 m",
+          alt: "1 337 m",
           type: "iframe",
           src: "https://www.skaping.com/col-de-porte/ski-alpin",
           officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
@@ -5833,7 +5833,7 @@
           site: "chamechaude",
           siteLabel: "Chamechaude",
           title: "Col de Porte • Stade de Biathlon",
-          alt: "1 326 m",
+          alt: "1 277 m",
           type: "iframe",
           src: "https://www.skaping.com/col-de-porte/biathlon",
           officialUrl: "https://www.grenoble-tourisme.com/fr/webcam/"
@@ -5843,7 +5843,7 @@
           site: "7laux",
           siteLabel: "Les 7 Laux",
           title: "Prapoutel • Sommet des Bouquetins",
-          alt: "2 100 m",
+          alt: "1 565 m",
           type: "iframe",
           src: "https://www.skaping.com/les7laux/prapoutel/sommetdesbouquetins",
           officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
@@ -5853,7 +5853,7 @@
           site: "7laux",
           siteLabel: "Les 7 Laux",
           title: "Le Pleynet • L'Oursière",
-          alt: "1 950 m",
+          alt: "2 233 m",
           type: "iframe",
           src: "https://www.skaping.com/les7laux/pleynet/oursiere",
           officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
@@ -5863,7 +5863,7 @@
           site: "7laux",
           siteLabel: "Les 7 Laux",
           title: "Pipay • Grand Cerf",
-          alt: "1 550 m",
+          alt: "2 114 m",
           type: "iframe",
           src: "https://www.skaping.com/les7laux/pipay/grand-cerf",
           officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
@@ -5873,7 +5873,7 @@
           site: "7laux",
           siteLabel: "Les 7 Laux",
           title: "Le Pleynet • Les Loups",
-          alt: "1 450 m",
+          alt: "1 977 m",
           type: "iframe",
           src: "https://www.skaping.com/les7laux/pleynet/les-loups",
           officialUrl: "https://www.les7laux.com/hiver/ski-alpin-nordique-autres-glisses/ski/webcams/"
@@ -5893,7 +5893,7 @@
           site: "pdd",
           siteLabel: "OPGC Puy de Dôme",
           title: "Observatoire OPGC • Vue Puy de Dôme (Cezeaux)",
-          alt: "1 465 m",
+          alt: null,
           type: "image",
           src: "https://wwwobs.univ-bpclermont.fr/opgc/webcampdd.jpg",
           fallbackVideo: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_1/video_Webcam_1.mp4",
@@ -5934,7 +5934,7 @@
           site: "pdd",
           siteLabel: "Pied du Dôme",
           title: "Pied du Dôme • Maison de Site (Départ Crémaillère)",
-          alt: "880 m",
+          alt: null,
           type: "video",
           src: "https://www.panoramiquedesdomes.fr/wp-content/uploads/cameras/camera_4/video_Webcam_4.mp4",
           officialUrl: "https://wwwobs.univ-bpclermont.fr/opgc/webcam.php"
@@ -5944,7 +5944,7 @@
           site: "routes63",
           siteLabel: "Département 63",
           title: "Routes & Cols du Puy-de-Dôme (Inforoute 63)",
-          alt: "Réseau 63",
+          alt: null,
           type: "iframe",
           src: "https://www.inforoute-massif-central.fr/",
           officialUrl: "https://www.puy-de-dome.fr/routes-deplacements/webcam.html"
@@ -6086,7 +6086,7 @@
           <div class="webcam-lightbox-title-wrap">
             <span class="webcam-site-tag">${item.siteLabel}</span>
             <strong>${item.title}</strong>
-            <span class="altitude-badge">${item.alt}</span>
+            ${item.alt ? `<span class="altitude-badge">${item.alt}</span>` : ""}
           </div>
           <div class="webcam-lightbox-actions">
             <a href="${item.officialUrl}" target="_blank" rel="noopener noreferrer" class="ext-link-btn">Site officiel ↗</a>
@@ -6231,9 +6231,7 @@
             <span class="webcam-site-tag">${item.siteLabel}</span>
             <h4 class="webcam-card-title">${item.title}</h4>
           </div>
-          <div class="webcam-card-actions">
-            <span class="altitude-badge">${item.alt}</span>
-          </div>
+          ${item.alt ? `<div class="webcam-card-actions"><span class="altitude-badge">${item.alt}</span></div>` : ""}
         </div>
         <div class="webcam-media-box" data-type="${item.type}" data-src="${item.src}" data-fallback-video="${item.fallbackVideo || ""}" data-title="${item.title}">
           <div class="webcam-media-placeholder">📷 Chargement du direct...</div>
@@ -6775,7 +6773,7 @@
   document.addEventListener("DOMContentLoaded", () => {
     init();
     if ("serviceWorker" in navigator && (location.protocol === "http:" || location.protocol === "https:")) {
-      navigator.serviceWorker.register("./sw.js?v=9.01").catch(err => {
+      navigator.serviceWorker.register("./sw.js?v=9.02").catch(err => {
         console.log("Service Worker non activé (normal en dev ou local) :", err);
       });
     }
